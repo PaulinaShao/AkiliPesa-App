@@ -134,17 +134,17 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
           <div className="flex flex-col items-center gap-y-6">
             <div className="flex flex-col items-center gap-1 text-center">
               <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                <Phone size={44} />
+                <Phone size={32} />
               </button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                <VideoIcon size={44} />
+                <VideoIcon size={32} />
               </button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <button onClick={handleLike} className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                <Heart size={44} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+                <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
               </button>
               <span className="text-sm font-bold">{likes.toLocaleString()}</span>
             </div>
@@ -152,7 +152,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
               <Sheet>
                 <SheetTrigger asChild>
                   <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                    <MessageCircle size={44} />
+                    <MessageCircle size={32} />
                   </button>
                 </SheetTrigger>
                 <SheetContent className="flex flex-col">
@@ -181,13 +181,13 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                <Share2 size={44} />
+                <Share2 size={32} />
               </button>
               <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <button onClick={toggleMute} className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                {isMuted ? <VolumeX size={44} /> : <Volume2 size={44} />}
+                {isMuted ? <VolumeX size={32} /> : <Volume2 size={32} />}
               </button>
             </div>
             <Logo className="h-12 w-12 text-white opacity-70" />
