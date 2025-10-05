@@ -3,6 +3,7 @@
 import { UploadCloud } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Header } from '@/components/header';
 
 export default function UploadPage() {
   const router = useRouter();
@@ -14,7 +15,9 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-muted/20">
+    <>
+    <Header />
+    <div className="flex flex-col items-center justify-center h-screen p-4 bg-muted/20 pt-16">
       <div className="w-full max-w-2xl">
         <div className="bg-background rounded-xl shadow-lg p-8">
           <div className="text-center mb-6">
@@ -38,5 +41,6 @@ export default function UploadPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -8,7 +8,48 @@ import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart } from 'lucide-react';
+import { Heart, Search } from 'lucide-react';
+import { Header } from '@/components/header';
+import { Input } from '@/components/ui/input';
+import { useRouter } from 'next/navigation';
+import { FormEvent } from 'react';
+
+function SearchHeader() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const defaultQuery = searchParams.get('q') || '';
+  
+    const handleSearch = (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const formData = new FormData(e.currentTarget);
+      const query = formData.get('search') as string;
+      if (query) {
+        router.push(`/search?q=${encodeURIComponent(query)}`);
+      } else {
+        router.push('/search');
+      }
+    };
+  
+    return (
+      <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
+        <div className="flex-1">
+          <form onSubmit={handleSearch}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                name="search"
+                type="search"
+                placeholder="Search accounts and videos"
+                className="pl-10 w-full"
+                defaultValue={defaultQuery}
+              />
+            </div>
+          </form>
+        </div>
+      </header>
+    );
+}
+
 
 function SearchResults() {
   const searchParams = useSearchParams();
@@ -16,11 +57,11 @@ function SearchResults() {
 
   const filteredUsers = query ? allUsers.filter(
     u => u.username.toLowerCase().includes(query) || u.name.toLowerCase().includes(query)
-  ) : allUsers;
+  ) : [];
 
   const filteredVideos = query ? allVideos.filter(
     v => v.caption.toLowerCase().includes(query) || v.tags.some(t => t.includes(query))
-  ) : allVideos;
+  ) : [];
 
   if (!query) {
     return <div className="text-center py-16 text-muted-foreground">Start by typing in the search bar above.</div>
@@ -118,8 +159,11 @@ function SearchResults() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <SearchResults />
-    </Suspense>
+    <>
+      <SearchHeader />
+      <Suspense fallback={<div>Loading...</div>}>
+        <SearchResults />
+      </Suspense>
+    </>
   );
 }

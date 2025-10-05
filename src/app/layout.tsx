@@ -5,7 +5,6 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { SidebarNav } from '@/components/sidebar-nav';
 import { BottomNav } from '@/components/bottom-nav';
-import { Header } from '@/components/header';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -30,7 +29,6 @@ export default function RootLayout({
         <div className="flex min-h-screen">
           <SidebarNav />
           <main className="flex-1 md:ml-64">
-            <Header />
             {children}
           </main>
           <BottomNav />

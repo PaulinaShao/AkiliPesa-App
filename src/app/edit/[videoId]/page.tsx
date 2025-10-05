@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SlidersHorizontal, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
+import { Header } from '@/components/header';
 
 const filters = [
   { name: 'None', style: '' },
@@ -36,7 +37,9 @@ export default function EditPage({ params }: { params: Promise<{ videoId: string
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)] bg-muted/40">
+    <>
+    <Header />
+    <div className="flex flex-col md:flex-row h-screen bg-muted/40 pt-16">
       <div className="flex-1 flex items-center justify-center p-4 md:p-12">
         <div className="relative w-full max-w-sm aspect-[9/16] bg-black rounded-xl overflow-hidden shadow-2xl">
           <video
@@ -86,5 +89,6 @@ export default function EditPage({ params }: { params: Promise<{ videoId: string
         </div>
       </div>
     </div>
+    </>
   );
 }
