@@ -97,9 +97,9 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         </div>
       )}
 
-      <div className="absolute bottom-16 md:bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent text-white">
-        <div className="flex items-end">
-          <div className="flex-1 space-y-2">
+      <div className="absolute bottom-16 md:bottom-0 left-0 right-0 p-4 pb-6 md:pb-4 text-white bg-gradient-to-t from-black/50 to-transparent">
+        <div className="flex items-end gap-4">
+          <div className="flex-1 space-y-3">
             <div className="flex items-center gap-3">
                <div className="relative">
                  <Link href={`/profile/${user.username}`}>
@@ -115,8 +115,13 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                 </Link>
               </div>
             </div>
+
+            <div className='flex gap-2'>
+                <Button size="sm" className="bg-white/20 backdrop-blur-sm text-white font-bold text-xs h-8">Buy TSh.5,000</Button>
+                <Button size="sm" variant="secondary" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Earn TSh.500</Button>
+            </div>
             
-            <p className="text-sm">
+            <p className="text-sm w-4/5">
                 {isCaptionExpanded ? video.caption : shortenedCaption}
                 {video.caption.split(' ').length > 3 && (
                     <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
@@ -126,56 +131,65 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </p>
           </div>
 
-          <div className="flex flex-col items-center space-y-6">
-            <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-              <Phone className="h-8 w-8" />
-            </Button>
-            <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-              <VideoIcon className="h-8 w-8" />
-            </Button>
-            <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col gap-1">
-              <Heart className={cn("h-8 w-8", isLiked && "fill-red-500 text-red-500")} />
-              <span className="text-xs font-bold">{likes.toLocaleString()}</span>
-            </Button>
-            
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col gap-1">
-                  <MessageCircle className="h-8 w-8" />
-                  <span className="text-xs font-bold">{video.comments.toLocaleString()}</span>
+          <div className="flex flex-col items-center gap-4">
+             <div className="flex flex-col items-center gap-1 text-center">
+                <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                  <Phone className="h-10 w-10" />
                 </Button>
-              </SheetTrigger>
-              <SheetContent className="flex flex-col">
-                <SheetHeader>
-                  <SheetTitle>{video.comments} Comments</SheetTitle>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto space-y-4 pr-4">
-                  {allComments.filter(c => c.videoId === video.id).map(comment => {
-                    const commentUser = user; // In a real app, you'd find the actual comment user
-                     return (
-                     <div key={comment.id} className="flex gap-2">
-                       <UserAvatar src={commentUser.avatar} username={commentUser.username} className="h-8 w-8"/>
-                       <div>
-                         <p className="font-bold text-sm">@{commentUser.username}</p>
-                         <p>{comment.text}</p>
-                       </div>
-                     </div>
-                  )})}
-                </div>
-                <div className="mt-auto p-2 border-t">
-                  <Input placeholder="Add a comment..."/>
-                </div>
-              </SheetContent>
-            </Sheet>
+            </div>
+             <div className="flex flex-col items-center gap-1 text-center">
+                <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                  <VideoIcon className="h-10 w-10" />
+                </Button>
+            </div>
+            <div className="flex flex-col items-center gap-1 text-center">
+                <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                  <Heart className={cn("h-10 w-10", isLiked && "fill-red-500 text-red-500")} />
+                </Button>
+                <span className="text-sm font-bold">{likes.toLocaleString()}</span>
+            </div>
+            
+            <div className="flex flex-col items-center gap-1 text-center">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                      <MessageCircle className="h-10 w-10" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="flex flex-col">
+                    <SheetHeader>
+                      <SheetTitle>{video.comments} Comments</SheetTitle>
+                    </SheetHeader>
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-4">
+                      {allComments.filter(c => c.videoId === video.id).map(comment => {
+                        const commentUser = user; // In a real app, you'd find the actual comment user
+                         return (
+                         <div key={comment.id} className="flex gap-2">
+                           <UserAvatar src={commentUser.avatar} username={commentUser.username} className="h-8 w-8"/>
+                           <div>
+                             <p className="font-bold text-sm">@{commentUser.username}</p>
+                             <p>{comment.text}</p>
+                           </div>
+                         </div>
+                      )})}
+                    </div>
+                    <div className="mt-auto p-2 border-t">
+                      <Input placeholder="Add a comment..."/>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+                <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
+            </div>
 
-            <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col gap-1">
-              <Share2 className="h-8 w-8" />
-              <span className="text-xs font-bold">{video.shares.toLocaleString()}</span>
-            </Button>
+             <div className="flex flex-col items-center gap-1 text-center">
+                <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                  <Share2 className="h-10 w-10" />
+                </Button>
+                <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
+            </div>
             <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto" onClick={toggleMute}>
               {isMuted ? <VolumeX className="h-8 w-8" /> : <Volume2 className="h-8 w-8" />}
             </Button>
-            <Logo className="h-12 w-12 text-white opacity-70" />
           </div>
         </div>
       </div>
