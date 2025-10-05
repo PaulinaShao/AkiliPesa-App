@@ -5,7 +5,7 @@ import type { Video, User } from '@/lib/definitions';
 import { useInView } from '@/lib/hooks';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Phone, Video as VideoIcon, PlusCircle, ShoppingCart } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Phone, Video as VideoIcon, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import {
   Sheet,
@@ -111,18 +111,12 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                </div>
               <div>
                 <Link href={`/profile/${user.username}`}>
-                  <h3 className="font-bold text-sm">@{user.username}</h3>
+                  <h3 className="font-bold text-lg">@{user.username}</h3>
                 </Link>
-                <p className="text-xs">{user.name}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-                <Button className="bg-black/50 backdrop-blur-sm border-white/20 border text-white hover:bg-white/20 h-auto py-1 px-3 rounded-full text-xs">Buy TZS 5,000</Button>
-                <Button className="bg-black/50 backdrop-blur-sm border-white/20 border text-white hover:bg-white/20 h-auto py-1 px-3 rounded-full text-xs">Earn TZS 500</Button>
-            </div>
-            
-            <p className="text-xs">
+            <p className="text-sm">
                 {isCaptionExpanded ? video.caption : shortenedCaption}
                 {video.caption.split(' ').length > 3 && (
                     <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
@@ -130,9 +124,6 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                     </button>
                 )}
             </p>
-            <div className="flex gap-2 text-xs">
-                {video.tags.map(tag => <span key={tag} className="font-semibold">#{tag}</span>)}
-            </div>
           </div>
 
           <div className="flex flex-col items-center space-y-6">
@@ -184,6 +175,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto" onClick={toggleMute}>
               {isMuted ? <VolumeX className="h-8 w-8" /> : <Volume2 className="h-8 w-8" />}
             </Button>
+            <Logo className="h-12 w-12 text-white opacity-70" />
           </div>
         </div>
       </div>
