@@ -5,7 +5,7 @@ import type { Video, User } from '@/lib/definitions';
 import { useInView } from '@/lib/hooks';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Phone, Video as VideoIcon } from 'lucide-react';
 import Link from 'next/link';
 import {
   Sheet,
@@ -40,7 +40,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
       videoRef.current?.pause();
       setIsPlaying(false);
     }
-  }, [isInView]);
+  }, [isInView, onPlay, video.id, video.tags]);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -114,16 +114,22 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
           </div>
 
           <div className="flex flex-col items-center space-y-4">
-            <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14">
-              <Heart className={isLiked ? "h-9 w-9 fill-red-500 text-red-500" : "h-9 w-9"} />
-              <span className="text-sm font-bold">{likes.toLocaleString()}</span>
+            <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
+              <Phone className="h-8 w-8" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
+              <VideoIcon className="h-8 w-8" />
+            </Button>
+            <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
+              <Heart className={isLiked ? "h-8 w-8 fill-red-500 text-red-500" : "h-8 w-8"} />
+              <span className="text-xs font-bold">{likes.toLocaleString()}</span>
             </Button>
             
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14">
-                  <MessageCircle className="h-9 w-9" />
-                  <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
+                <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
+                  <MessageCircle className="h-8 w-8" />
+                  <span className="text-xs font-bold">{video.comments.toLocaleString()}</span>
                 </Button>
               </SheetTrigger>
               <SheetContent className="flex flex-col">
@@ -147,17 +153,16 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
               </SheetContent>
             </Sheet>
 
-            <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14">
-              <Share2 className="h-9 w-9" />
-              <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
+            <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
+              <Share2 className="h-8 w-8" />
+              <span className="text-xs font-bold">{video.shares.toLocaleString()}</span>
+            </Button>
+            <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14" onClick={toggleMute}>
+              {isMuted ? <VolumeX className="h-8 w-8" /> : <Volume2 className="h-8 w-8" />}
             </Button>
           </div>
         </div>
       </div>
-      
-      <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white bg-black/30" onClick={toggleMute}>
-        {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
-      </Button>
     </div>
   );
 }
