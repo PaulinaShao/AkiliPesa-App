@@ -117,7 +117,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </div>
 
             <div className='flex gap-2'>
-                <Button size="sm" className="bg-white/20 backdrop-blur-sm text-white font-bold text-xs h-8">Buy TSh.5,000</Button>
+                <Button size="sm" variant="secondary" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Buy TSh.5,000</Button>
                 <Button size="sm" variant="secondary" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Earn TSh.500</Button>
             </div>
             
@@ -131,28 +131,28 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-y-6">
+          <div className="flex flex-col items-center space-y-6">
             <div className="flex flex-col items-center gap-1 text-center">
-              <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                <Phone size={32} />
+              <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                <Phone size={24} />
               </button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
-              <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                <VideoIcon size={32} />
+              <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                <VideoIcon size={24} />
               </button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
-              <button onClick={handleLike} className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+              <button onClick={handleLike} className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
               </button>
               <span className="text-sm font-bold">{likes.toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <Sheet>
                 <SheetTrigger asChild>
-                  <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                    <MessageCircle size={32} />
+                  <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                    <MessageCircle size={24} />
                   </button>
                 </SheetTrigger>
                 <SheetContent className="flex flex-col">
@@ -180,14 +180,14 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
               <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
-              <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                <Share2 size={32} />
+              <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                <Share2 size={24} />
               </button>
               <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
-              <button onClick={toggleMute} className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                {isMuted ? <VolumeX size={32} /> : <Volume2 size={32} />}
+              <button onClick={toggleMute} className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
               </button>
             </div>
             <Logo className="h-12 w-12 text-white opacity-70" />
