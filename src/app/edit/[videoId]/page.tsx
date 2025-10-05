@@ -20,7 +20,7 @@ const filters = [
   { name: 'Cool', style: 'hue-rotate-180 contrast-125' },
 ];
 
-export default function EditPage({ params }: { params: Promise<{ videoId: string }> }) {
+export default function EditPage({ params }: { params: { videoId: string } }) {
   const router = useRouter();
   const { videoId } = use(params);
   const video = videos.find(v => v.id === videoId);
