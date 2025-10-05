@@ -131,20 +131,20 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-y-12">
+          <div className="flex flex-col items-center gap-y-6">
             <div className="flex flex-col items-center gap-1 text-center">
               <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                <Phone className="h-8 w-8" />
+                <Phone className="h-10 w-10" />
               </Button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                <VideoIcon className="h-8 w-8" />
+                <VideoIcon className="h-10 w-10" />
               </Button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                <Heart className={cn("h-8 w-8", isLiked && "fill-red-500 text-red-500")} />
+                <Heart className={cn("h-10 w-10", isLiked && "fill-red-500 text-red-500")} />
               </Button>
               <span className="text-sm font-bold">{likes.toLocaleString()}</span>
             </div>
@@ -152,7 +152,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                    <MessageCircle className="h-8 w-8" />
+                    <MessageCircle className="h-10 w-10" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent className="flex flex-col">
@@ -181,7 +181,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                <Share2 className="h-8 w-8" />
+                <Share2 className="h-10 w-10" />
               </Button>
               <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </div>
