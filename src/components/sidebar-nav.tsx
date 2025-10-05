@@ -11,10 +11,11 @@ import { Button } from '@/components/ui/button';
 
 const mainNavLinks = [
   { href: '/', icon: Home, label: 'Home' },
+  { href: '/search', icon: Search, label: 'Discover' },
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/upload', icon: PlusSquare, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
-  { href: '/search', icon: Search, label: 'Discover' },
+  { href: '/profile/naturelover', icon: User, label: 'Profile' },
 ];
 
 export function SidebarNav() {
@@ -33,7 +34,7 @@ export function SidebarNav() {
             <li key={href}>
               <Link href={href}>
                 <Button
-                  variant={pathname === href ? 'secondary' : 'ghost'}
+                  variant={pathname.startsWith(href) && href !=='/' || pathname === href ? 'secondary' : 'ghost'}
                   className="w-full justify-start text-lg h-12"
                 >
                   <Icon className="mr-3 h-6 w-6" />
@@ -48,7 +49,7 @@ export function SidebarNav() {
       <div className="space-y-4">
         <h2 className="px-2 text-sm font-semibold text-muted-foreground tracking-wider uppercase">Following</h2>
         <ul className="space-y-2">
-            {users.slice(0, 4).map(user => (
+            {users.slice(1, 5).map(user => (
                 <li key={user.id}>
                      <Link href={`/profile/${user.username}`}>
                         <Button variant="ghost" className="w-full justify-start h-11">

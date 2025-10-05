@@ -24,7 +24,7 @@ export function BottomNav() {
             <div
               className={cn(
                 'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors',
-                ((pathname === href && href !== '/') || (pathname === '/' && href === '/')) && 'text-primary'
+                ((pathname.startsWith(href) && href !== '/') || (pathname === '/' && href === '/')) && 'text-primary'
               )}
             >
               <Icon className="h-6 w-6" />
