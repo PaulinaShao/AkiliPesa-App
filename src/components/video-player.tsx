@@ -97,7 +97,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         </div>
       )}
 
-      <div className="absolute bottom-16 md:bottom-0 left-0 right-0 p-4 pb-6 md:pb-4 text-white bg-gradient-to-t from-black/50 to-transparent">
+      <div className="absolute bottom-16 md:bottom-20 left-0 right-0 p-4 pb-6 md:pb-4 text-white">
         <div className="flex items-end gap-4">
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-3">
@@ -131,20 +131,20 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-6">
              <div className="flex flex-col items-center gap-1 text-center">
                 <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                  <Phone className="h-9 w-9" />
+                  <Phone className="h-8 w-8" />
                 </Button>
             </div>
              <div className="flex flex-col items-center gap-1 text-center">
                 <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                  <VideoIcon className="h-9 w-9" />
+                  <VideoIcon className="h-8 w-8" />
                 </Button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
                 <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                  <Heart className={cn("h-9 w-9", isLiked && "fill-red-500 text-red-500")} />
+                  <Heart className={cn("h-8 w-8", isLiked && "fill-red-500 text-red-500")} />
                 </Button>
                 <span className="text-sm font-bold">{likes.toLocaleString()}</span>
             </div>
@@ -153,7 +153,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                 <Sheet>
                   <SheetTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                      <MessageCircle className="h-9 w-9" />
+                      <MessageCircle className="h-8 w-8" />
                     </Button>
                   </SheetTrigger>
                   <SheetContent className="flex flex-col">
@@ -183,10 +183,13 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
 
              <div className="flex flex-col items-center gap-1 text-center">
                 <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                  <Share2 className="h-9 w-9" />
+                  <Share2 className="h-8 w-8" />
                 </Button>
                 <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </div>
+            
+            <Logo className="h-12 w-12 text-white opacity-70" />
+
             <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto" onClick={toggleMute}>
               {isMuted ? <VolumeX className="h-8 w-8" /> : <Volume2 className="h-8 w-8" />}
             </Button>
