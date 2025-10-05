@@ -1,4 +1,4 @@
-import type { User, Video, Comment } from '@/lib/definitions';
+import type { User, Video, Comment, Transaction } from '@/lib/definitions';
 
 export const users: User[] = [
   { id: 'u1', username: 'naturelover', name: 'Alex Doe', avatar: 'https://picsum.photos/seed/user1/200/200', bio: 'Exploring the beauty of the world, one trail at a time.', followers: 1200, following: 150 },
@@ -84,4 +84,15 @@ export const comments: Comment[] = [
     { id: 'c3', videoId: 'v3', userId: 'u5', text: 'Looks delicious! Trying this tonight!', timestamp: '2024-07-29T11:00:00Z' },
     { id: 'c4', videoId: 'v5', userId: 'u1', text: 'You killed it!', timestamp: '2024-07-29T12:00:00Z' },
     { id: 'c5', videoId: 'v5', userId: 'u2', text: 'Teach me your ways!', timestamp: '2024-07-29T12:01:00Z' },
+];
+
+export const transactions: Transaction[] = [
+  { id: 't1', type: 'Received', amount: 5000, date: '2024-07-30', description: 'From @cityvibes', status: 'Completed' },
+  { id: 't2', type: 'Sent', amount: 2000, date: '2024-07-29', description: 'To @foodfusion', status: 'Completed' },
+  { id: 't3', type: 'Earned', amount: 1500, date: '2024-07-28', description: 'Video gift', status: 'Completed' },
+  { id: 't4', type: 'Commission', amount: 500, date: '2024-07-27', description: 'From @dancemachine', status: 'Completed' },
+  { id: 't5', type: 'Add Funds', amount: 10000, date: '2024-07-26', description: 'Bank Transfer', status: 'Completed' },
+  { id: 't6', type: 'Withdraw', amount: 5000, date: '2024-07-25', description: 'Mobile Money', status: 'Pending' },
+  { id: 't7', type: 'Received', amount: 2500, date: '2024-07-24', description: 'From @travelbug', status: 'Completed' },
+  { id: 't8', type: 'Sent', amount: 1000, date: '2024-07-23', description: 'To @petpals', status: 'Failed' },
 ];

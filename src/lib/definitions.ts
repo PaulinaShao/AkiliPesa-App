@@ -27,3 +27,12 @@ export type Comment = {
   text: string;
   timestamp: string;
 };
+
+export type Transaction = {
+  id: string;
+  type: 'Received' | 'Sent' | 'Earned' | 'Commission' | 'Add Funds' | 'Withdraw';
+  amount: number;
+  date: string;
+  description: string;
+  status: 'Completed' | 'Pending' | 'Failed';
+};
