@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, PlusSquare, User, Users } from 'lucide-react';
+import { Home, Search, PlusSquare, User, Users, Wallet, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
 import { UserAvatar } from '@/components/user-avatar';
@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button';
 
 const mainNavLinks = [
   { href: '/', icon: Home, label: 'Home' },
-  { href: '/search', icon: Search, label: 'Discover' },
+  { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/upload', icon: PlusSquare, label: 'Create' },
+  { href: '/inbox', icon: Inbox, label: 'Inbox' },
+  { href: '/search', icon: Search, label: 'Discover' },
 ];
 
 export function SidebarNav() {

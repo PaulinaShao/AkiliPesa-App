@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, PlusSquare, User, Users } from 'lucide-react';
+import { Home, Wallet, PlusSquare, Inbox, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
   { href: '/', icon: Home, label: 'Home' },
-  { href: '/search', icon: Search, label: 'Discover' },
+  { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/upload', icon: PlusSquare, label: 'Create' },
+  { href: '/inbox', icon: Inbox, label: 'Inbox' },
   { href: '/profile/naturelover', icon: User, label: 'Profile' },
 ];
 
@@ -23,7 +24,7 @@ export function BottomNav() {
             <div
               className={cn(
                 'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors',
-                pathname === href && 'text-primary'
+                ((pathname === href && href !== '/') || (pathname === '/' && href === '/')) && 'text-primary'
               )}
             >
               <Icon className="h-6 w-6" />
