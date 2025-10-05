@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { videos } from '@/lib/data';
 import { notFound, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -19,9 +19,10 @@ const filters = [
   { name: 'Cool', style: 'hue-rotate-180 contrast-125' },
 ];
 
-export default function EditPage({ params }: { params: { videoId: string } }) {
+export default function EditPage({ params }: { params: Promise<{ videoId: string }> }) {
   const router = useRouter();
-  const video = videos.find(v => v.id === params.videoId);
+  const { videoId } = use(params);
+  const video = videos.find(v => v.id === videoId);
   const [activeFilter, setActiveFilter] = useState('None');
 
   if (!video) {
