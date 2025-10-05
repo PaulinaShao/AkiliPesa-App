@@ -5,7 +5,7 @@ import type { Video, User } from '@/lib/definitions';
 import { useInView } from '@/lib/hooks';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Phone, Video as VideoIcon, PlusCircle } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Phone, Video as VideoIcon, PlusCircle, Music } from 'lucide-react';
 import Link from 'next/link';
 import {
   Sheet,
@@ -97,9 +97,8 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 md:pb-4 text-white">
-        <div className="flex items-end gap-4">
-          <div className="flex-1 space-y-3">
+      <div className="absolute bottom-0 left-0 right-0 text-white flex items-end p-4 pb-20 md:pb-4">
+        <div className="flex-1 space-y-3">
             <div className="flex items-center gap-3">
                <div className="relative">
                  <Link href={`/profile/${user.username}`}>
@@ -146,7 +145,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
               <button onClick={handleLike} className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
                 <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
               </button>
-              <span className="text-sm font-bold">{likes.toLocaleString()}</span>
+              <span className="text-xs font-bold">{likes.toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <Sheet>
@@ -177,22 +176,21 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                   </div>
                 </SheetContent>
               </Sheet>
-              <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
+              <span className="text-xs font-bold">{video.comments.toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
                 <Share2 size={24} />
               </button>
-              <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
+              <span className="text-xs font-bold">{video.shares.toLocaleString()}</span>
             </div>
-            <div className="flex flex-col items-center gap-1 text-center">
-              <button onClick={toggleMute} className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
-              </button>
+             <div className="flex flex-col items-center gap-1 text-center">
+                <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                    <Music size={24} />
+                </button>
             </div>
             <Logo className="h-12 w-12 text-white opacity-70" />
           </div>
-        </div>
       </div>
     </div>
   );
