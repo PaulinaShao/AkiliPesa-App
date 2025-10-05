@@ -133,27 +133,27 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
 
           <div className="flex flex-col items-center gap-y-6">
             <div className="flex flex-col items-center gap-1 text-center">
-              <Button variant="ghost" className="text-white hover:text-white h-auto w-auto flex-col p-0">
+              <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
                 <Phone size={44} />
-              </Button>
+              </button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
-              <Button variant="ghost" className="text-white hover:text-white h-auto w-auto flex-col p-0">
+              <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
                 <VideoIcon size={44} />
-              </Button>
+              </button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
-              <Button onClick={handleLike} variant="ghost" className="text-white hover:text-white h-auto w-auto flex-col p-0">
-                <Heart size={44} className={cn(isLiked && "fill-red-500 text-red-500")} />
-              </Button>
+              <button onClick={handleLike} className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                <Heart size={44} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+              </button>
               <span className="text-sm font-bold">{likes.toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" className="text-white hover:text-white h-auto w-auto flex-col p-0">
+                  <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
                     <MessageCircle size={44} />
-                  </Button>
+                  </button>
                 </SheetTrigger>
                 <SheetContent className="flex flex-col">
                   <SheetHeader>
@@ -180,15 +180,15 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
               <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
-              <Button variant="ghost" className="text-white hover:text-white h-auto w-auto flex-col p-0">
+              <button className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
                 <Share2 size={44} />
-              </Button>
+              </button>
               <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
-              <Button variant="ghost" className="text-white hover:text-white h-auto w-auto p-0" onClick={toggleMute}>
+              <button onClick={toggleMute} className="p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
                 {isMuted ? <VolumeX size={44} /> : <Volume2 size={44} />}
-              </Button>
+              </button>
             </div>
             <Logo className="h-12 w-12 text-white opacity-70" />
           </div>
