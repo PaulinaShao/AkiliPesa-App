@@ -99,7 +99,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
 
       <div className="absolute bottom-16 md:bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent text-white">
         <div className="flex items-end">
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-2">
             <div className="flex items-center gap-3">
                <div className="relative">
                  <Link href={`/profile/${user.username}`}>
@@ -111,18 +111,18 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                </div>
               <div>
                 <Link href={`/profile/${user.username}`}>
-                  <h3 className="font-bold text-lg">@{user.username}</h3>
+                  <h3 className="font-bold text-base">@{user.username}</h3>
                 </Link>
-                <p className="text-sm">{user.name}</p>
+                <p className="text-xs">{user.name}</p>
               </div>
             </div>
             
             <div className="flex items-center gap-2">
-                <Button className="bg-black/50 backdrop-blur-sm border-white/20 border text-white hover:bg-white/20 h-auto py-2 px-4 rounded-full">Buy TZS 5,000</Button>
-                <Button className="bg-black/50 backdrop-blur-sm border-white/20 border text-white hover:bg-white/20 h-auto py-2 px-4 rounded-full">Earn TZS 500</Button>
+                <Button className="bg-black/50 backdrop-blur-sm border-white/20 border text-white hover:bg-white/20 h-auto py-1 px-3 rounded-full text-xs">Buy TZS 5,000</Button>
+                <Button className="bg-black/50 backdrop-blur-sm border-white/20 border text-white hover:bg-white/20 h-auto py-1 px-3 rounded-full text-xs">Earn TZS 500</Button>
             </div>
             
-            <p className="text-sm">
+            <p className="text-xs">
                 {isCaptionExpanded ? video.caption : shortenedCaption}
                 {video.caption.split(' ').length > 3 && (
                     <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
@@ -130,32 +130,28 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                     </button>
                 )}
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 text-xs">
                 {video.tags.map(tag => <span key={tag} className="font-semibold">#{tag}</span>)}
             </div>
           </div>
 
           <div className="flex flex-col items-center space-y-4">
-             <div className="flex flex-col items-center opacity-80">
-                 <Logo className="h-8 w-8 text-white"/>
-                 <span className="text-xs font-bold text-white">AkiliPesa</span>
-             </div>
-            <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
-              <Phone className="h-8 w-8" />
+            <Button variant="ghost" size="icon" className="text-white hover:text-white h-16 w-16 flex-col">
+              <Phone className="h-10 w-10" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
-              <VideoIcon className="h-8 w-8" />
+            <Button variant="ghost" size="icon" className="text-white hover:text-white h-16 w-16 flex-col">
+              <VideoIcon className="h-10 w-10" />
             </Button>
-            <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
-              <Heart className={cn("h-8 w-8", isLiked && "fill-red-500 text-red-500")} />
-              <span className="text-xs font-bold">{likes.toLocaleString()}</span>
+            <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-16 w-16 flex-col">
+              <Heart className={cn("h-10 w-10", isLiked && "fill-red-500 text-red-500")} />
+              <span className="text-sm font-bold">{likes.toLocaleString()}</span>
             </Button>
             
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
-                  <MessageCircle className="h-8 w-8" />
-                  <span className="text-xs font-bold">{video.comments.toLocaleString()}</span>
+                <Button variant="ghost" size="icon" className="text-white hover:text-white h-16 w-16 flex-col">
+                  <MessageCircle className="h-10 w-10" />
+                  <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
                 </Button>
               </SheetTrigger>
               <SheetContent className="flex flex-col">
@@ -181,12 +177,12 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
               </SheetContent>
             </Sheet>
 
-            <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14 flex-col">
-              <Share2 className="h-8 w-8" />
-              <span className="text-xs font-bold">{video.shares.toLocaleString()}</span>
+            <Button variant="ghost" size="icon" className="text-white hover:text-white h-16 w-16 flex-col">
+              <Share2 className="h-10 w-10" />
+              <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </Button>
-            <Button variant="ghost" size="icon" className="text-white hover:text-white h-14 w-14" onClick={toggleMute}>
-              {isMuted ? <VolumeX className="h-8 w-8" /> : <Volume2 className="h-8 w-8" />}
+            <Button variant="ghost" size="icon" className="text-white hover:text-white h-16 w-16" onClick={toggleMute}>
+              {isMuted ? <VolumeX className="h-10 w-10" /> : <Volume2 className="h-10 w-10" />}
             </Button>
           </div>
         </div>
