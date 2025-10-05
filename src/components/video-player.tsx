@@ -131,7 +131,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-6">
              <div className="flex flex-col items-center gap-1 text-center">
                 <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
                   <Phone className="h-10 w-10" />
