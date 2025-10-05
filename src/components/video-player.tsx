@@ -92,102 +92,101 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
 
       <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 md:pb-4 text-white">
         <div className="flex justify-between items-end">
-            {/* Left Column: User Info, Caption, Buttons */}
-            <div className="flex-1 space-y-3 max-w-[75%]">
-                <div className="flex items-center gap-3">
-                   <div className="relative">
-                     <Link href={`/profile/${user.username}`}>
-                       <UserAvatar src={user.avatar} username={user.username} className="h-12 w-12 border-2 border-white" />
-                     </Link>
-                     <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
-                        <PlusCircle className="h-5 w-5 text-primary fill-background" />
-                     </button>
-                   </div>
-                  <div>
-                    <Link href={`/profile/${user.username}`}>
-                      <h3 className="font-bold text-lg">@{user.username}</h3>
-                    </Link>
+          {/* Left Column: User Info, Caption, Buttons */}
+          <div className="flex-1 space-y-3 max-w-[75%]">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Link href={`/profile/${user.username}`}>
+                  <UserAvatar src={user.avatar} username={user.username} className="h-12 w-12 border-2 border-white" />
+                </Link>
+                <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
+                  <PlusCircle className="h-5 w-5 text-primary fill-background" />
+                </button>
+              </div>
+              <div>
+                <Link href={`/profile/${user.username}`}>
+                  <h3 className="font-bold text-lg">@{user.username}</h3>
+                </Link>
+              </div>
+            </div>
+
+            <div className='flex gap-2'>
+              <Button size="sm" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Buy TSh.5,000</Button>
+              <Button size="sm" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Earn TSh.500</Button>
+            </div>
+            
+            <p className="text-sm">
+              {isCaptionExpanded ? video.caption : shortenedCaption}
+              {video.caption.split(' ').length > 3 && (
+                <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
+                  {isCaptionExpanded ? 'Less' : '... more'}
+                </button>
+              )}
+            </p>
+            <div className="flex items-center gap-2">
+              <Music className="h-4 w-4" />
+              <p className="text-sm font-semibold">Original Sound - @{user.username}</p>
+            </div>
+          </div>
+
+          {/* Right Column: Action Icons & Watermark */}
+          <div className="flex flex-col items-center space-y-6">
+            <div className="flex flex-col items-center gap-2">
+              <button className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                <Phone size={24} />
+              </button>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <button className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                <VideoIcon size={24} />
+              </button>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <button onClick={handleLike} className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+              </button>
+              <span className="text-xs font-bold">{likes.toLocaleString()}</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <button className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                    <MessageCircle size={24} />
+                  </button>
+                </SheetTrigger>
+                <SheetContent className="flex flex-col">
+                  <SheetHeader>
+                    <SheetTitle>{video.comments} Comments</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto space-y-4 pr-4">
+                    {allComments.filter(c => c.videoId === video.id).map(comment => {
+                      const commentUser = user; // In a real app, you'd find the actual comment user
+                      return (
+                        <div key={comment.id} className="flex gap-2">
+                          <UserAvatar src={commentUser.avatar} username={commentUser.username} className="h-8 w-8"/>
+                          <div>
+                            <p className="font-bold text-sm">@{commentUser.username}</p>
+                            <p>{comment.text}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
-
-                <div className='flex gap-2'>
-                    <Button size="sm" variant="secondary" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Buy TSh.5,000</Button>
-                    <Button size="sm" variant="secondary" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Earn TSh.500</Button>
-                </div>
-                
-                <p className="text-sm">
-                    {isCaptionExpanded ? video.caption : shortenedCaption}
-                    {video.caption.split(' ').length > 3 && (
-                        <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
-                            {isCaptionExpanded ? 'Less' : '... more'}
-                        </button>
-                    )}
-                </p>
-                <div className="flex items-center gap-2">
-                    <Music className="h-4 w-4" />
-                    <p className="text-sm font-semibold">Original Sound - @{user.username}</p>
-                </div>
+                  <div className="mt-auto p-2 border-t">
+                    <Input placeholder="Add a comment..."/>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <span className="text-xs font-bold">{video.comments.toLocaleString()}</span>
             </div>
-
-            {/* Right Column: Action Icons & Watermark */}
-            <div className="flex flex-col items-center space-y-6">
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                    <Phone size={24} />
-                    </button>
-                </div>
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                    <VideoIcon size={24} />
-                    </button>
-                </div>
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <button onClick={handleLike} className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                    <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
-                    </button>
-                    <span className="text-xs font-bold">{likes.toLocaleString()}</span>
-                </div>
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <Sheet>
-                        <SheetTrigger asChild>
-                        <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                            <MessageCircle size={24} />
-                        </button>
-                        </SheetTrigger>
-                        <SheetContent className="flex flex-col">
-                        <SheetHeader>
-                            <SheetTitle>{video.comments} Comments</SheetTitle>
-                        </SheetHeader>
-                        <div className="flex-1 overflow-y-auto space-y-4 pr-4">
-                            {allComments.filter(c => c.videoId === video.id).map(comment => {
-                            const commentUser = user; // In a real app, you'd find the actual comment user
-                            return (
-                            <div key={comment.id} className="flex gap-2">
-                                <UserAvatar src={commentUser.avatar} username={commentUser.username} className="h-8 w-8"/>
-                                <div>
-                                <p className="font-bold text-sm">@{commentUser.username}</p>
-                                <p>{comment.text}</p>
-                                </div>
-                            </div>
-                            )})}
-                        </div>
-                        <div className="mt-auto p-2 border-t">
-                            <Input placeholder="Add a comment..."/>
-                        </div>
-                        </SheetContent>
-                    </Sheet>
-                    <span className="text-xs font-bold">{video.comments.toLocaleString()}</span>
-                </div>
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
-                    <Share2 size={24} />
-                    </button>
-                    <span className="text-xs font-bold">{video.shares.toLocaleString()}</span>
-                </div>
-                 <div className="mt-8">
-                  <Logo className="h-12 w-12 text-white opacity-70" />
-                </div>
+            <div className="flex flex-col items-center gap-2">
+              <button className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
+                <Share2 size={24} />
+              </button>
+              <span className="text-xs font-bold">{video.shares.toLocaleString()}</span>
             </div>
+            <p className="font-bold text-lg opacity-70">AkiliPesa</p>
+          </div>
         </div>
       </div>
     </div>
