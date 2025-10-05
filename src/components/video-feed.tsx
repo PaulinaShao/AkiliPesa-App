@@ -14,6 +14,7 @@ interface VideoFeedProps {
 export function VideoFeed({ videos, users }: VideoFeedProps) {
   const [watchedTopics, setWatchedTopics] = useState<Set<string>>(new Set());
   const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const handlePlay = useCallback(async (videoId: string, tags: string[]) => {
     const newTopics = new Set(watchedTopics);
@@ -31,6 +32,9 @@ export function VideoFeed({ videos, users }: VideoFeedProps) {
         const topicsString = Array.from(newTopics).join(', ');
         const suggestions = await getSuggestedTopics(topicsString);
         setSuggestedTopics(suggestions);
+        if (suggestions.length > 0) {
+            setShowSuggestions(true);
+        }
       }
     }
   }, [watchedTopics]);
@@ -38,6 +42,13 @@ export function VideoFeed({ videos, users }: VideoFeedProps) {
   const getUserForVideo = (userId: string) => {
     return users.find(u => u.id === userId)!;
   };
+
+  const handleClearSuggestions = () => {
+    setShowSuggestions(false);
+    setSuggestedTopics([]);
+    // Optionally clear watched topics to allow suggestions to reappear later
+    // setWatchedTopics(new Set()); 
+  }
 
   return (
     <div className="relative h-full w-full">
@@ -52,9 +63,9 @@ export function VideoFeed({ videos, users }: VideoFeedProps) {
           </div>
         ))}
       </div>
-      {suggestedTopics.length > 0 && (
+      {showSuggestions && suggestedTopics.length > 0 && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-full max-w-lg px-2 z-10">
-             <SuggestedTopics topics={suggestedTopics} onClear={() => setSuggestedTopics([])} />
+             <SuggestedTopics topics={suggestedTopics} onClear={handleClearSuggestions} />
           </div>
       )}
     </div>
