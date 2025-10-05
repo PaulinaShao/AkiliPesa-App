@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { Video, User } from '@/lib/definitions';
 import { VideoPlayer } from '@/components/video-player';
 import { getSuggestedTopics } from '@/app/actions';
@@ -45,26 +45,25 @@ export function VideoFeed({ videos, users }: VideoFeedProps) {
 
   const handleClearSuggestions = () => {
     setShowSuggestions(false);
-    setSuggestedTopics([]);
-    // Optionally clear watched topics to allow suggestions to reappear later
-    // setWatchedTopics(new Set()); 
   }
+
+  const memoizedVideos = useMemo(() => videos.map(video => (
+    <div key={video.id} className="h-full w-full flex-shrink-0">
+      <VideoPlayer
+        video={video}
+        user={getUserForVideo(video.userId)}
+        onPlay={handlePlay}
+      />
+    </div>
+  )), [videos, users, handlePlay]);
 
   return (
     <div className="relative h-full w-full">
       <div className="h-full w-full max-w-lg mx-auto snap-y snap-mandatory overflow-y-scroll hide-scrollbar scroll-smooth">
-        {videos.map(video => (
-          <div key={video.id} className="h-full w-full flex-shrink-0">
-            <VideoPlayer
-              video={video}
-              user={getUserForVideo(video.userId)}
-              onPlay={handlePlay}
-            />
-          </div>
-        ))}
+        {memoizedVideos}
       </div>
       {showSuggestions && suggestedTopics.length > 0 && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-full max-w-lg px-2 z-10">
+          <div className="absolute top-20 md:top-2 left-1/2 -translate-x-1/2 w-full max-w-md px-2 z-30">
              <SuggestedTopics topics={suggestedTopics} onClear={handleClearSuggestions} />
           </div>
       )}
