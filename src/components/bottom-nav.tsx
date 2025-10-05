@@ -1,0 +1,37 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Home, Search, PlusSquare, User, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const navLinks = [
+  { href: '/', icon: Home, label: 'Home' },
+  { href: '/search', icon: Search, label: 'Discover' },
+  { href: '/upload', icon: PlusSquare, label: 'Create' },
+  { href: '/profile/naturelover', icon: User, label: 'Profile' },
+];
+
+export function BottomNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
+      <div className="flex justify-around items-center h-16">
+        {navLinks.map(({ href, icon: Icon, label }) => (
+          <Link href={href} key={label} className="flex-1">
+            <div
+              className={cn(
+                'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors',
+                pathname === href && 'text-primary'
+              )}
+            >
+              <Icon className="h-6 w-6" />
+              <span className="text-xs font-medium">{label}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+}

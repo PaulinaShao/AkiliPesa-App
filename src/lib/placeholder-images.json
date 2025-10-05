@@ -1,3 +1,76 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "user-avatar-1",
+      "imageUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTk2MjQ1ODZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait",
+      "description": "Avatar for user 1"
+    },
+    {
+      "id": "user-avatar-2",
+      "imageUrl": "https://images.unsplash.com/photo-1711645169736-53327e726205?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx3b21hbiUyMHNtaWxpbmd8ZW58MHx8fHwxNzU5NjM1MzI2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman smiling",
+      "description": "Avatar for user 2"
+    },
+    {
+      "id": "user-avatar-3",
+      "imageUrl": "https://images.unsplash.com/photo-1557862921-37829c790f19?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtYW4lMjBnbGFzc2VzfGVufDB8fHx8MTc1OTU5Njg2NXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man glasses",
+      "description": "Avatar for user 3"
+    },
+    {
+      "id": "user-avatar-4",
+      "imageUrl": "https://images.unsplash.com/photo-1463062511209-f7aa591fa72f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwZXJzb24lMjBuYXR1cmV8ZW58MHx8fHwxNzU5NjcxMjg3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person nature",
+      "description": "Avatar for user 4"
+    },
+    {
+      "id": "user-avatar-5",
+      "imageUrl": "https://images.unsplash.com/photo-1665310392299-d27eaec7b576?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3b21hbiUyMGNpdHl8ZW58MHx8fHwxNzU5NjI0ODgwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman city",
+      "description": "Avatar for user 5"
+    },
+    {
+      "id": "user-avatar-6",
+      "imageUrl": "https://images.unsplash.com/photo-1529892485617-25f63cd7b1e9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8bWFuJTIwY29mZmVlfGVufDB8fHx8MTc1OTY4NDMzMHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man coffee",
+      "description": "Avatar for user 6"
+    },
+    {
+      "id": "video-thumb-1",
+      "imageUrl": "https://images.unsplash.com/photo-1526239187794-f8c27c7872ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxuYXR1cmUlMjBsYW5kc2NhcGV8ZW58MHx8fHwxNzU5Njc4MTEzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "nature landscape",
+      "description": "Thumbnail for video 1"
+    },
+    {
+      "id": "video-thumb-2",
+      "imageUrl": "https://images.unsplash.com/photo-1716449765406-e0e70d21a3aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Y2l0eSUyMGFyY2hpdGVjdHVyZXxlbnwwfHx8fDE3NTk2NTI4MDJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city architecture",
+      "description": "Thumbnail for video 2"
+    },
+    {
+      "id": "video-thumb-3",
+      "imageUrl": "https://images.unsplash.com/photo-1675110256122-07ec92d7cb4f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxmb29kJTIwY29va2luZ3xlbnwwfHx8fDE3NTk2NTg3MDZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "food cooking",
+      "description": "Thumbnail for video 3"
+    },
+    {
+      "id": "video-thumb-4",
+      "imageUrl": "https://images.unsplash.com/photo-1741061725979-87718352e35c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YW5pbWFsJTIwcGV0fGVufDB8fHx8MTc1OTY0NjQ2MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "animal pet",
+      "description": "Thumbnail for video 4"
+    },
+    {
+      "id": "video-thumb-5",
+      "imageUrl": "https://images.unsplash.com/photo-1611695836947-7651bbd11080?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8ZGFuY2UlMjBtdXNpY3xlbnwwfHx8fDE3NTk2MTMyMjV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dance music",
+      "description": "Thumbnail for video 5"
+    },
+    {
+      "id": "video-thumb-6",
+      "imageUrl": "https://images.unsplash.com/photo-1639973549199-7e27f244acb6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx0cmF2ZWwlMjBhZHZlbnR1cmV8ZW58MHx8fHwxNzU5NTk1MjEyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "travel adventure",
+      "description": "Thumbnail for video 6"
+    }
+  ]
 }
