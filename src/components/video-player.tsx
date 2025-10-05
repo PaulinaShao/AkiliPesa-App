@@ -97,7 +97,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         </div>
       )}
 
-      <div className="absolute bottom-16 md:bottom-20 left-0 right-0 p-4 pb-6 md:pb-4 text-white">
+      <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 md:pb-4 text-white">
         <div className="flex items-end gap-4">
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-3">
@@ -131,68 +131,66 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-6">
-             <div className="flex flex-col items-center gap-1 text-center">
-                <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                  <Phone className="h-8 w-8" />
-                </Button>
-            </div>
-             <div className="flex flex-col items-center gap-1 text-center">
-                <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                  <VideoIcon className="h-8 w-8" />
-                </Button>
+          <div className="flex flex-col items-center gap-y-12">
+            <div className="flex flex-col items-center gap-1 text-center">
+              <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                <Phone className="h-8 w-8" />
+              </Button>
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
-                <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                  <Heart className={cn("h-8 w-8", isLiked && "fill-red-500 text-red-500")} />
-                </Button>
-                <span className="text-sm font-bold">{likes.toLocaleString()}</span>
+              <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                <VideoIcon className="h-8 w-8" />
+              </Button>
             </div>
-            
             <div className="flex flex-col items-center gap-1 text-center">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                      <MessageCircle className="h-8 w-8" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent className="flex flex-col">
-                    <SheetHeader>
-                      <SheetTitle>{video.comments} Comments</SheetTitle>
-                    </SheetHeader>
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-4">
-                      {allComments.filter(c => c.videoId === video.id).map(comment => {
-                        const commentUser = user; // In a real app, you'd find the actual comment user
-                         return (
-                         <div key={comment.id} className="flex gap-2">
-                           <UserAvatar src={commentUser.avatar} username={commentUser.username} className="h-8 w-8"/>
-                           <div>
-                             <p className="font-bold text-sm">@{commentUser.username}</p>
-                             <p>{comment.text}</p>
-                           </div>
+              <Button onClick={handleLike} variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                <Heart className={cn("h-8 w-8", isLiked && "fill-red-500 text-red-500")} />
+              </Button>
+              <span className="text-sm font-bold">{likes.toLocaleString()}</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 text-center">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                    <MessageCircle className="h-8 w-8" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent className="flex flex-col">
+                  <SheetHeader>
+                    <SheetTitle>{video.comments} Comments</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto space-y-4 pr-4">
+                    {allComments.filter(c => c.videoId === video.id).map(comment => {
+                      const commentUser = user; // In a real app, you'd find the actual comment user
+                       return (
+                       <div key={comment.id} className="flex gap-2">
+                         <UserAvatar src={commentUser.avatar} username={commentUser.username} className="h-8 w-8"/>
+                         <div>
+                           <p className="font-bold text-sm">@{commentUser.username}</p>
+                           <p>{comment.text}</p>
                          </div>
-                      )})}
-                    </div>
-                    <div className="mt-auto p-2 border-t">
-                      <Input placeholder="Add a comment..."/>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-                <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
+                       </div>
+                    )})}
+                  </div>
+                  <div className="mt-auto p-2 border-t">
+                    <Input placeholder="Add a comment..."/>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
             </div>
-
-             <div className="flex flex-col items-center gap-1 text-center">
-                <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
-                  <Share2 className="h-8 w-8" />
-                </Button>
-                <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
+            <div className="flex flex-col items-center gap-1 text-center">
+              <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto flex-col">
+                <Share2 className="h-8 w-8" />
+              </Button>
+              <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </div>
-            
+            <div className="flex flex-col items-center gap-1 text-center">
+              <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto" onClick={toggleMute}>
+                {isMuted ? <VolumeX className="h-8 w-8" /> : <Volume2 className="h-8 w-8" />}
+              </Button>
+            </div>
             <Logo className="h-12 w-12 text-white opacity-70" />
-
-            <Button variant="ghost" size="icon" className="text-white hover:text-white h-auto w-auto" onClick={toggleMute}>
-              {isMuted ? <VolumeX className="h-8 w-8" /> : <Volume2 className="h-8 w-8" />}
-            </Button>
           </div>
         </div>
       </div>
