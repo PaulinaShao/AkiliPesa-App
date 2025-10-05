@@ -5,7 +5,7 @@ import type { Video, User } from '@/lib/definitions';
 import { useInView } from '@/lib/hooks';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Share2, Play, Pause, Phone, Video as VideoIcon, PlusCircle } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Phone, Video as VideoIcon, PlusCircle, Music } from 'lucide-react';
 import Link from 'next/link';
 import {
   Sheet,
@@ -17,6 +17,7 @@ import {
 import { comments as allComments } from '@/lib/data';
 import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
+import { Logo } from '@/components/logo';
 
 
 interface VideoPlayerProps {
@@ -89,40 +90,46 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 text-white flex items-end p-4 pb-20 md:pb-4">
-        <div className="flex-1 space-y-3">
-            <div className="flex items-center gap-3">
-               <div className="relative">
-                 <Link href={`/profile/${user.username}`}>
-                   <UserAvatar src={user.avatar} username={user.username} className="h-12 w-12 border-2 border-white" />
-                 </Link>
-                 <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
-                    <PlusCircle className="h-5 w-5 text-primary fill-background" />
-                 </button>
-               </div>
-              <div>
-                <Link href={`/profile/${user.username}`}>
-                  <h3 className="font-bold text-lg">@{user.username}</h3>
-                </Link>
-              </div>
+      <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 md:pb-4 text-white">
+        <div className="flex justify-between items-end">
+            {/* Left Column: User Info, Caption, Buttons */}
+            <div className="flex-1 space-y-3 max-w-[75%]">
+                <div className="flex items-center gap-3">
+                   <div className="relative">
+                     <Link href={`/profile/${user.username}`}>
+                       <UserAvatar src={user.avatar} username={user.username} className="h-12 w-12 border-2 border-white" />
+                     </Link>
+                     <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
+                        <PlusCircle className="h-5 w-5 text-primary fill-background" />
+                     </button>
+                   </div>
+                  <div>
+                    <Link href={`/profile/${user.username}`}>
+                      <h3 className="font-bold text-lg">@{user.username}</h3>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className='flex gap-2'>
+                    <Button size="sm" variant="secondary" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Buy TSh.5,000</Button>
+                    <Button size="sm" variant="secondary" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Earn TSh.500</Button>
+                </div>
+                
+                <p className="text-sm">
+                    {isCaptionExpanded ? video.caption : shortenedCaption}
+                    {video.caption.split(' ').length > 3 && (
+                        <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
+                            {isCaptionExpanded ? 'Less' : '... more'}
+                        </button>
+                    )}
+                </p>
+                <div className="flex items-center gap-2">
+                    <Music className="h-4 w-4" />
+                    <p className="text-sm font-semibold">Original Sound - @{user.username}</p>
+                </div>
             </div>
 
-            <div className='flex gap-2'>
-                <Button size="sm" variant="secondary" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Buy TSh.5,000</Button>
-                <Button size="sm" variant="secondary" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Earn TSh.500</Button>
-            </div>
-            
-            <p className="text-sm w-4/5">
-                {isCaptionExpanded ? video.caption : shortenedCaption}
-                {video.caption.split(' ').length > 3 && (
-                    <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
-                        {isCaptionExpanded ? 'Less' : '... more'}
-                    </button>
-                )}
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center justify-end h-full absolute bottom-0 right-4 pb-20 md:pb-4">
+            {/* Right Column: Action Icons & Watermark */}
             <div className="flex flex-col items-center space-y-6">
                 <div className="flex flex-col items-center gap-1 text-center">
                     <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black">
@@ -177,11 +184,11 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                     </button>
                     <span className="text-xs font-bold">{video.shares.toLocaleString()}</span>
                 </div>
+                 <div className="mt-8">
+                  <Logo className="h-12 w-12 text-white opacity-70" />
+                </div>
             </div>
-            <div className="mt-8 text-center">
-                <p className="font-semibold text-sm opacity-70">AkiliPesa</p>
-            </div>
-          </div>
+        </div>
       </div>
     </div>
   );
