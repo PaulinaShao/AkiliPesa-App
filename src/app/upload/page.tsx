@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video, SwitchCamera, Circle, Zap, Timer, Settings, RefreshCw } from 'lucide-react';
+import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video, SwitchCamera, Circle, Zap, Timer, Settings } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
@@ -160,6 +160,7 @@ const CameraScreen = () => {
     
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+    const [supportsFacingMode, setSupportsFacingMode] = useState(false);
     const [captureMode, setCaptureMode] = useState<'photo' | 'video'>('photo');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingProgress, setRecordingProgress] = useState(0);
@@ -182,13 +183,17 @@ const CameraScreen = () => {
                 (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
             }
 
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: facing,
+            const constraints: MediaStreamConstraints = {
+                video: {
                     width: { ideal: 1920 },
                     height: { ideal: 1080 }
-                } 
-            });
+                }
+            };
+            if (supportsFacingMode) {
+                (constraints.video as MediaTrackConstraints).facingMode = facing;
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             setHasCameraPermission(true);
 
             if (videoRef.current) {
@@ -203,20 +208,35 @@ const CameraScreen = () => {
                 description: 'Please enable camera permissions in your browser settings.',
             });
         }
-    }, [toast]);
+    }, [toast, supportsFacingMode]);
     
     useEffect(() => {
-        setupCamera(facingMode);
-        
+        const checkFacingModeSupport = async () => {
+            if (navigator.mediaDevices?.getSupportedConstraints) {
+                const supported = navigator.mediaDevices.getSupportedConstraints();
+                setSupportsFacingMode(supported.facingMode || false);
+            }
+        };
+        checkFacingModeSupport();
+    }, []);
+
+    useEffect(() => {
+        if (hasCameraPermission === null) {
+          setupCamera(facingMode);
+        }
+    
         return () => {
             if (videoRef.current && videoRef.current.srcObject) {
                 (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
             }
         };
-    }, [facingMode, setupCamera]);
+    }, [facingMode, setupCamera, hasCameraPermission]);
+
 
     const handleSwapCamera = () => {
         setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+        // Re-setup camera on swap
+        setHasCameraPermission(null);
     };
 
     const handleTakePhoto = () => {
@@ -322,7 +342,7 @@ const CameraScreen = () => {
             <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-gradient-to-b from-black/50 to-transparent">
                 <div className="flex items-center gap-4">
                      <Button variant="ghost" size="icon" className="text-white rounded-full"><Zap className="h-6 w-6" /></Button>
-                     <Button variant="ghost" size="icon" onClick={handleSwapCamera} className="text-white rounded-full"><SwitchCamera className="h-6 w-6" /></Button>
+                     {supportsFacingMode && <Button variant="ghost" size="icon" onClick={handleSwapCamera} className="text-white rounded-full"><SwitchCamera className="h-6 w-6" /></Button>}
                 </div>
                  <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" className="text-white rounded-full"><Timer className="h-6 w-6" /></Button>
