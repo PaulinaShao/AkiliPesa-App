@@ -89,8 +89,9 @@ export default function UploadPage() {
 
 const AICreationScreen = () => {
   return (
-    <div className="flex-1 flex flex-col bg-muted/30">
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
+    <div className="flex-1 flex flex-col bg-muted/30 overflow-hidden">
+      {/* Chat History */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Initial AI Welcome Message */}
         <div className="flex items-start gap-3">
           <Avatar className="w-8 h-8 border-2 border-primary">
@@ -331,7 +332,7 @@ const CameraScreen = () => {
     }
 
     return (
-        <div className="relative flex-1 bg-black text-white">
+        <div className="relative flex-1 bg-black text-white overflow-hidden">
             <video ref={videoRef} className={cn("w-full h-full object-cover", filterClasses[activeFilter])} autoPlay muted playsInline />
             <canvas ref={canvasRef} className="hidden"></canvas>
             
@@ -441,5 +442,3 @@ const TabButton = ({ label, isActive, onClick }: TabButtonProps) => {
     </button>
   );
 };
-
-    
