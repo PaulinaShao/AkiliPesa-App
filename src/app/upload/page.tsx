@@ -2,15 +2,19 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 type Tab = 'ai' | 'camera' | 'upload';
 
 export default function CreatePage() {
   const [activeTab, setActiveTab] = useState<Tab>('ai');
+  const router = useRouter();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -25,13 +29,26 @@ export default function CreatePage() {
     }
   };
 
+  const getHeaderText = () => {
+    switch (activeTab) {
+        case 'ai':
+            return "Start typing below.";
+        case 'camera':
+            return "Capture new content.";
+        case 'upload':
+            return "Select from device.";
+        default:
+            return "";
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       <header className="p-4 border-b border-border/50">
           <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon"><X className="h-6 w-6"/></Button>
-                  <p className="text-muted-foreground">Start typing below.</p>
+                  <Button variant="ghost" size="icon" onClick={() => router.push('/')}><X className="h-6 w-6"/></Button>
+                  <p className="text-muted-foreground">{getHeaderText()}</p>
               </div>
               <div className="flex items-center gap-2">
                   <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
@@ -56,8 +73,7 @@ export default function CreatePage() {
             />
           </div>
       </header>
-
-      {/* The main content area will fill the space */}
+      
       <div className="flex-1 flex flex-col overflow-hidden">
         {renderContent()}
       </div>
@@ -67,35 +83,63 @@ export default function CreatePage() {
 
 const AICreationScreen = () => {
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-        <Sparkles className="h-16 w-16 text-primary/50 mb-4" />
-        <h2 className="text-2xl font-bold mb-2">AkiliPesa AI</h2>
-        <p className="text-muted-foreground max-w-sm">
-          Describe what you want to create. Generate video ads, music, avatars, and more.
-        </p>
+    <div className="flex flex-col h-full bg-muted/30">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Initial AI Welcome Message */}
+        <div className="flex items-start gap-3">
+          <Avatar className="w-8 h-8 border-2 border-primary">
+              <AvatarFallback><Sparkles className="w-4 h-4"/></AvatarFallback>
+          </Avatar>
+          <div className="bg-background rounded-lg p-3 max-w-[80%]">
+            <p className="font-semibold text-primary mb-1">AkiliPesa AI</p>
+            <p className="text-sm">Hello! How can I help you create today? You can ask me to generate a video, create a song, design an ad, or even clone your voice.</p>
+             <p className="text-xs text-muted-foreground mt-2">10:30 AM</p>
+          </div>
+        </div>
+
+        {/* User Message Example */}
+        <div className="flex items-start gap-3 justify-end">
+           <div className="bg-primary text-primary-foreground rounded-lg p-3 max-w-[80%]">
+            <p className="text-sm">Create a 15-second video ad for a new coffee shop called "Zanzibar Beans". Show a beautiful sunrise over the ocean and fresh coffee brewing.</p>
+            <p className="text-xs text-primary-foreground/70 mt-2 text-right">10:31 AM</p>
+          </div>
+           <UserAvatar className="w-8 h-8"/>
+        </div>
+
+        {/* AI Processing / Response Example */}
+         <div className="flex items-start gap-3">
+          <Avatar className="w-8 h-8 border-2 border-primary">
+              <AvatarFallback><Sparkles className="w-4 h-4"/></AvatarFallback>
+          </Avatar>
+          <div className="bg-background rounded-lg p-3 max-w-[80%]">
+            <p className="font-semibold text-primary mb-1">AkiliPesa AI</p>
+            <p className="text-sm">Certainly! Generating a video for "Zanzibar Beans" now. This may take a moment...</p>
+            <div className="w-full bg-muted rounded-full h-2.5 my-3">
+                <div className="bg-primary h-2.5 rounded-full w-[45%] animate-pulse"></div>
+            </div>
+             <p className="text-xs text-muted-foreground mt-2">10:32 AM</p>
+          </div>
+        </div>
+
       </div>
       
-      <div className="p-4 bg-background mt-auto">
-        <div className="relative">
-          <Input 
-            placeholder="Message AkiliPesa AI..." 
-            className="pl-10 pr-24 h-12 rounded-full bg-muted border-border/50" 
-          />
-          <div className="absolute left-3 top-1/2 -translate-y-1/2">
-            <UserAvatar className="h-6 w-6" />
-          </div>
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-9 w-9">
+      {/* Chat Input */}
+      <div className="p-4 bg-background/80 backdrop-blur-lg border-t border-border/50">
+        <div className="relative bg-muted/50 rounded-xl p-2 flex items-end gap-2">
+            <Button variant="ghost" size="icon" className="shrink-0">
               <Paperclip className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
+            <Textarea 
+                placeholder="Message AkiliPesa AI..." 
+                className="flex-1 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none min-h-[24px] max-h-36" 
+                rows={1}
+            />
+            <Button variant="ghost" size="icon" className="shrink-0">
               <Mic className="h-5 w-5" />
             </Button>
-            <Button size="icon" className="h-9 w-9 rounded-full bg-primary">
+             <Button size="icon" className="shrink-0 h-9 w-9 rounded-full bg-primary">
               <Send className="h-5 w-5" />
             </Button>
-          </div>
         </div>
       </div>
     </div>
@@ -105,9 +149,9 @@ const AICreationScreen = () => {
 
 const CameraScreen = () => {
     return (
-        <div className="flex flex-col h-full items-center justify-center text-center p-4">
+        <div className="flex flex-col h-full items-center justify-center text-center p-4 bg-black">
             <Camera className="h-16 w-16 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold">Camera Interface</h2>
+            <h2 className="text-xl font-semibold text-white">Camera Interface</h2>
             <p className="text-muted-foreground mt-1">Ready to capture content.</p>
         </div>
     );
@@ -115,7 +159,7 @@ const CameraScreen = () => {
 
 const UploadScreen = () => {
     return (
-        <div className="flex flex-col h-full items-center justify-center text-center p-4">
+        <div className="flex flex-col h-full items-center justify-center p-4 bg-muted/30">
              <div className="border-2 border-dashed border-muted-foreground/50 rounded-lg p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
                 <Upload className="h-16 w-16 text-muted-foreground mb-4" />
                 <h2 className="text-xl font-semibold">Select video to upload</h2>
