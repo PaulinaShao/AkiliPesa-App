@@ -27,10 +27,13 @@ export function Header({ transparent }: HeaderProps) {
         <h1 className="text-xl font-bold font-headline hidden md:block">AkiliPesa</h1>
       </Link>
       
-      <div className="flex items-center gap-4">
+      <div className="flex flex-nowrap items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={() => setIsMuted(!isMuted)}>
+          {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+        </Button>
         <div className="flex items-center gap-2">
             <Wallet className="h-6 w-6 text-muted-foreground"/>
-            <span className="font-semibold text-sm">TZS 20,000</span>
+            <span className="font-semibold text-sm whitespace-nowrap">TZS 20,000</span>
         </div>
         <Badge variant="secondary">Premium</Badge>
         <UserAvatar src={users[0].avatar} username={users[0].username} className="h-9 w-9" />

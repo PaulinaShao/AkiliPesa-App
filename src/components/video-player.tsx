@@ -90,62 +90,60 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         </div>
       )}
 
-      {/* Sound Toggle */}
-      <button onClick={() => setIsMuted(!isMuted)} className="absolute top-20 right-4 z-10 p-2 text-white rounded-full bg-black/30">
-        {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
-      </button>
-
-      {/* Main UI Overlay */}
-      <div className="absolute bottom-16 left-0 right-0 px-4 text-white">
-        <div className="flex justify-between items-end">
-          {/* Left Column: User Info, Caption, Buttons */}
-          <div className="flex-1 space-y-3 max-w-[75%]">
-            <div className="flex items-start gap-3">
-              <div className="relative">
-                <Link href={`/profile/${user.username}`}>
-                  <UserAvatar src={user.avatar} username={user.username} className="h-12 w-12 border-2 border-white" />
-                </Link>
-                <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
-                  <PlusCircle className="h-5 w-5 text-primary fill-background" />
-                </button>
-              </div>
-              <div className="pt-2">
-                <Link href={`/profile/${user.username}`}>
-                  <h3 className="font-bold text-lg">@{user.username}</h3>
-                </Link>
-              </div>
+      {/* Sound Toggle top right */}
+       <button onClick={() => setIsMuted(!isMuted)} className="absolute top-20 right-2 z-20 p-2 text-white rounded-full bg-black/30">
+         {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+       </button>
+      
+      {/* Left Column: User Info, Caption, Buttons */}
+      <div className="absolute bottom-16 left-4 right-12 z-20 pb-2">
+          <div className="flex items-start gap-3 mb-2">
+            <div className="relative">
+              <Link href={`/profile/${user.username}`}>
+                <UserAvatar src={user.avatar} username={user.username} className="h-12 w-12 border-2 border-white" />
+              </Link>
+              <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
+                <PlusCircle className="h-5 w-5 text-primary fill-background" />
+              </button>
             </div>
-
-            <div className='flex gap-2'>
-              <Button size="sm" className="bg-primary font-bold text-xs h-8">Buy TSh.5,000</Button>
-              <Button size="sm" className="bg-primary font-bold text-xs h-8">Earn TSh.500</Button>
+            <div className="pt-2">
+              <Link href={`/profile/${user.username}`}>
+                <h3 className="font-bold text-lg text-white">@{user.username}</h3>
+              </Link>
             </div>
-            
-            <p className="text-sm">
-              {isCaptionExpanded ? video.caption : shortenedCaption}
-              {video.caption.split(' ').length > 3 && (
-                <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
-                  {isCaptionExpanded ? 'Less' : '... more'}
-                </button>
-              )}
-            </p>
           </div>
 
-          {/* Right Column: Action Icons & Watermark */}
-          <div className="flex flex-col items-center space-y-12">
-            <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
+          <div className='flex gap-2 mb-2'>
+            <Button size="sm" className="bg-primary font-bold text-xs h-8">Buy TSh.5,000</Button>
+            <Button size="sm" className="bg-primary font-bold text-xs h-8">Earn TSh.500</Button>
+          </div>
+          
+          <p className="text-sm text-white">
+            {isCaptionExpanded ? video.caption : shortenedCaption}
+            {video.caption.split(' ').length > 3 && (
+              <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
+                {isCaptionExpanded ? 'Less' : '... more'}
+              </button>
+            )}
+          </p>
+      </div>
+
+      {/* Right Column: Action Icons */}
+      <div className="absolute top-0 bottom-16 right-2 z-20 flex flex-col justify-center items-center">
+          <div className="flex flex-col items-center space-y-8">
+            <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
               <Phone size={32} />
             </button>
-            <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
+            <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
               <VideoIcon size={32} />
             </button>
-            <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
+            <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
               <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
               <span className="text-sm font-bold">{likes.toLocaleString()}</span>
             </button>
             <Sheet>
                 <SheetTrigger asChild>
-                  <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
+                  <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
                     <MessageCircle size={32} />
                     <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
                   </button>
@@ -173,13 +171,11 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                   </div>
                 </SheetContent>
               </Sheet>
-            <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
+            <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
               <Share2 size={32} />
               <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </button>
-            <p className="font-bold text-lg opacity-70">AkiliPesa</p>
           </div>
-        </div>
       </div>
     </div>
   );
