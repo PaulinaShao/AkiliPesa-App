@@ -15,7 +15,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 type Tab = 'ai' | 'camera' | 'upload';
 
 export default function UploadPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('camera');
+  const [activeTab, setActiveTab] = useState<Tab>('ai');
   const router = useRouter();
 
   const renderContent = () => {
@@ -202,11 +202,19 @@ const CameraScreen = () => {
         } catch (error) {
             console.error('Error accessing camera:', error);
             setHasCameraPermission(false);
-            toast({
-                variant: 'destructive',
-                title: 'Camera Access Denied',
-                description: 'Please enable camera permissions in your browser settings.',
-            });
+            if ((error as Error).name === 'NotFoundError' || (error as Error).name === 'DevicesNotFoundError') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Camera Not Found',
+                    description: 'No camera was found on your device.',
+                });
+            } else {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Camera Access Denied',
+                    description: 'Please enable camera permissions in your browser settings.',
+                });
+            }
         }
     }, [toast, supportsFacingMode]);
     
