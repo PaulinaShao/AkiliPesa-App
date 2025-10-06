@@ -98,7 +98,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
         }}
         >
-        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
       </button>
 
       {/* Content Overlay */}
@@ -147,19 +147,19 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         }}
       >
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Phone size={36} />
+          <Phone size={24} />
         </button>
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <VideoIcon size={36} />
+          <VideoIcon size={24} />
         </button>
         <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Heart size={36} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+          <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
           <span className="text-sm font-bold">{likes.toLocaleString()}</span>
         </button>
         <Sheet>
             <SheetTrigger asChild>
               <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-                <MessageCircle size={36} />
+                <MessageCircle size={24} />
                 <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
               </button>
             </SheetTrigger>
@@ -187,7 +187,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </SheetContent>
           </Sheet>
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Share2 size={36} />
+          <Share2 size={24} />
           <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
         </button>
          <p className="font-bold text-white/80">AkiliPesa</p>
