@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video, SwitchCamera, Circle } from 'lucide-react';
+import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video, SwitchCamera, Circle, Zap, Timer, Settings, RefreshCw } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 type Tab = 'ai' | 'camera' | 'upload';
 
 export default function UploadPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('ai');
+  const [activeTab, setActiveTab] = useState<Tab>('camera');
   const router = useRouter();
 
   const renderContent = () => {
@@ -53,8 +53,12 @@ export default function UploadPage() {
             <p className="text-muted-foreground">{getHeaderText()}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
-            <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
+             {activeTab !== 'camera' && 
+                <>
+                    <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
+                    <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
+                </>
+             }
           </div>
         </div>
         <div className="mt-4 flex justify-around items-center">
@@ -151,68 +155,224 @@ const AICreationScreen = () => {
 const CameraScreen = () => {
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+    const [captureMode, setCaptureMode] = useState<'photo' | 'video'>('photo');
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingProgress, setRecordingProgress] = useState(0);
+    const [capturedMedia, setCapturedMedia] = useState<{ type: 'photo' | 'video'; url: string } | null>(null);
 
-    useEffect(() => {
-        const getCameraPermission = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode } });
-                setHasCameraPermission(true);
+    const filters = ['Normal', 'Fresh', 'Vintage', 'Cinematic', 'B&W'];
+    const [activeFilter, setActiveFilter] = useState('Normal');
 
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                setHasCameraPermission(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'Camera Access Denied',
-                    description: 'Please enable camera permissions in your browser settings to use this app.',
-                });
+    const filterClasses: Record<string, string> = {
+        'Normal': 'grayscale-0',
+        'Fresh': 'saturate-150',
+        'Vintage': 'sepia',
+        'Cinematic': 'contrast-125',
+        'B&W': 'grayscale',
+    };
+
+    const setupCamera = useCallback(async (facing: 'user' | 'environment') => {
+        try {
+            if (videoRef.current && videoRef.current.srcObject) {
+                (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
             }
-        };
 
-        getCameraPermission();
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: facing,
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                } 
+            });
+            setHasCameraPermission(true);
+
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            toast({
+                variant: 'destructive',
+                title: 'Camera Access Denied',
+                description: 'Please enable camera permissions in your browser settings.',
+            });
+        }
+    }, [toast]);
+    
+    useEffect(() => {
+        setupCamera(facingMode);
         
         return () => {
-            if(videoRef.current && videoRef.current.srcObject) {
-                const stream = videoRef.current.srcObject as MediaStream;
-                stream.getTracks().forEach(track => track.stop());
+            if (videoRef.current && videoRef.current.srcObject) {
+                (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
             }
-        }
-    }, [toast, facingMode]);
+        };
+    }, [facingMode, setupCamera]);
 
     const handleSwapCamera = () => {
         setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    };
+
+    const handleTakePhoto = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.filter = getComputedStyle(video).filter;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            setCapturedMedia({ type: 'photo', url: dataUrl });
+        }
+    };
+    
+    const startRecording = () => {
+        if (!videoRef.current?.srcObject || isRecording) return;
+        setIsRecording(true);
+        setRecordingProgress(0);
+        
+        const stream = videoRef.current.srcObject as MediaStream;
+        mediaRecorderRef.current = new MediaRecorder(stream);
+        const chunks: Blob[] = [];
+        
+        mediaRecorderRef.current.ondataavailable = (event) => {
+            chunks.push(event.data);
+        };
+        
+        mediaRecorderRef.current.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/mp4' });
+            const url = URL.createObjectURL(blob);
+            setCapturedMedia({ type: 'video', url });
+            setIsRecording(false);
+        };
+        
+        mediaRecorderRef.current.start();
+
+        const progressInterval = setInterval(() => {
+            setRecordingProgress(prev => {
+                if (prev >= 100) {
+                    clearInterval(progressInterval);
+                    stopRecording();
+                    return 100;
+                }
+                return prev + 1; // Fakes progress over ~10s
+            });
+        }, 100);
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+        }
+    };
+    
+    const handleCapturePress = () => {
+        if (captureMode === 'video') {
+            startRecording();
+        }
+    };
+
+    const handleCaptureRelease = () => {
+        if (captureMode === 'video') {
+            stopRecording();
+        }
+    };
+
+    if (capturedMedia) {
+        return (
+            <div className="relative flex-1 bg-black text-white">
+                {capturedMedia.type === 'photo' ? (
+                    <img src={capturedMedia.url} alt="Captured" className="w-full h-full object-contain" />
+                ) : (
+                    <video src={capturedMedia.url} controls autoPlay loop className="w-full h-full object-contain" />
+                )}
+                <div className="absolute bottom-0 left-0 right-0 z-20 flex justify-between items-center p-4 bg-gradient-to-t from-black/50 to-transparent">
+                    <Button variant="ghost" onClick={() => setCapturedMedia(null)}>Retake</Button>
+                    <Button>Next</Button>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="relative flex-1 bg-black">
-            <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+        <div className="relative flex-1 bg-black text-white">
+            <video ref={videoRef} className={cn("w-full h-full object-cover", filterClasses[activeFilter])} autoPlay muted playsInline />
+            <canvas ref={canvasRef} className="hidden"></canvas>
             
             {!hasCameraPermission && hasCameraPermission !== null && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-                    <Alert variant="destructive" className="w-11/12 max-w-sm">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4">
+                    <Alert variant="destructive" className="w-full max-w-sm">
                         <AlertTitle>Camera Access Required</AlertTitle>
                         <AlertDescription>
-                            Please allow camera access to use this feature. You may need to change permissions in your browser settings.
+                            Please allow camera access. You may need to change permissions in your browser settings.
                         </AlertDescription>
                     </Alert>
                 </div>
             )}
-
-            <div className="absolute top-4 right-4 z-10">
-                <Button variant="ghost" size="icon" onClick={handleSwapCamera} className="bg-black/30 hover:bg-black/50 text-white rounded-full">
-                    <SwitchCamera className="h-6 w-6" />
-                </Button>
+            
+            {/* Top Controls */}
+            <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-gradient-to-b from-black/50 to-transparent">
+                <div className="flex items-center gap-4">
+                     <Button variant="ghost" size="icon" className="text-white rounded-full"><Zap className="h-6 w-6" /></Button>
+                     <Button variant="ghost" size="icon" onClick={handleSwapCamera} className="text-white rounded-full"><SwitchCamera className="h-6 w-6" /></Button>
+                </div>
+                 <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" className="text-white rounded-full"><Timer className="h-6 w-6" /></Button>
+                    <Button variant="ghost" size="icon" className="text-white rounded-full"><Settings className="h-6 w-6" /></Button>
+                </div>
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 z-10 flex justify-center pb-8 supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(env(safe-area-inset-bottom)+2rem)]">
-                <button className="w-16 h-16 rounded-full bg-white/30 border-4 border-white flex items-center justify-center backdrop-blur-sm">
-                    <div className="w-12 h-12 rounded-full bg-white"></div>
-                </button>
+            {/* Bottom Controls */}
+            <div className="absolute bottom-0 left-0 right-0 z-10 flex flex-col items-center pb-6 supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+                {/* Filters */}
+                <div className="flex gap-4 mb-6">
+                    {filters.map(filter => (
+                        <button key={filter} onClick={() => setActiveFilter(filter)} className={cn("px-3 py-1 rounded-full text-sm", activeFilter === filter ? 'bg-white/90 text-black font-bold' : 'bg-black/40 text-white')}>
+                            {filter}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Capture Button and Mode Toggle */}
+                <div className="w-full flex items-center justify-center gap-12">
+                    <button onClick={() => setCaptureMode('photo')} className={cn("font-semibold", captureMode === 'photo' ? 'text-white' : 'text-gray-400')}>PHOTO</button>
+                    
+                    <div className="relative w-20 h-20 flex items-center justify-center">
+                        <svg className="absolute w-full h-full" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="48" stroke="rgba(255,255,255,0.3)" strokeWidth="4" fill="none" />
+                            {isRecording && <circle 
+                                cx="50" cy="50" r="48" 
+                                stroke="#f87171" strokeWidth="4" fill="none"
+                                strokeDasharray="301.59"
+                                strokeDashoffset={301.59 * (1 - recordingProgress / 100)}
+                                transform="rotate(-90 50 50)"
+                                className="transition-all duration-100"
+                            />}
+                        </svg>
+
+                        <button
+                            onClick={captureMode === 'photo' ? handleTakePhoto : undefined}
+                            onMouseDown={captureMode === 'video' ? handleCapturePress : undefined}
+                            onMouseUp={captureMode === 'video' ? handleCaptureRelease : undefined}
+                            onTouchStart={captureMode === 'video' ? handleCapturePress : undefined}
+                            onTouchEnd={captureMode === 'video' ? handleCaptureRelease : undefined}
+                            className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform active:scale-90"
+                            aria-label={captureMode === 'photo' ? 'Take Photo' : 'Record Video'}
+                        >
+                            {captureMode === 'video' && <div className={cn("w-8 h-8 rounded-full bg-red-500 transition-all", isRecording && "w-6 h-6 rounded-md")}></div>}
+                        </button>
+                    </div>
+
+                    <button onClick={() => setCaptureMode('video')} className={cn("font-semibold", captureMode === 'video' ? 'text-white' : 'text-gray-400')}>VIDEO</button>
+                </div>
             </div>
         </div>
     );
@@ -253,3 +413,5 @@ const TabButton = ({ label, isActive, onClick }: TabButtonProps) => {
     </button>
   );
 };
+
+    
