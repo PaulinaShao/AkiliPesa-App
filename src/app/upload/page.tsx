@@ -63,7 +63,7 @@ export default function UploadPage() {
             />
             <TabButton
               label="Camera"
-              isActive={active-tab === 'camera'}
+              isActive={activeTab === 'camera'}
               onClick={() => setActiveTab('camera')}
             />
             <TabButton
