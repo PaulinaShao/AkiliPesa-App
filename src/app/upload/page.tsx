@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -27,12 +26,14 @@ export default function CreatePage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <Header />
-      <div className="flex-1 overflow-y-auto pt-16">
+    <div className="flex flex-col h-screen bg-background text-foreground">
+      {/* The main content area will fill the space between header and footer */}
+      <div className="flex-1 flex flex-col">
         {renderContent()}
       </div>
-      <div className="sticky bottom-0 left-0 right-0 bg-background border-t">
+
+      {/* Bottom Tab Navigator */}
+      <div className="bg-background border-t border-border/50">
         <div className="flex justify-around items-center h-16">
           <TabButton
             icon={Sparkles}
@@ -61,42 +62,42 @@ export default function CreatePage() {
 const AICreationScreen = () => {
   return (
     <div className="flex flex-col h-full">
-        <header className="p-4 flex items-center justify-between border-b">
-            <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon"><X className="h-5 w-5"/></Button>
-                <p className="font-semibold">Start typing below.</p>
-            </div>
-            <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon"><Phone className="h-5 w-5 text-primary"/></Button>
-                <Button variant="ghost" size="icon"><Video className="h-5 w-5 text-primary"/></Button>
-            </div>
-        </header>
+      <header className="p-4 flex items-center justify-between border-b border-border/50">
+          <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon"><X className="h-6 w-6"/></Button>
+              <p className="text-muted-foreground">Start typing below.</p>
+          </div>
+          <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
+              <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
+          </div>
+      </header>
 
       <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
         <Sparkles className="h-16 w-16 text-primary/50 mb-4" />
         <h2 className="text-2xl font-bold mb-2">AkiliPesa AI</h2>
         <p className="text-muted-foreground max-w-sm">
-          Generate video ads, music, avatars, and more. Describe what you want to create and let AI do the rest.
+          Describe what you want to create. Generate video ads, music, avatars, and more.
         </p>
       </div>
       
-      <div className="p-4 bg-background border-t">
+      <div className="p-4 bg-background">
         <div className="relative">
           <Input 
             placeholder="Message AkiliPesa AI..." 
-            className="pl-10 pr-24 h-12 rounded-full" 
+            className="pl-10 pr-24 h-12 rounded-full bg-muted border-border/50" 
           />
           <div className="absolute left-3 top-1/2 -translate-y-1/2">
             <UserAvatar className="h-6 w-6" />
           </div>
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <Paperclip className="h-5 w-5" />
             </Button>
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <Mic className="h-5 w-5" />
             </Button>
-            <Button size="icon" className="h-9 w-9 rounded-full">
+            <Button size="icon" className="h-9 w-9 rounded-full bg-primary">
               <Send className="h-5 w-5" />
             </Button>
           </div>
@@ -144,12 +145,11 @@ const TabButton = ({ icon: Icon, label, isActive, onClick }: TabButtonProps) => 
     <button
       onClick={onClick}
       className={cn(
-        'flex-1 flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors h-full',
-        isActive ? 'text-primary font-bold' : 'hover:text-foreground'
+        'flex-1 flex flex-col items-center justify-center gap-1.5 text-muted-foreground transition-colors h-full',
+        isActive ? 'text-white font-bold' : 'hover:text-foreground'
       )}
     >
-      <Icon className={cn('h-6 w-6', isActive && 'fill-primary text-primary-foreground')} />
-      <span className="text-xs">{label}</span>
+      <span className="text-sm">{label}</span>
     </button>
   );
 };
