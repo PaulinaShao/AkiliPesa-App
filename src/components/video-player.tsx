@@ -94,17 +94,17 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         onClick={() => setIsMuted(!isMuted)} 
         className="absolute z-20 p-2 text-white rounded-full bg-black/30"
         style={{
-            top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
+            top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
             right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
         }}
         >
-        {isMuted ? <VolumeX size={32} /> : <Volume2 size={32} />}
+        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
       </button>
 
       {/* Content Overlay */}
       <div 
-        className="absolute left-[calc(env(safe-area-inset-left,0px)+12px)] right-[calc(env(safe-area-inset-right,0px)+12px)] z-20"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px + 8px)' }}
+        className="absolute left-[calc(env(safe-area-inset-left,0px)+12px)] right-[calc(env(safe-area-inset-right,0px)+80px)] z-20"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)' }}
         >
           <div className="flex items-start gap-3 mb-2">
             <div className="relative">
@@ -139,7 +139,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
 
       {/* Right Column: Action Icons */}
       <div 
-        className="absolute z-20 flex flex-col items-center justify-center space-y-12 text-white"
+        className="absolute z-20 flex flex-col items-center justify-end space-y-6 text-white"
         style={{
             top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px + 8px)',
@@ -147,19 +147,19 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         }}
       >
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Phone size={32} />
+          <Phone size={36} />
         </button>
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <VideoIcon size={32} />
+          <VideoIcon size={36} />
         </button>
         <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+          <Heart size={36} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
           <span className="text-sm font-bold">{likes.toLocaleString()}</span>
         </button>
         <Sheet>
             <SheetTrigger asChild>
               <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-                <MessageCircle size={32} />
+                <MessageCircle size={36} />
                 <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
               </button>
             </SheetTrigger>
@@ -187,12 +187,10 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </SheetContent>
           </Sheet>
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Share2 size={32} />
+          <Share2 size={36} />
           <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
         </button>
-      </div>
-      <div className="absolute z-20" style={{ right: 'calc(env(safe-area-inset-right, 0px) + 8px)', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)' }}>
-          <p className="font-bold text-white/80">AkiliPesa</p>
+         <p className="font-bold text-white/80">AkiliPesa</p>
       </div>
     </div>
   );
