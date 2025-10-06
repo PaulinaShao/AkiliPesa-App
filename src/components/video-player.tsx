@@ -90,8 +90,13 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         </div>
       )}
 
+      {/* Sound Toggle */}
+      <button onClick={() => setIsMuted(!isMuted)} className="absolute top-20 right-4 z-10 p-2 text-white rounded-full bg-black/30">
+        {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
+      </button>
+
       {/* Main UI Overlay */}
-      <div className="absolute bottom-16 left-0 right-0 p-4 text-white">
+      <div className="absolute bottom-16 left-0 right-0 px-4 text-white">
         <div className="flex justify-between items-end">
           {/* Left Column: User Info, Caption, Buttons */}
           <div className="flex-1 space-y-3 max-w-[75%]">
@@ -127,22 +132,22 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
           </div>
 
           {/* Right Column: Action Icons & Watermark */}
-          <div className="flex flex-col items-center space-y-6">
-            <button className="flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
-              <Phone size={24} />
+          <div className="flex flex-col items-center space-y-12">
+            <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
+              <Phone size={32} />
             </button>
-            <button className="flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
-              <VideoIcon size={24} />
+            <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
+              <VideoIcon size={32} />
             </button>
             <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
-              <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
-              <span className="text-xs font-bold">{likes.toLocaleString()}</span>
+              <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+              <span className="text-sm font-bold">{likes.toLocaleString()}</span>
             </button>
             <Sheet>
                 <SheetTrigger asChild>
                   <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
-                    <MessageCircle size={24} />
-                    <span className="text-xs font-bold">{video.comments.toLocaleString()}</span>
+                    <MessageCircle size={32} />
+                    <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
                   </button>
                 </SheetTrigger>
                 <SheetContent className="flex flex-col">
@@ -169,8 +174,8 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                 </SheetContent>
               </Sheet>
             <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
-              <Share2 size={24} />
-              <span className="text-xs font-bold">{video.shares.toLocaleString()}</span>
+              <Share2 size={32} />
+              <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </button>
             <p className="font-bold text-lg opacity-70">AkiliPesa</p>
           </div>

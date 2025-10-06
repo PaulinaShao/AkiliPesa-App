@@ -28,9 +28,6 @@ export function Header({ transparent }: HeaderProps) {
       </Link>
       
       <div className="flex items-center gap-4">
-        <button onClick={() => setIsMuted(!isMuted)} className="p-2 rounded-full text-muted-foreground hover:text-foreground">
-          {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-        </button>
         <div className="flex items-center gap-2">
             <Wallet className="h-6 w-6 text-muted-foreground"/>
             <span className="font-semibold text-sm">TZS 20,000</span>
