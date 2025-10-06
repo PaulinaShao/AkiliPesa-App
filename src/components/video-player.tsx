@@ -70,7 +70,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
     }
   }
 
-  const shortenedCaption = video.caption.split(' ').slice(0, 10).join(' ');
+  const shortenedCaption = video.caption.split(' ').slice(0, 3).join(' ');
 
   return (
     <div className="relative h-full w-full bg-black rounded-lg overflow-hidden snap-start">
@@ -91,7 +91,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
       )}
 
       {/* Main UI Overlay */}
-      <div className="absolute bottom-16 md:bottom-4 left-0 right-0 p-4 text-white">
+      <div className="absolute bottom-16 left-0 right-0 p-4 text-white">
         <div className="flex justify-between items-end">
           {/* Left Column: User Info, Caption, Buttons */}
           <div className="flex-1 space-y-3 max-w-[75%]">
@@ -118,7 +118,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             
             <p className="text-sm">
               {isCaptionExpanded ? video.caption : shortenedCaption}
-              {video.caption.split(' ').length > 10 && (
+              {video.caption.split(' ').length > 3 && (
                 <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
                   {isCaptionExpanded ? 'Less' : '... more'}
                 </button>
