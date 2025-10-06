@@ -70,7 +70,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
     }
   }
 
-  const shortenedCaption = video.caption.split(' ').slice(0, 3).join(' ');
+  const shortenedCaption = video.caption.split(' ').slice(0, 10).join(' ');
 
   return (
     <div className="relative h-full w-full bg-black rounded-lg overflow-hidden snap-start">
@@ -91,7 +91,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
       )}
 
       {/* Main UI Overlay */}
-      <div className="absolute bottom-16 left-0 right-0 p-4 text-white">
+      <div className="absolute bottom-16 md:bottom-4 left-0 right-0 p-4 text-white">
         <div className="flex justify-between items-end">
           {/* Left Column: User Info, Caption, Buttons */}
           <div className="flex-1 space-y-3 max-w-[75%]">
@@ -104,24 +104,21 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                   <PlusCircle className="h-5 w-5 text-primary fill-background" />
                 </button>
               </div>
-              <div>
+              <div className="pt-2">
                 <Link href={`/profile/${user.username}`}>
                   <h3 className="font-bold text-lg">@{user.username}</h3>
                 </Link>
-                <button onClick={() => setIsMuted(!isMuted)} className="p-1 rounded-full text-white/80 hover:text-white mt-1">
-                    {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                </button>
               </div>
             </div>
 
             <div className='flex gap-2'>
-              <Button size="sm" className="bg-primary/80 backdrop-blur-sm text-white font-bold text-xs h-8">Buy TSh.5,000</Button>
-              <Button size="sm" className="bg-primary backdrop-blur-sm text-white font-bold text-xs h-8">Earn TSh.500</Button>
+              <Button size="sm" className="bg-primary font-bold text-xs h-8">Buy TSh.5,000</Button>
+              <Button size="sm" className="bg-primary font-bold text-xs h-8">Earn TSh.500</Button>
             </div>
             
             <p className="text-sm">
               {isCaptionExpanded ? video.caption : shortenedCaption}
-              {video.caption.split(' ').length > 3 && (
+              {video.caption.split(' ').length > 10 && (
                 <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
                   {isCaptionExpanded ? 'Less' : '... more'}
                 </button>
@@ -130,22 +127,22 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
           </div>
 
           {/* Right Column: Action Icons & Watermark */}
-          <div className="flex flex-col items-center space-y-4">
-            <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
+          <div className="flex flex-col items-center space-y-6">
+            <button className="flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
               <Phone size={24} />
             </button>
-            <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
+            <button className="flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
               <VideoIcon size={24} />
             </button>
             <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
               <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
-              <span className="text-sm font-bold">{likes.toLocaleString()}</span>
+              <span className="text-xs font-bold">{likes.toLocaleString()}</span>
             </button>
             <Sheet>
                 <SheetTrigger asChild>
                   <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
                     <MessageCircle size={24} />
-                    <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
+                    <span className="text-xs font-bold">{video.comments.toLocaleString()}</span>
                   </button>
                 </SheetTrigger>
                 <SheetContent className="flex flex-col">
@@ -173,7 +170,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
               </Sheet>
             <button className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded-full p-1">
               <Share2 size={24} />
-              <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
+              <span className="text-xs font-bold">{video.shares.toLocaleString()}</span>
             </button>
             <p className="font-bold text-lg opacity-70">AkiliPesa</p>
           </div>
