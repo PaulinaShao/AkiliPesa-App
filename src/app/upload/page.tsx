@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 
 type Tab = 'ai' | 'camera' | 'upload';
 
-export default function CreatePage() {
+export default function UploadPage() {
   const [activeTab, setActiveTab] = useState<Tab>('ai');
   const router = useRouter();
 
@@ -63,7 +63,7 @@ export default function CreatePage() {
             />
             <TabButton
               label="Camera"
-              isActive={activeTab === 'camera'}
+              isActive={active-tab === 'camera'}
               onClick={() => setActiveTab('camera')}
             />
             <TabButton
