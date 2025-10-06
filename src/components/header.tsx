@@ -1,21 +1,18 @@
 'use client';
 
-import { Volume2, VolumeX, Wallet } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Wallet } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
 import { users } from '@/lib/data';
 import Link from 'next/link';
 import { Logo } from './logo';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
 
 interface HeaderProps {
   transparent?: boolean;
 }
 
 export function Header({ transparent }: HeaderProps) {
-  const [isMuted, setIsMuted] = useState(true);
 
   return (
     <header className={cn(
@@ -28,9 +25,6 @@ export function Header({ transparent }: HeaderProps) {
       </Link>
       
       <div className="flex flex-nowrap items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => setIsMuted(!isMuted)}>
-          {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-        </Button>
         <div className="flex items-center gap-2">
             <Wallet className="h-6 w-6 text-muted-foreground"/>
             <span className="font-semibold text-sm whitespace-nowrap">TZS 20,000</span>

@@ -129,22 +129,22 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
       </div>
 
       {/* Right Column: Action Icons */}
-      <div className="absolute top-0 bottom-16 right-2 z-20 flex flex-col justify-center items-center">
-          <div className="flex flex-col items-center space-y-8">
+      <div className="absolute bottom-16 right-2 z-20 flex flex-col items-center">
+          <div className="flex flex-col items-center space-y-6">
             <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-              <Phone size={32} />
+              <Phone size={24} />
             </button>
             <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-              <VideoIcon size={32} />
+              <VideoIcon size={24} />
             </button>
             <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-              <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+              <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
               <span className="text-sm font-bold">{likes.toLocaleString()}</span>
             </button>
             <Sheet>
                 <SheetTrigger asChild>
                   <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-                    <MessageCircle size={32} />
+                    <MessageCircle size={24} />
                     <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
                   </button>
                 </SheetTrigger>
@@ -172,9 +172,10 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
                 </SheetContent>
               </Sheet>
             <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-              <Share2 size={32} />
+              <Share2 size={24} />
               <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
             </button>
+            <p className="font-bold text-white text-sm mt-4">AkiliPesa</p>
           </div>
       </div>
     </div>
