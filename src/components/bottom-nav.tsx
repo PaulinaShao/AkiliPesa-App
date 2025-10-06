@@ -13,8 +13,14 @@ const navLinks = [
   { href: '/profile/naturelover', icon: User, label: 'Profile' },
 ];
 
-export function BottomNav() {
+export function BottomNavWrapper() {
   const pathname = usePathname();
+  
+  const showNav = !pathname.startsWith('/upload') && !pathname.startsWith('/edit');
+
+  if (!showNav) {
+    return null;
+  }
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">

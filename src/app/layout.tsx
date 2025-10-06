@@ -4,7 +4,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { SidebarNav } from '@/components/sidebar-nav';
-import { BottomNav } from '@/components/bottom-nav';
+import { BottomNavWrapper } from '@/components/bottom-nav';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -31,7 +31,7 @@ export default function RootLayout({
           <main className="flex-1 md:ml-64">
             {children}
           </main>
-          <BottomNav />
+          <BottomNavWrapper />
         </div>
         <Toaster />
       </body>
