@@ -65,7 +65,7 @@ export function VideoFeed({ videos, users, isMuted }: VideoFeedProps) {
         {memoizedVideos}
       </div>
       {showSuggestions && suggestedTopics.length > 0 && (
-          <div className="absolute top-20 md:top-2 left-1/2 -translate-x-1/2 w-full max-w-md px-2 z-30">
+          <div className="absolute top-20 md:top-2 left-1/2 -translate-x-1/2 w-full max-w-md px-2 z-50">
              <SuggestedTopics topics={suggestedTopics} onClear={handleClearSuggestions} />
           </div>
       )}
