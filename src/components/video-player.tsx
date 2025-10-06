@@ -94,17 +94,17 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         onClick={() => setIsMuted(!isMuted)} 
         className="absolute z-20 p-2 text-white rounded-full bg-black/30"
         style={{
-            top: 'calc(env(safe-area-inset-top, 0px) + 64px)', // Header height + margin
+            top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
             right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
         }}
         >
-        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+        {isMuted ? <VolumeX size={32} /> : <Volume2 size={32} />}
       </button>
 
       {/* Content Overlay */}
       <div 
-        className="absolute left-[12px] right-[12px] z-20"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)' }}
+        className="absolute left-[calc(env(safe-area-inset-left,0px)+12px)] right-[calc(env(safe-area-inset-right,0px)+12px)] z-20"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px + 8px)' }}
         >
           <div className="flex items-start gap-3 mb-2">
             <div className="relative">
@@ -139,10 +139,10 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
 
       {/* Right Column: Action Icons */}
       <div 
-        className="absolute z-20 flex flex-col items-center justify-center space-y-6 text-white"
+        className="absolute z-20 flex flex-col items-center justify-center space-y-12 text-white"
         style={{
-            top: 'calc(env(safe-area-inset-top, 0px) + 64px)',
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)',
+            top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px + 8px)',
             right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
         }}
       >
@@ -190,6 +190,9 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
           <Share2 size={32} />
           <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
         </button>
+      </div>
+      <div className="absolute z-20" style={{ right: 'calc(env(safe-area-inset-right, 0px) + 8px)', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)' }}>
+          <p className="font-bold text-white/80">AkiliPesa</p>
       </div>
     </div>
   );
