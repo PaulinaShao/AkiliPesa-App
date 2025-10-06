@@ -1,102 +1,84 @@
-
 'use client';
 
 import { useState } from 'react';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { transactions as allTransactions } from '@/lib/data';
 import type { Transaction } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
-import { ArrowDownLeft, ArrowUpRight, Plus, Minus, Send, Download, DollarSign } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Plus, Send } from 'lucide-react';
 import { format } from 'date-fns';
 
-const transactionIcons = {
+const transactionIcons: Record<string, JSX.Element> = {
   Received: <ArrowDownLeft className="h-5 w-5 text-green-500" />,
   Sent: <ArrowUpRight className="h-5 w-5 text-red-500" />,
-  Earned: <DollarSign className="h-5 w-5 text-blue-500" />,
-  Commission: <DollarSign className="h-5 w-5 text-purple-500" />,
-  'Add Funds': <Plus className="h-5 w-5 text-green-500" />,
-  Withdraw: <Download className="h-5 w-5 text-yellow-500" />,
+  Earned: <ArrowDownLeft className="h-5 w-5 text-green-500" />,
+  Commission: <ArrowDownLeft className="h-5 w-5 text-green-500" />,
+  'Add Funds': <ArrowDownLeft className="h-5 w-5 text-green-500" />,
+  Withdraw: <ArrowUpRight className="h-5 w-5 text-red-500" />,
 };
 
-export default function WalletPage() {
-  const [filter, setFilter] = useState('All');
-  const balance = 20000;
+const isCredit = (type: Transaction['type']) => ['Received', 'Earned', 'Add Funds'].includes(type);
 
-  const filteredTransactions = allTransactions.filter(t => {
-    if (filter === 'All') return true;
-    return t.type === filter;
-  });
+export default function WalletPage() {
+  const [balance] = useState(20000); // This should align with header balance
 
   return (
-    <>
-      <Header />
+    <div className="dark">
+      <Header isMuted={true} onToggleMute={() => {}} />
       <div className="max-w-4xl mx-auto p-4 md:p-8 pt-20">
-        <Card className="mb-8 shadow-lg">
+        <Card className="mb-8 shadow-lg bg-card border-none">
           <CardHeader>
-            <CardTitle className="text-muted-foreground font-medium">Total Balance</CardTitle>
+            <CardTitle className="text-muted-foreground font-medium text-center">Current Balance</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-5xl font-bold">TZS {balance.toLocaleString()}</p>
+          <CardContent className="text-center">
+            <p className="text-5xl font-bold">TZS {balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Button size="lg" className="flex-col h-20"><Plus className="h-6 w-6 mb-1" /> Add Funds</Button>
-          <Button size="lg" className="flex-col h-20"><Minus className="h-6 w-6 mb-1" /> Withdraw</Button>
-          <Button size="lg" className="flex-col h-20"><Send className="h-6 w-6 mb-1" /> Send</Button>
-          <Button size="lg" variant="outline" className="flex-col h-20"><Download className="h-6 w-6 mb-1" /> Statement</Button>
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <Button size="lg" className="h-16 text-lg">
+            <Plus className="h-6 w-6 mr-2" /> Add Funds
+          </Button>
+          <Button size="lg" variant="secondary" className="h-16 text-lg">
+            <Send className="h-6 w-6 mr-2" /> Withdraw/Send
+          </Button>
         </div>
 
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Transaction History</h2>
-          <Tabs defaultValue="All" onValueChange={setFilter}>
-            <TabsList className="grid grid-cols-3 md:grid-cols-5 mb-4">
-              <TabsTrigger value="All">All</TabsTrigger>
-              <TabsTrigger value="Received">Received</TabsTrigger>
-              <TabsTrigger value="Sent">Sent</TabsTrigger>
-              <TabsTrigger value="Earned">Earned</TabsTrigger>
-              <TabsTrigger value="Commission">Commission</TabsTrigger>
-            </TabsList>
-            <TabsContent value={filter}>
-              <Card>
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Transaction History</h2>
+            <div className="flex justify-between text-muted-foreground font-semibold px-4">
+                <span>Description</span>
+                <span>Amount</span>
+            </div>
+            <Card className="bg-card border-none">
                 <CardContent className="p-0">
-                  <ul className="divide-y">
-                    {filteredTransactions.map(transaction => (
+                  <ul className="divide-y divide-border">
+                    {allTransactions.map(transaction => (
                       <li key={transaction.id} className="flex items-center justify-between p-4">
                         <div className="flex items-center gap-4">
                            <div className="p-2 bg-muted rounded-full">
-                            {transactionIcons[transaction.type as keyof typeof transactionIcons]}
+                            {transactionIcons[transaction.type]}
                            </div>
                           <div>
                             <p className="font-semibold">{transaction.description}</p>
-                            <p className="text-sm text-muted-foreground">{format(new Date(transaction.date), 'MMM dd, yyyy')}</p>
+                            <p className="text-sm text-muted-foreground">{format(new Date(transaction.date), 'yyyy-MM-dd')}</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className={cn(
-                            "font-bold",
-                            ['Received', 'Earned', 'Add Funds'].includes(transaction.type) ? 'text-green-500' : 'text-red-500'
+                        <div className={cn(
+                            "font-bold text-lg",
+                            isCredit(transaction.type) ? 'text-green-500' : 'text-foreground'
                           )}>
-                            {['Received', 'Earned', 'Add Funds'].includes(transaction.type) ? '+' : '-'} TZS {transaction.amount.toLocaleString()}
-                          </p>
-                          <p className={cn("text-xs", 
-                            transaction.status === 'Completed' && 'text-green-500',
-                            transaction.status === 'Pending' && 'text-yellow-500',
-                            transaction.status === 'Failed' && 'text-red-500'
-                            )}>{transaction.status}</p>
+                            {isCredit(transaction.type) ? '+' : '-'} TZS {transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </li>
                     ))}
                   </ul>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
         </div>
       </div>
-    </>
+    </div>
   );
 }
