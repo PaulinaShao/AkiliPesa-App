@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <>
       <Header transparent />
-      <div className="h-screen w-full md:pb-0">
+      <div className="h-[100svh] w-full md:pb-0">
         <VideoFeed videos={videos} users={users} />
       </div>
     </>

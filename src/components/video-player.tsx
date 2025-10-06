@@ -89,14 +89,23 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
           <Play className="h-20 w-20 text-white/70" />
         </div>
       )}
-
-      {/* Sound Toggle top right */}
-       <button onClick={() => setIsMuted(!isMuted)} className="absolute top-20 right-2 z-20 p-2 text-white rounded-full bg-black/30">
-         {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-       </button>
       
-      {/* Left Column: User Info, Caption, Buttons */}
-      <div className="absolute bottom-16 left-4 right-12 z-20 pb-2">
+      <button 
+        onClick={() => setIsMuted(!isMuted)} 
+        className="absolute z-20 p-2 text-white rounded-full bg-black/30"
+        style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 64px)', // Header height + margin
+            right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
+        }}
+        >
+        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+      </button>
+
+      {/* Content Overlay */}
+      <div 
+        className="absolute left-[12px] right-[12px] z-20"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)' }}
+        >
           <div className="flex items-start gap-3 mb-2">
             <div className="relative">
               <Link href={`/profile/${user.username}`}>
@@ -129,54 +138,58 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
       </div>
 
       {/* Right Column: Action Icons */}
-      <div className="absolute bottom-16 right-2 z-20 flex flex-col items-center">
-          <div className="flex flex-col items-center space-y-6">
-            <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-              <Phone size={24} />
-            </button>
-            <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-              <VideoIcon size={24} />
-            </button>
-            <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-              <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
-              <span className="text-sm font-bold">{likes.toLocaleString()}</span>
-            </button>
-            <Sheet>
-                <SheetTrigger asChild>
-                  <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-                    <MessageCircle size={24} />
-                    <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
-                  </button>
-                </SheetTrigger>
-                <SheetContent className="flex flex-col">
-                  <SheetHeader>
-                    <SheetTitle>{video.comments} Comments</SheetTitle>
-                  </SheetHeader>
-                  <div className="flex-1 overflow-y-auto space-y-4 pr-4">
-                    {allComments.filter(c => c.videoId === video.id).map(comment => {
-                      const commentUser = user; // In a real app, you'd find the actual comment user
-                      return (
-                        <div key={comment.id} className="flex gap-2">
-                          <UserAvatar src={commentUser.avatar} username={commentUser.username} className="h-8 w-8"/>
-                          <div>
-                            <p className="font-bold text-sm">@{commentUser.username}</p>
-                            <p>{comment.text}</p>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <div className="mt-auto p-2 border-t">
-                    <Input placeholder="Add a comment..."/>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full text-white">
-              <Share2 size={24} />
-              <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
-            </button>
-            <p className="font-bold text-white text-sm mt-4">AkiliPesa</p>
-          </div>
+      <div 
+        className="absolute z-20 flex flex-col items-center justify-center space-y-6 text-white"
+        style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 64px)',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)',
+            right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
+        }}
+      >
+        <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+          <Phone size={32} />
+        </button>
+        <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+          <VideoIcon size={32} />
+        </button>
+        <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+          <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+          <span className="text-sm font-bold">{likes.toLocaleString()}</span>
+        </button>
+        <Sheet>
+            <SheetTrigger asChild>
+              <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+                <MessageCircle size={32} />
+                <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
+              </button>
+            </SheetTrigger>
+            <SheetContent className="flex flex-col">
+              <SheetHeader>
+                <SheetTitle>{video.comments} Comments</SheetTitle>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto space-y-4 pr-4">
+                {allComments.filter(c => c.videoId === video.id).map(comment => {
+                  const commentUser = user; // In a real app, you'd find the actual comment user
+                  return (
+                    <div key={comment.id} className="flex gap-2">
+                      <UserAvatar src={commentUser.avatar} username={commentUser.username} className="h-8 w-8"/>
+                      <div>
+                        <p className="font-bold text-sm">@{commentUser.username}</p>
+                        <p>{comment.text}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="mt-auto p-2 border-t">
+                <Input placeholder="Add a comment..."/>
+              </div>
+            </SheetContent>
+          </Sheet>
+        <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+          <Share2 size={32} />
+          <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
+        </button>
       </div>
     </div>
   );
