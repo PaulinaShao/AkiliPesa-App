@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -6,8 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
 
 type Tab = 'ai' | 'camera' | 'upload';
@@ -84,7 +84,7 @@ export default function UploadPage() {
 const AICreationScreen = () => {
   return (
     <div className="flex flex-col h-full bg-muted/30">
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
         {/* Initial AI Welcome Message */}
         <div className="flex items-start gap-3">
           <Avatar className="w-8 h-8 border-2 border-primary">
@@ -124,14 +124,14 @@ const AICreationScreen = () => {
       </div>
       
       {/* Chat Input */}
-      <div className="p-4 bg-background/80 backdrop-blur-lg border-t border-border/50">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-lg border-t border-border/50 supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(env(safe-area-inset-bottom)+1rem)]">
         <div className="relative bg-muted/50 rounded-xl p-2 flex items-end gap-2">
             <Button variant="ghost" size="icon" className="shrink-0">
               <Paperclip className="h-5 w-5" />
             </Button>
             <Textarea 
                 placeholder="Message AkiliPesa AI..." 
-                className="flex-1 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none min-h-[24px] max-h-36" 
+                className="flex-1 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none min-h-[24px] max-h-36 placeholder:text-muted-foreground/80 placeholder:text-xs" 
                 rows={1}
             />
             <Button variant="ghost" size="icon" className="shrink-0">
