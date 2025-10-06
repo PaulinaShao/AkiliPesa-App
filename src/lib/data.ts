@@ -87,7 +87,9 @@ export const comments: Comment[] = [
 ];
 
 export const transactions: Transaction[] = [
+  { id: 't9', type: 'Escrow Release', amount: 3500, date: '2024-07-31', description: 'Payment for "Vintage Jacket"', status: 'Completed' },
   { id: 't1', type: 'Received', amount: 5000, date: '2024-07-30', description: 'From @cityvibes', status: 'Completed' },
+  { id: 't10', type: 'Escrow Hold', amount: 3500, date: '2024-07-29', description: 'Sale of "Vintage Jacket"', status: 'Pending' },
   { id: 't2', type: 'Sent', amount: 2000, date: '2024-07-29', description: 'To @foodfusion', status: 'Completed' },
   { id: 't3', type: 'Earned', amount: 1500, date: '2024-07-28', description: 'Video gift', status: 'Completed' },
   { id: 't4', type: 'Commission', amount: 500, date: '2024-07-27', description: 'From @dancemachine', status: 'Completed' },

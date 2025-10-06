@@ -30,7 +30,7 @@ export type Comment = {
 
 export type Transaction = {
   id: string;
-  type: 'Received' | 'Sent' | 'Earned' | 'Commission' | 'Add Funds' | 'Withdraw';
+  type: 'Received' | 'Sent' | 'Earned' | 'Commission' | 'Add Funds' | 'Withdraw' | 'Escrow Hold' | 'Escrow Release';
   amount: number;
   date: string;
   description: string;
