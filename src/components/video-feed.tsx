@@ -9,9 +9,10 @@ import { SuggestedTopics } from '@/components/suggested-topics';
 interface VideoFeedProps {
   videos: Video[];
   users: User[];
+  isMuted: boolean;
 }
 
-export function VideoFeed({ videos, users }: VideoFeedProps) {
+export function VideoFeed({ videos, users, isMuted }: VideoFeedProps) {
   const [watchedTopics, setWatchedTopics] = useState<Set<string>>(new Set());
   const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -53,9 +54,10 @@ export function VideoFeed({ videos, users }: VideoFeedProps) {
         video={video}
         user={getUserForVideo(video.userId)}
         onPlay={handlePlay}
+        isMuted={isMuted}
       />
     </div>
-  )), [videos, users, handlePlay]);
+  )), [videos, users, handlePlay, isMuted]);
 
   return (
     <div className="relative h-full w-full">

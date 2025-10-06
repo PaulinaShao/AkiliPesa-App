@@ -24,12 +24,12 @@ interface VideoPlayerProps {
   video: Video;
   user: User;
   onPlay: (videoId: string, tags: string[]) => void;
+  isMuted: boolean;
 }
 
-export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
+export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
   
   const isInView = useInView(videoRef, { threshold: 0.6 });

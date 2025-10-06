@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Wallet, Volume2, VolumeX } from 'lucide-react';
 import Link from 'next/link';
 import { Logo } from './logo';
@@ -10,11 +9,11 @@ import { Button } from './ui/button';
 
 interface HeaderProps {
   transparent?: boolean;
+  isMuted: boolean;
+  onToggleMute: () => void;
 }
 
-export function Header({ transparent }: HeaderProps) {
-  const [isMuted, setIsMuted] = useState(true);
-
+export function Header({ transparent, isMuted, onToggleMute }: HeaderProps) {
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-40 flex h-16 items-center justify-between border-b px-4 md:px-6",
@@ -32,7 +31,7 @@ export function Header({ transparent }: HeaderProps) {
             <span className="font-semibold text-sm whitespace-nowrap truncate">TZS 20,000</span>
         </div>
         <Badge variant="secondary" className="shrink-0">Premium</Badge>
-        <Button variant="ghost" size="icon" onClick={() => setIsMuted(!isMuted)}>
+        <Button variant="ghost" size="icon" onClick={onToggleMute}>
           {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
           <span className="sr-only">Toggle Sound</span>
         </Button>
