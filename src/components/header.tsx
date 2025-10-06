@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { Wallet, Volume2, VolumeX } from 'lucide-react';
-import { UserAvatar } from '@/components/user-avatar';
-import { users } from '@/lib/data';
 import Link from 'next/link';
 import { Logo } from './logo';
 import { Badge } from './ui/badge';
@@ -34,7 +32,10 @@ export function Header({ transparent }: HeaderProps) {
             <span className="font-semibold text-sm whitespace-nowrap truncate">TZS 20,000</span>
         </div>
         <Badge variant="secondary" className="shrink-0">Premium</Badge>
-        <UserAvatar src={users[0].avatar} username={users[0].username} className="h-9 w-9 shrink-0" />
+        <Button variant="ghost" size="icon" onClick={() => setIsMuted(!isMuted)}>
+          {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
+          <span className="sr-only">Toggle Sound</span>
+        </Button>
       </div>
     </header>
   );

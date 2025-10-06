@@ -89,17 +89,6 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
           <Play className="h-20 w-20 text-white/70" />
         </div>
       )}
-      
-      <button 
-        onClick={() => setIsMuted(!isMuted)} 
-        className="absolute z-20 p-2 text-white rounded-full bg-black/30"
-        style={{
-            top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
-            right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
-        }}
-        >
-        {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-      </button>
 
       {/* Content Overlay */}
       <div 
@@ -147,19 +136,19 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
         }}
       >
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Phone size={24} />
+          <Phone size={32} />
         </button>
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <VideoIcon size={24} />
+          <VideoIcon size={32} />
         </button>
         <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Heart size={24} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
+          <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
           <span className="text-sm font-bold">{likes.toLocaleString()}</span>
         </button>
         <Sheet>
             <SheetTrigger asChild>
               <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-                <MessageCircle size={24} />
+                <MessageCircle size={32} />
                 <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
               </button>
             </SheetTrigger>
@@ -187,7 +176,7 @@ export function VideoPlayer({ video, user, onPlay }: VideoPlayerProps) {
             </SheetContent>
           </Sheet>
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Share2 size={24} />
+          <Share2 size={32} />
           <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
         </button>
          <p className="font-bold text-white/80">AkiliPesa</p>
