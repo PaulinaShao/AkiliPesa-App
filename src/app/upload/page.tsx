@@ -27,33 +27,39 @@ export default function CreatePage() {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      {/* The main content area will fill the space between header and footer */}
-      <div className="flex-1 flex flex-col">
-        {renderContent()}
-      </div>
+      <header className="p-4 border-b border-border/50">
+          <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon"><X className="h-6 w-6"/></Button>
+                  <p className="text-muted-foreground">Start typing below.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
+                  <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
+              </div>
+          </div>
+          <div className="mt-4 flex justify-around items-center">
+            <TabButton
+              label="AkiliPesa AI"
+              isActive={activeTab === 'ai'}
+              onClick={() => setActiveTab('ai')}
+            />
+            <TabButton
+              label="Camera"
+              isActive={activeTab === 'camera'}
+              onClick={() => setActiveTab('camera')}
+            />
+            <TabButton
+              label="Upload"
+              isActive={activeTab === 'upload'}
+              onClick={() => setActiveTab('upload')}
+            />
+          </div>
+      </header>
 
-      {/* Bottom Tab Navigator */}
-      <div className="bg-background border-t border-border/50">
-        <div className="flex justify-around items-center h-16">
-          <TabButton
-            icon={Sparkles}
-            label="AkiliPesa AI"
-            isActive={activeTab === 'ai'}
-            onClick={() => setActiveTab('ai')}
-          />
-          <TabButton
-            icon={Camera}
-            label="Camera"
-            isActive={activeTab === 'camera'}
-            onClick={() => setActiveTab('camera')}
-          />
-          <TabButton
-            icon={Upload}
-            label="Upload"
-            isActive={activeTab === 'upload'}
-            onClick={() => setActiveTab('upload')}
-          />
-        </div>
+      {/* The main content area will fill the space */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {renderContent()}
       </div>
     </div>
   );
@@ -62,17 +68,6 @@ export default function CreatePage() {
 const AICreationScreen = () => {
   return (
     <div className="flex flex-col h-full">
-      <header className="p-4 flex items-center justify-between border-b border-border/50">
-          <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon"><X className="h-6 w-6"/></Button>
-              <p className="text-muted-foreground">Start typing below.</p>
-          </div>
-          <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
-              <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
-          </div>
-      </header>
-
       <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
         <Sparkles className="h-16 w-16 text-primary/50 mb-4" />
         <h2 className="text-2xl font-bold mb-2">AkiliPesa AI</h2>
@@ -81,7 +76,7 @@ const AICreationScreen = () => {
         </p>
       </div>
       
-      <div className="p-4 bg-background">
+      <div className="p-4 bg-background mt-auto">
         <div className="relative">
           <Input 
             placeholder="Message AkiliPesa AI..." 
@@ -134,22 +129,21 @@ const UploadScreen = () => {
 
 
 interface TabButtonProps {
-  icon: React.ElementType;
   label: string;
   isActive: boolean;
   onClick: () => void;
 }
 
-const TabButton = ({ icon: Icon, label, isActive, onClick }: TabButtonProps) => {
+const TabButton = ({ label, isActive, onClick }: TabButtonProps) => {
   return (
     <button
       onClick={onClick}
       className={cn(
-        'flex-1 flex flex-col items-center justify-center gap-1.5 text-muted-foreground transition-colors h-full',
-        isActive ? 'text-white font-bold' : 'hover:text-foreground'
+        'flex-1 text-center py-2 text-muted-foreground transition-colors text-lg',
+        isActive ? 'text-white font-bold border-b-2 border-white' : 'hover:text-foreground'
       )}
     >
-      <span className="text-sm">{label}</span>
+      {label}
     </button>
   );
 };
