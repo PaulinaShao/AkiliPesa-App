@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video, CameraReverse, Circle } from 'lucide-react';
+import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video, SwitchCamera, Circle } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
@@ -205,7 +205,7 @@ const CameraScreen = () => {
 
             <div className="absolute top-4 right-4 z-10">
                 <Button variant="ghost" size="icon" onClick={handleSwapCamera} className="bg-black/30 hover:bg-black/50 text-white rounded-full">
-                    <CameraReverse className="h-6 w-6" />
+                    <SwitchCamera className="h-6 w-6" />
                 </Button>
             </div>
 
