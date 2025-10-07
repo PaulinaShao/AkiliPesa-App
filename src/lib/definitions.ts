@@ -29,10 +29,19 @@ export type Comment = {
 };
 
 export type Transaction = {
-  id: string;
+  id:string;
   type: 'Received' | 'Sent' | 'Earned' | 'Commission' | 'Add Funds' | 'Withdraw' | 'Escrow Hold' | 'Escrow Release';
   amount: number;
   date: string;
   description: string;
   status: 'Completed' | 'Pending' | 'Failed';
+};
+
+export type Message = {
+    id: string;
+    senderId: string;
+    receiverId: string;
+    text: string;
+    timestamp: string;
+    unread?: boolean;
 };

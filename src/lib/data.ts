@@ -1,4 +1,4 @@
-import type { User, Video, Comment, Transaction } from '@/lib/definitions';
+import type { User, Video, Comment, Transaction, Message } from '@/lib/definitions';
 
 export const users: User[] = [
   { id: 'u1', username: 'naturelover', name: 'Alex Doe', avatar: 'https://picsum.photos/seed/user1/200/200', bio: 'Exploring the beauty of the world, one trail at a time.', followers: 1200, following: 150 },
@@ -98,3 +98,24 @@ export const transactions: Transaction[] = [
   { id: 't7', type: 'Received', amount: 2500, date: '2024-07-24', description: 'From @travelbug', status: 'Completed' },
   { id: 't8', type: 'Sent', amount: 1000, date: '2024-07-23', description: 'To @petpals', status: 'Failed' },
 ];
+
+const now = new Date();
+export const messages: Message[] = [
+    { id: 'm1', senderId: 'u2', receiverId: 'u1', text: 'Hey Alex, that waterfall video was amazing! Where was it taken?', timestamp: new Date(now.getTime() - 10 * 60000).toISOString(), unread: true },
+    { id: 'm2', senderId: 'u1', receiverId: 'u2', text: 'Thanks Bella! It was at a hidden trail in the mountains. I can send you the location!', timestamp: new Date(now.getTime() - 9 * 60000).toISOString() },
+    { id: 'm3', senderId: 'u2', receiverId: 'u1', text: 'Yes, please do! I\'d love to check it out.', timestamp: new Date(now.getTime() - 8 * 60000).toISOString() },
+    { id: 'm4', senderId: 'u3', receiverId: 'u1', text: 'Your nature shots are always top-notch.', timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000).toISOString() },
+    { id: 'm5', senderId: 'u1', receiverId: 'u3', text: 'Appreciate it, Charlie! Your food creations look incredible.', timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 5 * 60000).toISOString() },
+    { id: 'm6', senderId: 'u5', receiverId: 'u1', text: 'Yo! Collab on a dance video in a forest sometime?', timestamp: new Date(now.getTime() - 5 * 24 * 60 * 60000).toISOString(), unread: true },
+];
+
+// This is to get the last message for the inbox view
+export const conversations = Array.from(
+    messages.reduce((acc, msg) => {
+        const otherUserId = msg.senderId === 'u1' ? msg.receiverId : msg.senderId;
+        if (!acc.has(otherUserId) || new Date(acc.get(otherUserId)!.timestamp) < new Date(msg.timestamp)) {
+            acc.set(otherUserId, msg);
+        }
+        return acc;
+    }, new Map<string, Message>()).values()
+).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
