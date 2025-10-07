@@ -158,6 +158,7 @@ const CameraScreen = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
     const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -174,17 +175,25 @@ const CameraScreen = () => {
 
     const filterClasses: Record<string, string> = {
         'Normal': 'filter-none',
-        'Fresh': 'saturate-150',
-        'Vintage': 'sepia-100',
+        'Fresh': 'saturate-150 brightness-105',
+        'Vintage': 'sepia-100 contrast-90',
         'Cinematic': 'contrast-125 brightness-90',
         'B&W': 'grayscale-100',
     };
+    
+    const cleanupStream = useCallback(() => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+    }, []);
 
     const setupCamera = useCallback(async (facing: 'user' | 'environment') => {
+        cleanupStream();
         setIsCameraReady(false);
-        if (videoRef.current?.srcObject) {
-            (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-        }
 
         try {
             const constraints: MediaStreamConstraints = {
@@ -197,6 +206,7 @@ const CameraScreen = () => {
             };
             
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            streamRef.current = stream;
             setHasCameraPermission(true);
 
             if (videoRef.current) {
@@ -204,6 +214,7 @@ const CameraScreen = () => {
                 videoRef.current.onloadedmetadata = () => {
                   videoRef.current?.play().catch(err => {
                       console.error("Video play failed:", err);
+                       toast({ variant: 'destructive', title: "Playback Error", description: "Could not play the camera stream." });
                   });
                   setIsCameraReady(true);
                 }
@@ -218,32 +229,26 @@ const CameraScreen = () => {
                 title = 'Camera Not Found';
                 description = 'No camera was found on your device.';
             } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                // Already the default message
+                 // default message is fine
             }
             toast({ variant: 'destructive', title, description });
         }
-    }, [toast, supportsFacingMode, captureMode]);
+    }, [toast, supportsFacingMode, captureMode, cleanupStream]);
     
     useEffect(() => {
         const checkFacingModeSupport = async () => {
-            if (navigator.mediaDevices?.getSupportedConstraints) {
+             if (navigator.mediaDevices?.getSupportedConstraints) {
                 const supported = navigator.mediaDevices.getSupportedConstraints();
                 setSupportsFacingMode(supported.facingMode || false);
             }
         };
         checkFacingModeSupport();
+    }, []);
+
+    useEffect(() => {
         setupCamera(facingMode);
-    
-        return () => {
-            if (videoRef.current && videoRef.current.srcObject) {
-                const stream = videoRef.current.srcObject as MediaStream;
-                stream.getTracks().forEach(track => track.stop());
-            }
-            if (recordingTimeoutRef.current) {
-                clearInterval(recordingTimeoutRef.current);
-            }
-        };
-    }, [facingMode, setupCamera]);
+        return cleanupStream;
+    }, [facingMode, setupCamera, cleanupStream]);
 
 
     const handleSwapCamera = () => {
@@ -268,13 +273,12 @@ const CameraScreen = () => {
     };
     
     const startRecording = () => {
-        if (!videoRef.current?.srcObject || isRecording || !isCameraReady) return;
+        if (!streamRef.current || isRecording || !isCameraReady) return;
         
         setIsRecording(true);
         setRecordingProgress(0);
         
-        const stream = videoRef.current.srcObject as MediaStream;
-        mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
         const chunks: Blob[] = [];
         
         mediaRecorderRef.current.ondataavailable = (event) => {
@@ -452,7 +456,5 @@ const TabButton = ({ label, isActive, onClick }: TabButtonProps) => {
     </button>
   );
 };
-
-    
 
     
