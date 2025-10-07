@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import Webcam from 'react-webcam';
 
 type Tab = 'ai' | 'camera' | 'upload';
 
@@ -155,16 +156,12 @@ const AICreationScreen = () => {
 
 const CameraScreen = () => {
     const { toast } = useToast();
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const webcamRef = useRef<Webcam>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const streamRef = useRef<MediaStream | null>(null);
     const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const [isCameraReady, setIsCameraReady] = useState(false);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
-    const [supportsFacingMode, setSupportsFacingMode] = useState(false);
     const [captureMode, setCaptureMode] = useState<'photo' | 'video'>('photo');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingProgress, setRecordingProgress] = useState(0);
@@ -181,146 +178,85 @@ const CameraScreen = () => {
         'B&W': 'grayscale-100',
     };
     
-    const cleanupStream = useCallback(() => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
+    const handleUserMedia = () => {
+      setHasCameraPermission(true);
+    };
+
+    const handleUserMediaError = (error: any) => {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        let title = 'Camera Access Denied';
+        let description = 'Please enable camera permissions in your browser settings.';
+        if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            title = 'Camera Not Found';
+            description = 'No camera was found on your device.';
         }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-    }, []);
-
-    const setupCamera = useCallback(async (facing: 'user' | 'environment') => {
-        cleanupStream();
-        setIsCameraReady(false);
-
-        try {
-            const constraints: MediaStreamConstraints = {
-                video: {
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                    facingMode: supportsFacingMode ? facing : undefined,
-                },
-                audio: captureMode === 'video'
-            };
-            
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            streamRef.current = stream;
-            setHasCameraPermission(true);
-
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.onloadedmetadata = () => {
-                  videoRef.current?.play().catch(err => {
-                      console.error("Video play failed:", err);
-                       toast({ variant: 'destructive', title: "Playback Error", description: "Could not play the camera stream." });
-                  });
-                  setIsCameraReady(true);
-                }
-            }
-        } catch (error) {
-            console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
-            const err = error as Error;
-            let title = 'Camera Access Denied';
-            let description = 'Please enable camera permissions in your browser settings.';
-            if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                title = 'Camera Not Found';
-                description = 'No camera was found on your device.';
-            } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                 // default message is fine
-            }
-            toast({ variant: 'destructive', title, description });
-        }
-    }, [toast, supportsFacingMode, captureMode, cleanupStream]);
-    
-    useEffect(() => {
-        const checkFacingModeSupport = async () => {
-             if (navigator.mediaDevices?.getSupportedConstraints) {
-                const supported = navigator.mediaDevices.getSupportedConstraints();
-                setSupportsFacingMode(supported.facingMode || false);
-            }
-        };
-        checkFacingModeSupport();
-    }, []);
-
-    useEffect(() => {
-        setupCamera(facingMode);
-        return cleanupStream;
-    }, [facingMode, setupCamera, cleanupStream]);
-
+        toast({ variant: 'destructive', title, description });
+    };
 
     const handleSwapCamera = () => {
-        if (supportsFacingMode) {
-            setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
-        }
+        setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
     };
 
-    const handleTakePhoto = () => {
-        if (!videoRef.current || !canvasRef.current || !isCameraReady) return;
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-            ctx.filter = getComputedStyle(video).filter;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-            setCapturedMedia({ type: 'photo', url: dataUrl });
+    const handleTakePhoto = useCallback(() => {
+        if (webcamRef.current) {
+            const imageSrc = webcamRef.current.getScreenshot({width: 1080, height: 1920});
+            if (imageSrc) {
+                setCapturedMedia({ type: 'photo', url: imageSrc });
+            }
         }
-    };
+    }, [webcamRef]);
     
-    const startRecording = () => {
-        if (!streamRef.current || isRecording || !isCameraReady) return;
-        
-        setIsRecording(true);
-        setRecordingProgress(0);
-        
-        mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
-        const chunks: Blob[] = [];
-        
-        mediaRecorderRef.current.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                chunks.push(event.data);
-            }
-        };
-        
-        mediaRecorderRef.current.onstop = () => {
-            if (chunks.length > 0) {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const url = URL.createObjectURL(blob);
-                setCapturedMedia({ type: 'video', url });
-            }
-            setIsRecording(false);
+    const startRecording = useCallback(() => {
+        if (webcamRef.current && webcamRef.current.stream && !isRecording) {
+            const stream = webcamRef.current.stream;
+            setIsRecording(true);
             setRecordingProgress(0);
-            if (recordingTimeoutRef.current) {
-                clearInterval(recordingTimeoutRef.current);
-            }
-        };
-        
-        mediaRecorderRef.current.start();
 
-        const maxDuration = 15000; // 15 seconds
-        const intervalTime = 100;
-        recordingTimeoutRef.current = setInterval(() => {
-            setRecordingProgress(prev => {
-                const nextProgress = prev + (100 / (maxDuration / intervalTime));
-                if (nextProgress >= 100) {
-                    stopRecording();
-                    return 100;
+            mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            const chunks: Blob[] = [];
+            
+            mediaRecorderRef.current.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    chunks.push(event.data);
                 }
-                return nextProgress;
-            });
-        }, intervalTime);
-    };
+            };
+            
+            mediaRecorderRef.current.onstop = () => {
+                if (chunks.length > 0) {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    setCapturedMedia({ type: 'video', url });
+                }
+                setIsRecording(false);
+                setRecordingProgress(0);
+                if (recordingTimeoutRef.current) {
+                    clearInterval(recordingTimeoutRef.current);
+                }
+            };
+            
+            mediaRecorderRef.current.start();
 
-    const stopRecording = () => {
+            const maxDuration = 15000; // 15 seconds
+            const intervalTime = 100;
+            recordingTimeoutRef.current = setInterval(() => {
+                setRecordingProgress(prev => {
+                    const nextProgress = prev + (100 / (maxDuration / intervalTime));
+                    if (nextProgress >= 100) {
+                        stopRecording();
+                        return 100;
+                    }
+                    return nextProgress;
+                });
+            }, intervalTime);
+        }
+    }, [isRecording, webcamRef]);
+
+    const stopRecording = useCallback(() => {
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
         }
-    };
+    }, [isRecording]);
 
     if (capturedMedia) {
         return (
@@ -331,7 +267,7 @@ const CameraScreen = () => {
                     <video src={capturedMedia.url} controls autoPlay loop className="w-full h-full object-contain" />
                 )}
                 <div className="absolute bottom-0 left-0 right-0 z-20 flex justify-between items-center p-4 bg-gradient-to-t from-black/50 to-transparent">
-                    <Button variant="ghost" onClick={() => { setCapturedMedia(null); setupCamera(facingMode); }}>Retake</Button>
+                    <Button variant="ghost" onClick={() => setCapturedMedia(null)}>Retake</Button>
                     <Button>Next</Button>
                 </div>
             </div>
@@ -340,10 +276,18 @@ const CameraScreen = () => {
 
     return (
         <div className="relative flex-1 bg-black text-white overflow-hidden">
-            <video ref={videoRef} style={{ filter: filterClasses[activeFilter].replace(/_/g, ' ') }} className="w-full h-full object-cover" autoPlay muted playsInline />
-            <canvas ref={canvasRef} className="hidden"></canvas>
+            <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                videoConstraints={{ facingMode, width: 1080, height: 1920 }}
+                onUserMedia={handleUserMedia}
+                onUserMediaError={handleUserMediaError}
+                className={cn("w-full h-full object-cover", filterClasses[activeFilter].replace(/_/g, ' '))}
+                mirrored={facingMode === 'user'}
+            />
             
-            {!isCameraReady && hasCameraPermission !== false && (
+            {hasCameraPermission === null && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/70">
                     <p>Starting camera...</p>
                 </div>
@@ -364,7 +308,7 @@ const CameraScreen = () => {
             <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-gradient-to-b from-black/50 to-transparent">
                 <div className="flex items-center gap-4">
                      <Button variant="ghost" size="icon" className="text-white rounded-full"><Zap className="h-6 w-6" /></Button>
-                     {supportsFacingMode && <Button variant="ghost" size="icon" onClick={handleSwapCamera} className="text-white rounded-full"><SwitchCamera className="h-6 w-6" /></Button>}
+                     <Button variant="ghost" size="icon" onClick={handleSwapCamera} className="text-white rounded-full"><SwitchCamera className="h-6 w-6" /></Button>
                 </div>
                  <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" className="text-white rounded-full"><Timer className="h-6 w-6" /></Button>
@@ -408,7 +352,7 @@ const CameraScreen = () => {
                             onTouchEnd={captureMode === 'video' ? stopRecording : undefined}
                             className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform active:scale-90"
                             aria-label={captureMode === 'photo' ? 'Take Photo' : 'Record Video'}
-                            disabled={!isCameraReady}
+                            disabled={hasCameraPermission === false}
                         >
                             {captureMode === 'video' && <div className={cn("w-8 h-8 rounded-full bg-red-500 transition-all", isRecording && "w-6 h-6 rounded-md")}></div>}
                         </button>
