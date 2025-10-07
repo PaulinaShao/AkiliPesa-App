@@ -69,7 +69,7 @@ export default function UploadPage() {
           />
           <TabButton
             label="Camera"
-            isActive={activeTeb === 'camera'}
+            isActive={activeTab === 'camera'}
             onClick={() => setActiveTab('camera')}
           />
           <TabButton
@@ -175,9 +175,9 @@ const CameraScreen = () => {
     const filterClasses: Record<string, string> = {
         'Normal': 'filter-none',
         'Fresh': 'saturate-150',
-        'Vintage': 'sepia',
-        'Cinematic': 'contrast-125',
-        'B&W': 'grayscale',
+        'Vintage': 'sepia-100',
+        'Cinematic': 'contrast-125 brightness-90',
+        'B&W': 'grayscale-100',
     };
 
     const setupCamera = useCallback(async (facing: 'user' | 'environment') => {
@@ -193,7 +193,7 @@ const CameraScreen = () => {
                     height: { ideal: 1080 },
                     facingMode: supportsFacingMode ? facing : undefined,
                 },
-                audio: false
+                audio: captureMode === 'video'
             };
             
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -201,12 +201,11 @@ const CameraScreen = () => {
 
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                videoRef.current.play().catch(err => {
-                    console.error("Video play failed:", err);
-                    // This can happen if the user navigates away quickly
-                });
                 videoRef.current.onloadedmetadata = () => {
-                    setIsCameraReady(true);
+                  videoRef.current?.play().catch(err => {
+                      console.error("Video play failed:", err);
+                  });
+                  setIsCameraReady(true);
                 }
             }
         } catch (error) {
@@ -223,7 +222,7 @@ const CameraScreen = () => {
             }
             toast({ variant: 'destructive', title, description });
         }
-    }, [toast, supportsFacingMode]);
+    }, [toast, supportsFacingMode, captureMode]);
     
     useEffect(() => {
         const checkFacingModeSupport = async () => {
@@ -233,9 +232,6 @@ const CameraScreen = () => {
             }
         };
         checkFacingModeSupport();
-    }, []);
-
-    useEffect(() => {
         setupCamera(facingMode);
     
         return () => {
@@ -247,7 +243,7 @@ const CameraScreen = () => {
                 clearInterval(recordingTimeoutRef.current);
             }
         };
-    }, [facingMode]);
+    }, [facingMode, setupCamera]);
 
 
     const handleSwapCamera = () => {
@@ -264,9 +260,9 @@ const CameraScreen = () => {
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-            ctx.filter = window.getComputedStyle(video).filter;
+            ctx.filter = getComputedStyle(video).filter;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
             setCapturedMedia({ type: 'photo', url: dataUrl });
         }
     };
@@ -294,6 +290,7 @@ const CameraScreen = () => {
                 setCapturedMedia({ type: 'video', url });
             }
             setIsRecording(false);
+            setRecordingProgress(0);
             if (recordingTimeoutRef.current) {
                 clearInterval(recordingTimeoutRef.current);
             }
@@ -302,16 +299,17 @@ const CameraScreen = () => {
         mediaRecorderRef.current.start();
 
         const maxDuration = 15000; // 15 seconds
+        const intervalTime = 100;
         recordingTimeoutRef.current = setInterval(() => {
             setRecordingProgress(prev => {
-                const nextProgress = prev + (100 / (maxDuration / 100));
+                const nextProgress = prev + (100 / (maxDuration / intervalTime));
                 if (nextProgress >= 100) {
                     stopRecording();
                     return 100;
                 }
                 return nextProgress;
             });
-        }, 100);
+        }, intervalTime);
     };
 
     const stopRecording = () => {
@@ -394,7 +392,7 @@ const CameraScreen = () => {
                                 strokeDasharray="301.59"
                                 strokeDashoffset={301.59 * (1 - recordingProgress / 100)}
                                 transform="rotate(-90 50 50)"
-                                className="transition-all duration-100"
+                                style={{ transition: 'stroke-dashoffset 0.1s linear' }}
                             />}
                         </svg>
 
@@ -454,5 +452,7 @@ const TabButton = ({ label, isActive, onClick }: TabButtonProps) => {
     </button>
   );
 };
+
+    
 
     
