@@ -1,9 +1,8 @@
-// This is the config from the Firebase console.
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  "projectId": "akilipesacustomize-70486-65934",
+  "appId": "1:410935694205:web:292f2629b389532c06f214",
+  "apiKey": "AIzaSyBL9J-F5q3OETLAKlZbUeOftw7k0OnqVm8",
+  "authDomain": "akilipesacustomize-70486-65934.firebaseapp.com",
+  "measurementId": "",
+  "messagingSenderId": "410935694205"
 };

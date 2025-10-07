@@ -1,0 +1,169 @@
+/**
+ * @file Firestore Security Rules for AkiliPesa Application
+ *
+ * @core_philosophy This ruleset enforces a combination of path-based ownership and denormalized ownership for data access control.
+ *  User-specific data is secured using path-based rules, while broader access (e.g., listing all videos) uses denormalized `userId` fields.
+ *  Data validation is relaxed to allow rapid prototyping but crucial relational constraints are strictly enforced.
+ *
+ * @data_structure
+ * - /users/{userId}: User profiles, owned by the user.
+ * - /users/{userId}/videos/{videoId}: Videos uploaded by a specific user, owned by the user.
+ * - /videos/{videoId}: All videos, with denormalized `userId` for ownership checks.
+ * - /videos/{videoId}/comments/{commentId}: Comments on a video, with denormalized `userId` for ownership checks.
+ * - /videos/{videoId}/likes/{likeId}: Likes on a video, with denormalized `userId` for ownership checks.
+ * - /followers/{userId}/following/{followingId}: Follower relationships between users.
+ *
+ * @key_security_decisions
+ * - Users can only read and write their own profile data.
+ * - Users can only manage (create, update, delete) videos they own.
+ * - Listing of all videos is public, but creation, updating, and deletion are restricted to the owner.
+ * - Comments and likes are publicly accessible but can only be created, updated, and deleted by their respective owners.
+ * - Follower relationships can be created and deleted by either the follower or the followed user.
+ *
+ * @denormalization_for_authorization
+ * - The `videos`, `comments`, and `likes` collections all contain a `userId` field to enable owner-based authorization without additional reads.
+ *  This is crucial for scalable and performant security rules.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to user profile data.  Only the user can read or write their own profile.
+     * @path /users/{userId}
+     * @allow (get, create, update, delete) User A with ID 'user_abc' can read, create, update, or delete document /users/user_abc.
+     * @deny (get, create, update, delete) User B with ID 'user_xyz' cannot read, create, update, or delete document /users/user_abc.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+          return isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId));
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to videos uploaded by a specific user. Only the user can manage their own videos.
+     * @path /users/{userId}/videos/{videoId}
+     * @allow (get, create, update, delete) User A with ID 'user_abc' can read, create, update, or delete document /users/user_abc/videos/video_123 if they own it.
+     * @deny (get, create, update, or delete) User B with ID 'user_xyz' cannot read, create, update, or delete document /users/user_abc/videos/video_123.
+     * @principle Enforces document ownership and path consistency.
+     */
+    match /users/{userId}/videos/{videoId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+        function isExistingOwner(userId) {
+          return isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/videos/$(videoId));
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing is disabled for this path to prevent unintended data exposure.
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+     /**
+      * @description Controls access to all videos on the platform.  Any user can list the videos, but only the owner can create, update, or delete.
+      * @path /videos/{videoId}
+      * @allow (get, list) Any user can read or list videos.
+      * @allow (create, update, delete) User A with ID 'user_abc' can create, update, or delete document /videos/video_123 if they are the owner (video.userId == 'user_abc').
+      * @deny (create, update, delete) User B with ID 'user_xyz' cannot create, update, or delete document /videos/video_123 if User A is the owner.
+      * @principle Allows public reads but enforces owner-only writes.
+      */
+    match /videos/{videoId} {
+      function isOwner() {
+        return request.auth.uid == resource.data.userId;
+      }
+
+      function isExistingOwner() {
+        return request.auth.uid == resource.data.userId && existsAfter(/databases/$(database)/documents/videos/$(videoId));
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create: if request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner();
+      allow delete: if isOwner();
+    }
+
+    /**
+     * @description Controls access to comments on a video. Any user can read comments, but only the owner can create, update, or delete.
+     * @path /videos/{videoId}/comments/{commentId}
+     * @allow (get, list) Any user can read or list comments for a video.
+     * @allow (create, update, delete) User A with ID 'user_abc' can create, update, or delete document /videos/video_123/comments/comment_456 if they are the owner.
+     * @deny (create, update, delete) User B with ID 'user_xyz' cannot create, update, or delete document /videos/video_123/comments/comment_456 if User A is the owner.
+     * @principle Allows public reads but enforces owner-only writes.
+     */
+    match /videos/{videoId}/comments/{commentId} {
+      function isOwner() {
+        return request.auth.uid == resource.data.userId;
+      }
+
+      function isExistingOwner() {
+          return request.auth.uid == resource.data.userId && existsAfter(/databases/$(database)/documents/videos/$(videoId)/comments/$(commentId));
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create: if request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner();
+      allow delete: if isOwner();
+    }
+
+    /**
+     * @description Controls access to likes on a video.  Any user can read likes, but only the owner can create, update, or delete.
+     * @path /videos/{videoId}/likes/{likeId}
+     * @allow (get, list) Any user can read or list likes for a video.
+     * @allow (create, update, delete) User A with ID 'user_abc' can create, update, or delete document /videos/video_123/likes/like_789 if they are the owner.
+     * @deny (create, update, delete) User B with ID 'user_xyz' cannot create, update, or delete document /videos/video_123/likes/like_789 if User A is the owner.
+     * @principle Allows public reads but enforces owner-only writes.
+     */
+    match /videos/{videoId}/likes/{likeId} {
+      function isOwner() {
+        return request.auth.uid == resource.data.userId;
+      }
+
+      function isExistingOwner() {
+          return request.auth.uid == resource.data.userId && existsAfter(/databases/$(database)/documents/videos/$(videoId)/likes/$(likeId));
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create: if request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner();
+      allow delete: if isOwner();
+    }
+
+    /**
+     * @description Controls access to follower relationships. Allows either the follower or the followed user to create or delete the relationship.
+     * @path /followers/{userId}/following/{followingId}
+     * @allow (get, list) Followers and Following lists can be read by anyone.
+     * @allow (create, delete) User A with ID 'user_abc' can create/delete a follow relationship where they are either the follower or the followed user.
+     * @deny (create, delete) User B with ID 'user_xyz' cannot create/delete a follow relationship involving User A if User B is not User A or following User A.
+     * @principle Allows managing follower relationships by either party.
+     */
+    match /followers/{userId}/following/{followingId} {
+        function isParticipant(userId, followingId) {
+            return request.auth.uid == userId || request.auth.uid == followingId;
+        }
+
+        allow get: if true;
+        allow list: if true;
+        allow create: if isParticipant(userId, followingId);
+        allow update: if false;
+        allow delete: if isParticipant(userId, followingId);
+    }
+  }
+}

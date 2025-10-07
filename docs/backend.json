@@ -1,0 +1,308 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the AkiliPesa application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's chosen username."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "profilePictureUrl": {
+          "type": "string",
+          "description": "URL of the user's profile picture.",
+          "format": "uri"
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biography or description of the user."
+        },
+        "followerIds": {
+          "type": "array",
+          "description": "References to Users who are following this user. (Relationship: User N:N User (Followers))",
+          "items": {
+            "type": "string"
+          }
+        },
+        "followingIds": {
+          "type": "array",
+          "description": "References to Users who this user is following. (Relationship: User N:N User (Following))",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email"
+      ]
+    },
+    "Video": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Video",
+      "type": "object",
+      "description": "Represents a video uploaded to the AkiliPesa application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Video entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Video)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the video."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the video."
+        },
+        "videoUrl": {
+          "type": "string",
+          "description": "URL of the video file.",
+          "format": "uri"
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "description": "URL of the video's thumbnail image.",
+          "format": "uri"
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "The date and time the video was uploaded.",
+          "format": "date-time"
+        },
+        "likeIds": {
+          "type": "array",
+          "description": "References to Likes. (Relationship: Like 1:N Video)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commentIds": {
+          "type": "array",
+          "description": "References to Comments. (Relationship: Comment 1:N Video)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "topicSuggestion": {
+          "type": "string",
+          "description": "Topic suggested by the LLM."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "title",
+        "videoUrl",
+        "thumbnailUrl",
+        "uploadDate"
+      ]
+    },
+    "Comment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Comment",
+      "type": "object",
+      "description": "Represents a comment on a video.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Comment entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Comment)"
+        },
+        "videoId": {
+          "type": "string",
+          "description": "Reference to Video. (Relationship: Video 1:N Comment)"
+        },
+        "text": {
+          "type": "string",
+          "description": "The text content of the comment."
+        },
+        "commentDate": {
+          "type": "string",
+          "description": "The date and time the comment was posted.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "videoId",
+        "text",
+        "commentDate"
+      ]
+    },
+    "Like": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Like",
+      "type": "object",
+      "description": "Represents a like on a video.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Like entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Like)"
+        },
+        "videoId": {
+          "type": "string",
+          "description": "Reference to Video. (Relationship: Video 1:N Like)"
+        },
+        "likeDate": {
+          "type": "string",
+          "description": "The date and time the video was liked.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "videoId",
+        "likeDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Path-based ownership guarantees only the user can read/write their data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/videos/{videoId}",
+        "definition": {
+          "entityName": "Video",
+          "schema": {
+            "$ref": "#/backend/entities/Video"
+          },
+          "description": "Stores videos uploaded by each user. Path-based ownership simplifies security rules and guarantees only the user can manage their videos.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "videoId",
+              "description": "The unique identifier of the video."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/videos/{videoId}",
+        "definition": {
+          "entityName": "Video",
+          "schema": {
+            "$ref": "#/backend/entities/Video"
+          },
+          "description": "Stores all videos on the platform. Enables easy listing of videos. Includes `userId` for denormalized owner authorization.",
+          "params": [
+            {
+              "name": "videoId",
+              "description": "The unique identifier of the video."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/videos/{videoId}/comments/{commentId}",
+        "definition": {
+          "entityName": "Comment",
+          "schema": {
+            "$ref": "#/backend/entities/Comment"
+          },
+          "description": "Stores comments for each video. Ensures easy comment retrieval per video. Includes `userId` and `videoId` for denormalized owner authorization.",
+          "params": [
+            {
+              "name": "videoId",
+              "description": "The unique identifier of the video."
+            },
+            {
+              "name": "commentId",
+              "description": "The unique identifier of the comment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/videos/{videoId}/likes/{likeId}",
+        "definition": {
+          "entityName": "Like",
+          "schema": {
+            "$ref": "#/backend/entities/Like"
+          },
+          "description": "Stores likes for each video. Ensures efficient like retrieval per video. Includes `userId` and `videoId` for denormalized owner authorization.",
+          "params": [
+            {
+              "name": "videoId",
+              "description": "The unique identifier of the video."
+            },
+            {
+              "name": "likeId",
+              "description": "The unique identifier of the like."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/followers/{userId}/following/{followingId}",
+        "definition": {
+          "entityName": "Follower",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores the follow relationships. This collection facilitates efficient querying of followers and following.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "followingId",
+              "description": "The unique identifier of the user being followed."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to mirror TikTok's core functionality, emphasizing efficient data retrieval and robust security rules. The primary focus is on user-generated video content and the associated social interactions (likes, comments, follows). Authorization Independence is achieved through path-based ownership for user-specific data and explicit denormalization. Segregation is achieved via dedicated collections based on entity type, allowing for simpler, QAP-compliant rules.\n\n*   `/users/{userId}`: Stores user profiles. Path-based ownership guarantees only the user can read/write their data.\n*   `/users/{userId}/videos/{videoId}`: Stores videos uploaded by each user. Path-based ownership simplifies security rules and guarantees only the user can manage their videos.\n*   `/videos/{videoId}`: Stores all videos on the platform. Enables easy listing of videos. Includes `userId` for denormalized owner authorization.\n*   `/videos/{videoId}/comments/{commentId}`: Stores comments for each video. Ensures easy comment retrieval per video. Includes `userId` and `videoId` for denormalized owner authorization.\n*   `/videos/{videoId}/likes/{likeId}`: Stores likes for each video. Ensures efficient like retrieval per video. Includes `userId` and `videoId` for denormalized owner authorization.\n*   `/followers/{userId}/following/{followingId}`: Stores the follow relationships. This collection facilitates efficient querying of followers and following."
+  }
+}
