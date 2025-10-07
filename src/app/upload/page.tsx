@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -14,7 +14,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import Webcam from 'react-webcam';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import dynamic from 'next/dynamic';
-import { useFirestore, useUser, useAuth } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import Image from 'next/image';
 
@@ -579,5 +579,3 @@ const TabButton = ({ label, isActive, onClick }: TabButtonProps) => {
     </button>
   );
 };
-
-    
