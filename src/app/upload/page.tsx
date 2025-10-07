@@ -15,7 +15,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 type Tab = 'ai' | 'camera' | 'upload';
 
 export default function UploadPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('ai');
+  const [activeTab, setActiveTab] = useState<Tab>('camera');
   const router = useRouter();
 
   const renderContent = () => {
@@ -230,22 +230,19 @@ const CameraScreen = () => {
     }, []);
 
     useEffect(() => {
-        if (hasCameraPermission === null) {
-          setupCamera(facingMode);
-        }
+        setupCamera(facingMode);
     
         return () => {
             if (videoRef.current && videoRef.current.srcObject) {
-                (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+                const stream = videoRef.current.srcObject as MediaStream;
+                stream.getTracks().forEach(track => track.stop());
             }
         };
-    }, [facingMode, setupCamera, hasCameraPermission]);
+    }, [facingMode, setupCamera]);
 
 
     const handleSwapCamera = () => {
         setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
-        // Re-setup camera on swap
-        setHasCameraPermission(null);
     };
 
     const handleTakePhoto = () => {
@@ -336,7 +333,7 @@ const CameraScreen = () => {
             <video ref={videoRef} className={cn("w-full h-full object-cover", filterClasses[activeFilter])} autoPlay muted playsInline />
             <canvas ref={canvasRef} className="hidden"></canvas>
             
-            {!hasCameraPermission && hasCameraPermission !== null && (
+            {hasCameraPermission === false && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4">
                     <Alert variant="destructive" className="w-full max-w-sm">
                         <AlertTitle>Camera Access Required</AlertTitle>
