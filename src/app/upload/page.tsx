@@ -5,21 +5,23 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video, SwitchCamera, Zap, Timer, Settings } from 'lucide-react';
+import { Sparkles, Camera, Upload, Paperclip, Mic, Send, X, Phone, Video as VideoIcon, SwitchCamera, Zap, Timer, Settings } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import Webcam from 'react-webcam';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "@/firebase/config";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import dynamic from 'next/dynamic';
+import { useFirestore, useUser, useAuth } from '@/firebase';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import Image from 'next/image';
 
 type Tab = 'ai' | 'camera' | 'upload';
 
 export default function UploadPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('camera');
+  const [activeTab, setActiveTab] = useState<Tab>('ai');
   const router = useRouter();
 
   const renderContent = () => {
@@ -27,9 +29,9 @@ export default function UploadPage() {
       case 'ai':
         return <AICreationScreen />;
       case 'camera':
-        return <CameraScreen />;
+        return <CameraScreen setActiveTab={setActiveTab} />;
       case 'upload':
-        return <UploadScreen />;
+        return <UploadScreen setActiveTab={setActiveTab} />;
       default:
         return null;
     }
@@ -42,7 +44,7 @@ export default function UploadPage() {
       case 'camera':
         return "Capture new content.";
       case 'upload':
-        return "Select from device.";
+        return "Upload";
       default:
         return "";
     }
@@ -60,7 +62,7 @@ export default function UploadPage() {
              {activeTab !== 'camera' && 
                 <>
                     <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
-                    <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
+                    <Button variant="ghost" size="icon"><VideoIcon className="h-6 w-6 text-primary"/></Button>
                 </>
              }
           </div>
@@ -157,8 +159,13 @@ const AICreationScreen = () => {
 };
 
 
-const CameraView = () => {
+const CameraView = ({ setActiveTab }: { setActiveTab: (tab: Tab) => void }) => {
     const { toast } = useToast();
+    const router = useRouter();
+    const firestore = useFirestore();
+    const { user } = useUser();
+    const storage = useMemo(() => firestore && getStorage(firestore.app), [firestore]);
+
     const webcamRef = useRef<Webcam>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -185,10 +192,7 @@ const CameraView = () => {
     useEffect(() => {
         const getPermission = async () => {
             try {
-                // We only need to ask for permission, not use the stream directly here.
-                // react-webcam will handle getting the stream.
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                // We need to stop the tracks immediately, otherwise the browser will show that the camera is in use.
                 stream.getTracks().forEach(track => track.stop());
                 setHasCameraPermission(true);
             } catch (error: any) {
@@ -227,8 +231,12 @@ const CameraView = () => {
     };
     
     const uploadToFirebase = async (blob: Blob, type: 'photo' | 'video') => {
-        const fileExtension = type === 'photo' ? 'png' : 'webm';
-        const storagePath = `${type}s/${Date.now()}.${fileExtension}`;
+        if (!storage) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Storage not initialized.' });
+            return null;
+        }
+        const fileExtension = type === 'photo' ? 'jpg' : 'webm';
+        const storagePath = `posts/${user?.uid || 'anonymous'}/${Date.now()}.${fileExtension}`;
         const storageRef = ref(storage, storagePath);
         
         try {
@@ -323,19 +331,35 @@ const CameraView = () => {
     };
 
     const handleSave = async () => {
-        if (!preview || !mediaType) return;
+        if (!preview || !mediaType || !firestore) return;
 
+        toast({ title: 'Uploading...', description: 'Your media is being uploaded.' });
+        
         const res = await fetch(preview);
         const blob = await res.blob();
         
         const uploadedUrl = await uploadToFirebase(blob, mediaType);
-        if (uploadedUrl) {
-            toast({ title: 'Upload Successful!', description: 'Your media has been saved.' });
-            // Here you would typically navigate to an editor or post screen
-            // For now, just reset
-            setPreview(null);
-            setMediaType(null);
+
+        if (uploadedUrl && user) {
+            addDocumentNonBlocking(firestore, 'posts', {
+                url: uploadedUrl,
+                type: mediaType,
+                filter: activeFilter,
+                createdAt: new Date(),
+                userId: user.uid,
+                username: user.displayName || 'Anonymous',
+                avatar: user.photoURL || '',
+                likes: [],
+                comments: [],
+                caption: 'My new post!'
+            });
+            toast({ title: 'Post Successful!', description: 'Your media has been posted.' });
+            router.push('/');
+        } else {
+             toast({ variant: 'destructive', title: 'Post Failed', description: 'Could not save your post. Please try again.' });
         }
+        setPreview(null);
+        setMediaType(null);
     };
     
     if (preview) {
@@ -362,7 +386,7 @@ const CameraView = () => {
             <div className="relative flex-1 w-full h-full">
                 {hasCameraPermission ? (
                     <Webcam
-                        audio={false} // audio is requested in permissions, but not needed for recorder
+                        audio={captureMode === 'video'}
                         ref={webcamRef}
                         screenshotFormat="image/jpeg"
                         videoConstraints={{ facingMode, width: 1080, height: 1920, aspectRatio: 9/16 }}
@@ -452,25 +476,84 @@ const CameraView = () => {
     );
 };
 
-const CameraScreen = () => {
+const CameraScreen = ({ setActiveTab }: { setActiveTab: (tab: Tab) => void }) => {
     const CameraViewWithNoSSR = dynamic(() => Promise.resolve(CameraView), {
         ssr: false,
         loading: () => <div className="absolute inset-0 flex items-center justify-center bg-black/70"><p>Starting camera...</p></div>
     });
 
-    return <CameraViewWithNoSSR />;
+    return <CameraViewWithNoSSR setActiveTab={setActiveTab} />;
 };
 
 
-const UploadScreen = () => {
+const UploadScreen = ({ setActiveTab }: { setActiveTab: (tab: Tab) => void }) => {
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const router = useRouter();
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files || []);
+        setSelectedFiles(files);
+
+        const urls = files.map(file => URL.createObjectURL(file));
+        setPreviewUrls(urls);
+    };
+
+    const handleSelectClick = () => {
+        fileInputRef.current?.click();
+    };
+    
+    const handleNext = () => {
+        // In a real app, you would pass the selected file data to the edit screen.
+        // For now, we'll just navigate to home.
+        router.push('/');
+    };
+
+    useEffect(() => {
+        // Clean up object URLs on unmount
+        return () => {
+            previewUrls.forEach(url => URL.revokeObjectURL(url));
+        };
+    }, [previewUrls]);
+
+
     return (
-        <div className="flex flex-col h-full items-center justify-center p-4 bg-muted/30">
-             <div className="border-2 border-dashed border-muted-foreground/50 rounded-lg p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
-                <Upload className="h-16 w-16 text-muted-foreground mb-4" />
-                <h2 className="text-xl font-semibold">Select video to upload</h2>
-                <p className="text-muted-foreground mt-1">Or drag and drop a file</p>
-                <p className="text-xs text-muted-foreground mt-4">MP4, WebM, or other video formats</p>
-                <Button className="mt-6">Select file</Button>
+        <div className="flex flex-col h-full bg-muted/30">
+            <div className="flex-1 overflow-y-auto p-2">
+                <div className="grid grid-cols-3 gap-1">
+                    <div 
+                        className="aspect-square bg-background flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted"
+                        onClick={() => setActiveTab('camera')}
+                    >
+                        <Camera className="h-12 w-12 text-muted-foreground mb-2" />
+                        <p className="text-sm font-semibold">Camera</p>
+                    </div>
+                    {previewUrls.map((url, index) => (
+                        <div key={index} className="relative aspect-square">
+                            <Image src={url} alt={`Preview ${index + 1}`} fill className="object-cover" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="p-4 bg-background border-t">
+                 <Button className="w-full mb-4" variant="outline" onClick={handleSelectClick}>Select files</Button>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    multiple
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                />
+                <Button 
+                    className="w-full" 
+                    disabled={selectedFiles.length === 0}
+                    onClick={handleNext}
+                >
+                    Next
+                </Button>
             </div>
         </div>
     );
@@ -496,3 +579,5 @@ const TabButton = ({ label, isActive, onClick }: TabButtonProps) => {
     </button>
   );
 };
+
+    
