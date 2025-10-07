@@ -26,7 +26,7 @@ export default function InboxPage() {
 
             <main className="flex-1 overflow-y-auto">
                 {/* Pinned AkiliPesa AI Chat */}
-                <Link href="/upload" className="flex items-center gap-4 p-4 hover:bg-muted transition-colors cursor-pointer">
+                <Link href="/inbox/akilipesa-ai" className="flex items-center gap-4 p-4 hover:bg-muted transition-colors cursor-pointer">
                     <Avatar className="w-14 h-14 border-2 border-primary">
                         <AvatarFallback><Sparkles className="w-6 h-6"/></AvatarFallback>
                     </Avatar>
