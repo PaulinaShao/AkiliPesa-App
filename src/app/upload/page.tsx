@@ -180,10 +180,6 @@ const CameraScreen = () => {
 
     const setupCamera = useCallback(async (facing: 'user' | 'environment') => {
         try {
-            if (videoRef.current && videoRef.current.srcObject) {
-                (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-            }
-
             const constraints: MediaStreamConstraints = {
                 video: {
                     width: { ideal: 1920 },
