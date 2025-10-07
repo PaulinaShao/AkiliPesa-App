@@ -1,4 +1,3 @@
-// src/firebase/auth/use-user.ts
 'use client';
 
 import { useEffect, useState } from 'react';
