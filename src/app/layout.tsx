@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { SidebarNav } from '@/components/sidebar-nav';
 import { BottomNavWrapper } from '@/components/bottom-nav';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -26,14 +27,16 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body className={cn('font-body antialiased', inter.variable)}>
-        <div className="flex min-h-screen">
-          <SidebarNav />
-          <main className="flex-1 md:ml-64">
-            {children}
-          </main>
-          <BottomNavWrapper />
-        </div>
-        <Toaster />
+        <FirebaseClientProvider>
+          <div className="flex min-h-screen">
+            <SidebarNav />
+            <main className="flex-1 md:ml-64">
+              {children}
+            </main>
+            <BottomNavWrapper />
+          </div>
+          <Toaster />
+        </FirebaseClientProvider>
       </body>
     </html>
   );
