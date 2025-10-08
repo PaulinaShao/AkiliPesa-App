@@ -16,7 +16,7 @@ const mainNavLinks = [
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/upload', icon: PlusSquare, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
-  { href: '/profile/financeWizard', icon: User, label: 'Profile' },
+  { href: '/u/financeWizard', icon: User, label: 'Profile' },
 ];
 
 export function SidebarNav() {
@@ -33,11 +33,22 @@ export function SidebarNav() {
       
       <nav className="flex-1">
         <ul className="space-y-2">
-          {mainNavLinks.map(({ href, icon: Icon, label }) => (
+          {mainNavLinks.map(({ href, icon: Icon, label }) => {
+            const finalHref = label === 'Profile' ? `/u/financeWizard` : href;
+            let isActive = false;
+            if (href === '/') {
+              isActive = pathname === '/';
+            } else if (label === 'Profile') {
+              isActive = pathname.startsWith('/u/');
+            } else {
+              isActive = pathname.startsWith(href);
+            }
+
+            return (
             <li key={href}>
-              <Link href={href}>
+              <Link href={finalHref}>
                 <Button
-                  variant={pathname.startsWith(href) && href !=='/' || pathname === href ? 'secondary' : 'ghost'}
+                  variant={isActive ? 'secondary' : 'ghost'}
                   className="w-full justify-start text-lg h-12"
                 >
                   <Icon className="mr-3 h-6 w-6" />
@@ -45,7 +56,7 @@ export function SidebarNav() {
                 </Button>
               </Link>
             </li>
-          ))}
+          )})}
         </ul>
       </nav>
 
@@ -54,7 +65,7 @@ export function SidebarNav() {
         <ul className="space-y-2">
             {users.slice(1, 5).map(user => (
                 <li key={user.id}>
-                     <Link href={`/profile/${user.username}`}>
+                     <Link href={`/u/${user.username}`}>
                         <Button variant="ghost" className="w-full justify-start h-11">
                             <UserAvatar src={user.avatar} username={user.username} className="h-8 w-8 mr-3" />
                             <span className='truncate'>{user.name}</span>
@@ -67,7 +78,7 @@ export function SidebarNav() {
 
       {currentUser && (
         <div className="mt-auto">
-          <Link href={`/profile/${currentUser.username}`}>
+          <Link href={`/u/${currentUser.username}`}>
             <Button variant="outline" className="w-full justify-start h-14">
               <UserAvatar src={currentUser.avatar} username={currentUser.username} className="h-10 w-10 mr-3" />
               <div className='text-left'>

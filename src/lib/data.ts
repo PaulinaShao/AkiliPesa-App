@@ -2,12 +2,12 @@
 import type { User, Video, Comment, Transaction, Message } from '@/lib/definitions';
 
 export const users: User[] = [
-  { id: 'u1', username: 'financeWizard', name: 'Alex Doe', avatar: 'https://picsum.photos/seed/user1/200/200', bio: 'Investor & Fintech Enthusiast | Helping you build wealth on AkiliPesa', followers: 2100000, following: 150, likes: 15300000 },
-  { id: 'u2', username: 'cityvibes', name: 'Bella Smith', avatar: 'https://picsum.photos/seed/user2/200/200', bio: 'Urban explorer and coffee enthusiast.', followers: 25000, following: 300, likes: 500000 },
-  { id: 'u3', username: 'foodfusion', name: 'Charlie Green', avatar: 'https://picsum.photos/seed/user3/200/200', bio: 'Cooking up a storm in my kitchen. Recipes & fun.', followers: 500000, following: 80, likes: 12000000 },
-  { id: 'u4', username: 'petpals', name: 'Dana White', avatar: 'https://picsum.photos/seed/user4/200/200', bio: 'Just a person and their furry friends.', followers: 8500, following: 500, likes: 300000 },
-  { id: 'u5', username: 'dancemachine', name: 'Eli Ray', avatar: 'https://picsum.photos/seed/user5/200/200', bio: 'Living life one dance at a time. #dancechallenge', followers: 1200000, following: 200, likes: 25000000 },
-  { id: 'u6', username: 'travelbug', name: 'Fiona Blue', avatar: 'https://picsum.photos/seed/user6/200/200', bio: 'Passport full of stamps. Next stop: everywhere.', followers: 78000, following: 1200, likes: 2000000 },
+  { id: 'u1', username: 'financeWizard', name: 'Alex Doe', avatar: 'https://picsum.photos/seed/user1/200/200', bio: 'Investor & Fintech Enthusiast | Helping you build wealth on AkiliPesa', stats: { followers: 2100000, following: 150, likes: 15300000, postsCount: 1 } },
+  { id: 'u2', username: 'cityvibes', name: 'Bella Smith', avatar: 'https://picsum.photos/seed/user2/200/200', bio: 'Urban explorer and coffee enthusiast.', stats: { followers: 25000, following: 300, likes: 500000, postsCount: 1 } },
+  { id: 'u3', username: 'foodfusion', name: 'Charlie Green', avatar: 'https://picsum.photos/seed/user3/200/200', bio: 'Cooking up a storm in my kitchen. Recipes & fun.', stats: { followers: 500000, following: 80, likes: 12000000, postsCount: 1 } },
+  { id: 'u4', username: 'petpals', name: 'Dana White', avatar: 'https://picsum.photos/seed/user4/200/200', bio: 'Just a person and their furry friends.', stats: { followers: 8500, following: 500, likes: 300000, postsCount: 1 } },
+  { id: 'u5', username: 'dancemachine', name: 'Eli Ray', avatar: 'https://picsum.photos/seed/user5/200/200', bio: 'Living life one dance at a time. #dancechallenge', stats: { followers: 1200000, following: 200, likes: 25000000, postsCount: 1 } },
+  { id: 'u6', username: 'travelbug', name: 'Fiona Blue', avatar: 'https://picsum.photos/seed/user6/200/200', bio: 'Passport full of stamps. Next stop: everywhere.', stats: { followers: 78000, following: 1200, likes: 2000000, postsCount: 1 } },
 ];
 
 export const videos: Video[] = [

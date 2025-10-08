@@ -5,9 +5,12 @@ export type User = {
   name: string;
   avatar: string;
   bio: string;
-  followers: number;
-  following: number;
-  likes: number;
+  stats: {
+    followers: number;
+    following: number;
+    likes: number;
+    postsCount: number;
+  }
 };
 
 export type Video = {
