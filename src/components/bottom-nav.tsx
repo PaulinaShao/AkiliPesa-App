@@ -16,7 +16,8 @@ const navLinks = [
 export function BottomNavWrapper() {
   const pathname = usePathname();
   
-  const showNav = !pathname.startsWith('/upload') && !pathname.startsWith('/edit') && pathname !== '/inbox/akilipesa-ai';
+  // Hide nav on upload, edit, and any deep inbox (chat) pages.
+  const showNav = !pathname.startsWith('/upload') && !pathname.startsWith('/edit') && (pathname === '/inbox' || !pathname.startsWith('/inbox/'));
 
   if (!showNav) {
     return null;
