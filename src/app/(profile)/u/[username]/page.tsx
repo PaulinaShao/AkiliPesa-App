@@ -1,15 +1,17 @@
 'use client';
 
 import { users, videos as allVideos } from '@/lib/data';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { Heart, Settings, Briefcase, ShoppingBag, Grid3x3 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VideoCard } from '@/components/video-card';
 import { Header } from '@/components/header';
 import { ProfileHeader } from './components/ProfileHeader';
 
-export default function ProfilePage({ params }: { params: { username: string } }) {
-  const user = users.find(u => u.username === params.username);
+export default function ProfilePage() {
+  const params = useParams();
+  const username = typeof params.username === 'string' ? params.username : '';
+  const user = users.find(u => u.username === username);
 
   if (!user) {
     notFound();
