@@ -20,11 +20,12 @@ export function ProfileNav() {
   const basePath = pathname.split('/').slice(0, 3).join('/');
 
   const isCurrentPage = (href: string) => {
+    // The main profile page is active if the path is exactly the base path
     if (href === '') {
-      // It's the main profile page if the path is just /u/[username]
       return pathname === basePath;
     }
-    return pathname.startsWith(`${basePath}/${href}`);
+    // Other tabs are active if the path ends with their href
+    return pathname.endsWith(`/${href}`);
   };
 
   return (

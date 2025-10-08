@@ -13,7 +13,7 @@ export default function EditProfilePage() {
         <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Edit Profile</h1>
             <Button variant="ghost" asChild>
-                <Link href="..">Done</Link>
+                <Link href="..">Back to Profile</Link>
             </Button>
         </div>
         <Card>
