@@ -1,0 +1,25 @@
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /clones/{uid}/{cloneId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /posts/{uid}/{postId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /products/{productId}/{allPaths=**} {
+      allow read: if true;
+      // In a real app, you would check if the writer is the owner of the product.
+      // This requires getting the product document from Firestore.
+      // For now, we allow any authenticated user to write.
+      allow write: if request.auth != null;
+    }
+  }
+}

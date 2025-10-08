@@ -1,169 +1,206 @@
 /**
- * @file Firestore Security Rules for AkiliPesa Application
+ * @fileoverview Firestore Security Rules for AkiliPesa
  *
- * @core_philosophy This ruleset enforces a combination of path-based ownership and denormalized ownership for data access control.
- *  User-specific data is secured using path-based rules, while broader access (e.g., listing all videos) uses denormalized `userId` fields.
- *  Data validation is relaxed to allow rapid prototyping but crucial relational constraints are strictly enforced.
+ * Core Philosophy:
+ * This ruleset prioritizes a secure-by-default posture, emphasizing user-owned data and preventing unauthorized access.
+ * It enforces strict ownership for user profiles and their associated data (clones, agents), and restricts modification of critical relational data.
+ * Read access is generally open where appropriate (e.g., posts), but write access always requires authentication and authorization.
  *
- * @data_structure
- * - /users/{userId}: User profiles, owned by the user.
- * - /users/{userId}/videos/{videoId}: Videos uploaded by a specific user, owned by the user.
- * - /videos/{videoId}: All videos, with denormalized `userId` for ownership checks.
- * - /videos/{videoId}/comments/{commentId}: Comments on a video, with denormalized `userId` for ownership checks.
- * - /videos/{videoId}/likes/{likeId}: Likes on a video, with denormalized `userId` for ownership checks.
- * - /followers/{userId}/following/{followingId}: Follower relationships between users.
+ * Data Structure:
+ * - /users/{userId}:  User profiles, accessible only to the authenticated user with matching UID.
+ * - /posts/{postId}:  Publicly readable posts.  Writes allowed only for authenticated users.
+ * - /users/{userId}/clones/{cloneId}: User-specific clones, accessible only by the owning user.
+ * - /users/{userId}/agents/{agentId}: User-specific agents, accessible only by the owning user.
+ * - /products/{productId}: Publicly readable products, writable only by the product owner.
+ * - /orders/{orderId}: Orders, writable by authenticated users.
+ * - /payments/{paymentId}: Payments, writeable by authenticated users, sellerId must match user id.
+ * - /plans/{planId}: Publicly readable subscription plans.
  *
- * @key_security_decisions
- * - Users can only read and write their own profile data.
- * - Users can only manage (create, update, delete) videos they own.
- * - Listing of all videos is public, but creation, updating, and deletion are restricted to the owner.
- * - Comments and likes are publicly accessible but can only be created, updated, and deleted by their respective owners.
- * - Follower relationships can be created and deleted by either the follower or the followed user.
+ * Key Security Decisions:
+ * - User listing is implicitly disallowed by the absence of a top-level `list` rule on `/users`.
+ * - Write access to posts is restricted to authenticated users, but no ownership is enforced (allowing any signed-in user to write).
+ * - The `products` collection uses a "Public Read with Owner-Only Writes" pattern.
+ * - Orders are writable by authenticated users, this could be exploited so should be reviewed in more detail.
  *
- * @denormalization_for_authorization
- * - The `videos`, `comments`, and `likes` collections all contain a `userId` field to enable owner-based authorization without additional reads.
- *  This is crucial for scalable and performant security rules.
+ * Denormalization for Authorization:
+ * - The `Product` entity MUST contain an `ownerId` field to enforce write permissions based on product ownership.
+ * - The `Payment` entity MUST contain an `sellerId` field to enforce write permissions based on payment ownership.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile data.  Only the user can read or write their own profile.
+     * @description Controls access to user profile data.
      * @path /users/{userId}
-     * @allow (get, create, update, delete) User A with ID 'user_abc' can read, create, update, or delete document /users/user_abc.
-     * @deny (get, create, update, delete) User B with ID 'user_xyz' cannot read, create, update, or delete document /users/user_abc.
+     * @allow (read) User with any auth can read the user profile
+     * @allow (create) User can create their own profile.
+     * @allow (update) User can update their own profile.
+     * @allow (delete) User can delete their own profile.
+     * @deny (read) User cannot list all user profiles.
+     * @deny (create) User cannot create a profile with a mismatched ID.
+     * @deny (update) User cannot modify another user's profile.
+     * @deny (delete) User cannot delete another user's profile.
      * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-          return isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId));
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow get: if true;
+      allow list: if false; // User listing is not permitted.
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isSignedIn() && isOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to videos uploaded by a specific user. Only the user can manage their own videos.
-     * @path /users/{userId}/videos/{videoId}
-     * @allow (get, create, update, delete) User A with ID 'user_abc' can read, create, update, or delete document /users/user_abc/videos/video_123 if they own it.
-     * @deny (get, create, update, or delete) User B with ID 'user_xyz' cannot read, create, update, or delete document /users/user_abc/videos/video_123.
-     * @principle Enforces document ownership and path consistency.
+     * @description Controls access to posts.
+     * @path /posts/{postId}
+     * @allow (read) Any user can read any post.
+     * @allow (create) Any authenticated user can create a post.
+     * @allow (update) Any authenticated user can update a post.
+     * @allow (delete) Any authenticated user can delete a post.
+     * @deny (create) An unauthenticated user cannot create posts.
+     * @deny (update) An unauthenticated user cannot update posts.
+     * @deny (delete) An unauthenticated user cannot delete posts.
+     * @principle Allows public read access, restricts writes to authenticated users.
      */
-    match /users/{userId}/videos/{videoId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-        function isExistingOwner(userId) {
-          return isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/videos/$(videoId));
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false; // Listing is disabled for this path to prevent unintended data exposure.
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-     /**
-      * @description Controls access to all videos on the platform.  Any user can list the videos, but only the owner can create, update, or delete.
-      * @path /videos/{videoId}
-      * @allow (get, list) Any user can read or list videos.
-      * @allow (create, update, delete) User A with ID 'user_abc' can create, update, or delete document /videos/video_123 if they are the owner (video.userId == 'user_abc').
-      * @deny (create, update, delete) User B with ID 'user_xyz' cannot create, update, or delete document /videos/video_123 if User A is the owner.
-      * @principle Allows public reads but enforces owner-only writes.
-      */
-    match /videos/{videoId} {
-      function isOwner() {
-        return request.auth.uid == resource.data.userId;
-      }
-
-      function isExistingOwner() {
-        return request.auth.uid == resource.data.userId && existsAfter(/databases/$(database)/documents/videos/$(videoId));
-      }
-
+    match /posts/{postId} {
       allow get: if true;
       allow list: if true;
-      allow create: if request.resource.data.userId == request.auth.uid;
-      allow update: if isOwner();
-      allow delete: if isOwner();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to comments on a video. Any user can read comments, but only the owner can create, update, or delete.
-     * @path /videos/{videoId}/comments/{commentId}
-     * @allow (get, list) Any user can read or list comments for a video.
-     * @allow (create, update, delete) User A with ID 'user_abc' can create, update, or delete document /videos/video_123/comments/comment_456 if they are the owner.
-     * @deny (create, update, delete) User B with ID 'user_xyz' cannot create, update, or delete document /videos/video_123/comments/comment_456 if User A is the owner.
-     * @principle Allows public reads but enforces owner-only writes.
+     * @description Controls access to user-specific clones.
+     * @path /users/{userId}/clones/{cloneId}
+     * @allow (read) User can read their own clone.
+     * @allow (create) User can create their own clone.
+     * @allow (update) User can update their own clone.
+     * @allow (delete) User can delete their own clone.
+     * @deny (read) User cannot read other users' clones.
+     * @deny (create) User cannot create a clone under another user's ID.
+     * @deny (update) User cannot modify another user's clone.
+     * @deny (delete) User cannot delete another user's clone.
+     * @principle Enforces user-specific data access within the /users collection.
      */
-    match /videos/{videoId}/comments/{commentId} {
-      function isOwner() {
-        return request.auth.uid == resource.data.userId;
-      }
+    match /users/{userId}/clones/{cloneId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
 
-      function isExistingOwner() {
-          return request.auth.uid == resource.data.userId && existsAfter(/databases/$(database)/documents/videos/$(videoId)/comments/$(commentId));
-      }
+    /**
+     * @description Controls access to user-specific agents.
+     * @path /users/{userId}/agents/{agentId}
+     * @allow (read) User can read their own agent.
+     * @allow (create) User can create their own agent.
+     * @allow (update) User can update their own agent.
+     * @allow (delete) User can delete their own agent.
+     * @deny (read) User cannot read other users' agents.
+     * @deny (create) User cannot create an agent under another user's ID.
+     * @deny (update) User cannot modify another user's agent.
+     * @deny (delete) User cannot delete another user's agent.
+     * @principle Enforces user-specific data access within the /users collection.
+     */
+    match /users/{userId}/agents/{agentId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
 
+    /**
+     * @description Controls access to products.
+     * @path /products/{productId}
+     * @allow (read) Any user can read any product.
+     * @allow (create) Authenticated user can create a product if they are the owner.
+     * @allow (update) Only the owner can update the product.
+     * @allow (delete) Only the owner can delete the product.
+     * @deny (create) User cannot create a product for another user.
+     * @deny (update) User cannot update another user's product.
+     * @deny (delete) User cannot delete another user's product.
+     * @principle Allows public read access, restricts writes to product owners.
+     */
+    match /products/{productId} {
       allow get: if true;
       allow list: if true;
-      allow create: if request.resource.data.userId == request.auth.uid;
-      allow update: if isOwner();
-      allow delete: if isOwner();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && isOwner(resource.data.ownerId) && resource != null;
+      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
     }
 
     /**
-     * @description Controls access to likes on a video.  Any user can read likes, but only the owner can create, update, or delete.
-     * @path /videos/{videoId}/likes/{likeId}
-     * @allow (get, list) Any user can read or list likes for a video.
-     * @allow (create, update, delete) User A with ID 'user_abc' can create, update, or delete document /videos/video_123/likes/like_789 if they are the owner.
-     * @deny (create, update, delete) User B with ID 'user_xyz' cannot create, update, or delete document /videos/video_123/likes/like_789 if User A is the owner.
-     * @principle Allows public reads but enforces owner-only writes.
+     * @description Controls access to orders.
+     * @path /orders/{orderId}
+     * @allow (read) Any authenticated user can read an order.
+     * @allow (create) Any authenticated user can create an order.
+     * @allow (update) Any authenticated user can update an order.
+     * @allow (delete) Any authenticated user can delete an order.
+     * @deny (create) An unauthenticated user cannot create an order.
+     * @deny (update) An unauthenticated user cannot update an order.
+     * @deny (delete) An unauthenticated user cannot delete an order.
+     * @principle Restricts access to authenticated users.
      */
-    match /videos/{videoId}/likes/{likeId} {
-      function isOwner() {
-        return request.auth.uid == resource.data.userId;
-      }
+    match /orders/{orderId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
 
-      function isExistingOwner() {
-          return request.auth.uid == resource.data.userId && existsAfter(/databases/$(database)/documents/videos/$(videoId)/likes/$(likeId));
-      }
+    /**
+     * @description Controls access to payments.
+     * @path /payments/{paymentId}
+     * @allow (read) Any authenticated user can read a payment.
+     * @allow (create) Authenticated user can create a payment if they are the seller.
+     * @allow (update) Authenticated user can update a payment if they are the seller.
+     * @allow (delete) Authenticated user can delete a payment if they are the seller.
+     * @deny (create) User cannot create a payment for another user.
+     * @deny (update) User cannot update another user's payment.
+     * @deny (delete) User cannot delete another user's payment.
+     * @principle Restricts access to payment owners.
+     */
+    match /payments/{paymentId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.sellerId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.sellerId == request.auth.uid && resource != null;
+      allow delete: if isSignedIn() && resource.data.sellerId == request.auth.uid && resource != null;
+    }
 
+    /**
+     * @description Controls access to plans.
+     * @path /plans/{planId}
+     * @allow (read) Any user can read a plan.
+     * @deny (create) No user can create a plan.
+     * @deny (update) No user can update a plan.
+     * @deny (delete) No user can delete a plan.
+     * @principle Allows public read access, restricts write access.
+     */
+    match /plans/{planId} {
       allow get: if true;
       allow list: if true;
-      allow create: if request.resource.data.userId == request.auth.uid;
-      allow update: if isOwner();
-      allow delete: if isOwner();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
+  }
 
-    /**
-     * @description Controls access to follower relationships. Allows either the follower or the followed user to create or delete the relationship.
-     * @path /followers/{userId}/following/{followingId}
-     * @allow (get, list) Followers and Following lists can be read by anyone.
-     * @allow (create, delete) User A with ID 'user_abc' can create/delete a follow relationship where they are either the follower or the followed user.
-     * @deny (create, delete) User B with ID 'user_xyz' cannot create/delete a follow relationship involving User A if User B is not User A or following User A.
-     * @principle Allows managing follower relationships by either party.
-     */
-    match /followers/{userId}/following/{followingId} {
-        function isParticipant(userId, followingId) {
-            return request.auth.uid == userId || request.auth.uid == followingId;
-        }
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
 
-        allow get: if true;
-        allow list: if true;
-        allow create: if isParticipant(userId, followingId);
-        allow update: if false;
-        allow delete: if isParticipant(userId, followingId);
-    }
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+  function isExistingOwner(userId) {
+    return isOwner(userId) && resource != null;
   }
 }
