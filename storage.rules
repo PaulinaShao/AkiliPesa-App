@@ -1,25 +1,28 @@
-
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /users/{uid}/{allPaths=**} {
+    function isAuthed() { return request.auth != null; }
+
+    // Public read of posted media; writes only by owner
+    match /posts/{uid}/{postId}/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow write: if isAuthed() && request.auth.uid == uid;
     }
-    match /clones/{uid}/{cloneId}/{allPaths=**} {
+
+    // User avatars & clones
+    match /users/{uid}/avatars/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow write: if isAuthed() && request.auth.uid == uid;
     }
-    match /posts/{uid}/{postId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == uid;
+    match /clones/{uid}/{cloneId}/{fileName} {
+      allow read: if isAuthed(); // restrict by auth
+      allow write: if isAuthed() && request.auth.uid == uid;
     }
-    match /products/{productId}/{allPaths=**} {
+
+    // Products
+    match /products/{productId}/{fileName} {
       allow read: if true;
-      // In a real app, you would check if the writer is the owner of the product.
-      // This requires getting the product document from Firestore.
-      // For now, we allow any authenticated user to write.
-      allow write: if request.auth != null;
+      allow write: if isAuthed();
     }
   }
 }
