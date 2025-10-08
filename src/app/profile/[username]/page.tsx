@@ -1,11 +1,13 @@
+
 import { users, videos as allVideos } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
-import { Share2, MoreHorizontal } from 'lucide-react';
+import { Grid3x3, Heart, Settings, ShoppingBag, Briefcase, UserPlus } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VideoCard } from '@/components/video-card';
 import { Header } from '@/components/header';
+import Link from 'next/link';
 
 export default function ProfilePage({ params }: { params: { username: string } }) {
   const user = users.find(u => u.username === params.username);
@@ -15,63 +17,85 @@ export default function ProfilePage({ params }: { params: { username: string } }
   }
 
   const userVideos = allVideos.filter(v => v.userId === user.id);
+  const likedVideos = allVideos.slice(0, 4); // Placeholder for liked videos
 
   return (
-    <>
-    <Header />
-    <div className="max-w-4xl mx-auto p-4 md:p-8 pt-20">
-      <header className="flex flex-col md:flex-row gap-8 items-center md:items-start">
-        <UserAvatar src={user.avatar} username={user.username} className="w-32 h-32 md:w-40 md:h-40 border-4 border-muted" />
-        <div className="flex-1 text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-4 mb-2">
-            <h1 className="text-3xl font-bold">{user.username}</h1>
-            <div className="flex gap-2">
-              <Button>Follow</Button>
-              <Button variant="outline">Message</Button>
-              <Button variant="ghost" size="icon"><Share2 className="h-5 w-5"/></Button>
-              <Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5"/></Button>
-            </div>
-          </div>
-          <h2 className="text-lg font-semibold mb-4">{user.name}</h2>
+    <div className="dark">
+      <Header isMuted={true} onToggleMute={() => {}} />
+      <div className="max-w-xl mx-auto p-4 pt-20">
+        <header className="flex flex-col items-center text-center">
+          <UserAvatar src={user.avatar} username={user.username} className="w-24 h-24 border-4 border-background" />
+          <h1 className="text-2xl font-bold mt-4">@{user.username}</h1>
           
-          <div className="flex justify-center md:justify-start gap-6 mb-4">
+          <div className="flex justify-center gap-6 my-4 w-full">
             <div className="text-center">
               <span className="font-bold text-lg">{user.following}</span>
-              <span className="text-muted-foreground ml-1">Following</span>
+              <p className="text-muted-foreground text-sm">Following</p>
             </div>
             <div className="text-center">
-              <span className="font-bold text-lg">{user.followers.toLocaleString()}</span>
-              <span className="text-muted-foreground ml-1">Followers</span>
+              <span className="font-bold text-lg">{(user.followers / 1000000).toFixed(1)}M</span>
+              <p className="text-muted-foreground text-sm">Followers</p>
             </div>
             <div className="text-center">
-              <span className="font-bold text-lg">{allVideos.filter(v => v.userId === user.id).reduce((acc, v) => acc + v.likes, 0).toLocaleString()}</span>
-              <span className="text-muted-foreground ml-1">Likes</span>
+               <span className="font-bold text-lg">{(user.likes / 1000000).toFixed(1)}M</span>
+              <p className="text-muted-foreground text-sm">Likes</p>
             </div>
           </div>
 
-          <p className="text-muted-foreground">{user.bio}</p>
-        </div>
-      </header>
+          <p className="text-sm max-w-md">{user.bio}</p>
 
-      <Tabs defaultValue="videos" className="mt-8">
-        <TabsList className="grid w-full grid-cols-2 max-w-sm mx-auto md:mx-0">
-          <TabsTrigger value="videos">Videos</TabsTrigger>
-          <TabsTrigger value="liked">Liked</TabsTrigger>
-        </TabsList>
-        <TabsContent value="videos">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-4 mt-4">
-            {userVideos.map(video => (
-              <VideoCard key={video.id} video={video} />
-            ))}
+          <div className="flex gap-2 my-4">
+            <Button className="flex-1 bg-secondary text-secondary-foreground font-bold">Edit Profile</Button>
+            <Button className="flex-1 bg-secondary text-secondary-foreground font-bold">Share Profile</Button>
           </div>
-        </TabsContent>
-        <TabsContent value="liked">
-          <div className="text-center py-16 text-muted-foreground">
-            <p>This user's liked videos are private.</p>
-          </div>
-        </TabsContent>
-      </Tabs>
+        </header>
+
+        <Tabs defaultValue="posts" className="mt-4">
+          <TabsList className="grid w-full grid-cols-5 bg-transparent border-b rounded-none">
+            <TabsTrigger value="posts" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Grid3x3 /></TabsTrigger>
+            <TabsTrigger value="agents" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Briefcase /></TabsTrigger>
+            <TabsTrigger value="shop" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><ShoppingBag /></TabsTrigger>
+            <TabsTrigger value="liked" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Heart /></TabsTrigger>
+            <TabsTrigger value="settings" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Settings /></TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="posts">
+            {userVideos.length > 0 ? (
+              <div className="grid grid-cols-3 gap-1 mt-4">
+                {userVideos.map(video => (
+                  <VideoCard key={video.id} video={video} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16 text-muted-foreground">
+                <p>Your posted reels will appear here. This section is under construction.</p>
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="agents">
+             <div className="text-center py-16 text-muted-foreground">
+                <p>Your AI agents will appear here. This section is under construction.</p>
+              </div>
+          </TabsContent>
+           <TabsContent value="shop">
+             <div className="text-center py-16 text-muted-foreground">
+                <p>Your shop will appear here. This section is under construction.</p>
+              </div>
+          </TabsContent>
+          <TabsContent value="liked">
+            <div className="grid grid-cols-3 gap-1 mt-4">
+                {likedVideos.map(video => (
+                  <VideoCard key={video.id} video={video} />
+                ))}
+              </div>
+          </TabsContent>
+           <TabsContent value="settings">
+             <div className="text-center py-16 text-muted-foreground">
+                <p>Your settings will appear here. This section is under construction.</p>
+              </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
-    </>
   );
 }

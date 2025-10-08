@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -15,11 +16,13 @@ const mainNavLinks = [
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/upload', icon: PlusSquare, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
-  { href: '/profile/naturelover', icon: User, label: 'Profile' },
+  { href: '/profile/financeWizard', icon: User, label: 'Profile' },
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const currentUser = users.find(u => u.username === 'financeWizard');
+
 
   return (
     <aside className="hidden md:flex flex-col w-64 border-r bg-background fixed h-full p-4 space-y-6">
@@ -62,17 +65,19 @@ export function SidebarNav() {
         </ul>
       </div>
 
-      <div className="mt-auto">
-        <Link href={`/profile/${users[0].username}`}>
-          <Button variant="outline" className="w-full justify-start h-14">
-            <UserAvatar src={users[0].avatar} username={users[0].username} className="h-10 w-10 mr-3" />
-            <div className='text-left'>
-                <p className='font-bold'>{users[0].name}</p>
-                <p className='text-muted-foreground text-sm'>@{users[0].username}</p>
-            </div>
-          </Button>
-        </Link>
-      </div>
+      {currentUser && (
+        <div className="mt-auto">
+          <Link href={`/profile/${currentUser.username}`}>
+            <Button variant="outline" className="w-full justify-start h-14">
+              <UserAvatar src={currentUser.avatar} username={currentUser.username} className="h-10 w-10 mr-3" />
+              <div className='text-left'>
+                  <p className='font-bold'>{currentUser.name}</p>
+                  <p className='text-muted-foreground text-sm'>@{currentUser.username}</p>
+              </div>
+            </Button>
+          </Link>
+        </div>
+      )}
     </aside>
   );
 }

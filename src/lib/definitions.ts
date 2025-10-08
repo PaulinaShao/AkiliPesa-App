@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   username: string;
@@ -6,6 +7,7 @@ export type User = {
   bio: string;
   followers: number;
   following: number;
+  likes: number;
 };
 
 export type Video = {

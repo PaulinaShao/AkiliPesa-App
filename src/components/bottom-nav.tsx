@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -10,14 +11,14 @@ const navLinks = [
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/upload', icon: PlusSquare, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
-  { href: '/profile/naturelover', icon: User, label: 'Profile' },
+  { href: '/profile/financeWizard', icon: User, label: 'Profile' },
 ];
 
 export function BottomNavWrapper() {
   const pathname = usePathname();
   
   // Hide nav on upload, edit, and any deep inbox (chat) pages.
-  const showNav = !pathname.startsWith('/upload') && !pathname.startsWith('/edit') && (pathname === '/inbox' || !pathname.startsWith('/inbox/'));
+  const showNav = !pathname.startsWith('/upload') && !pathname.startsWith('/edit') && !pathname.startsWith('/inbox/');
 
   if (!showNav) {
     return null;
