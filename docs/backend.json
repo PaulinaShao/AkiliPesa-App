@@ -1,185 +1,200 @@
 {
   "entities": {
-    "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "User",
-      "type": "object",
+    "UserProfile": {
+      "title": "User Profile",
       "description": "Represents a user of the AkiliPesa application.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the User entity."
-        },
-        "username": {
-          "type": "string",
-          "description": "The user's chosen username."
-        },
-        "email": {
-          "type": "string",
-          "description": "The user's email address.",
-          "format": "email"
-        },
-        "profilePictureUrl": {
-          "type": "string",
-          "description": "URL of the user's profile picture.",
-          "format": "uri"
-        },
-        "bio": {
-          "type": "string",
-          "description": "A short biography or description of the user."
-        },
-        "followerIds": {
-          "type": "array",
-          "description": "References to Users who are following this user. (Relationship: User N:N User (Followers))",
-          "items": {
-            "type": "string"
-          }
-        },
-        "followingIds": {
-          "type": "array",
-          "description": "References to Users who this user is following. (Relationship: User N:N User (Following))",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "username",
-        "email"
-      ]
-    },
-    "Video": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Video",
       "type": "object",
-      "description": "Represents a video uploaded to the AkiliPesa application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Video entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Video)"
-        },
-        "title": {
-          "type": "string",
-          "description": "The title of the video."
-        },
-        "description": {
-          "type": "string",
-          "description": "A description of the video."
-        },
-        "videoUrl": {
-          "type": "string",
-          "description": "URL of the video file.",
-          "format": "uri"
-        },
-        "thumbnailUrl": {
-          "type": "string",
-          "description": "URL of the video's thumbnail image.",
-          "format": "uri"
-        },
-        "uploadDate": {
-          "type": "string",
-          "description": "The date and time the video was uploaded.",
-          "format": "date-time"
-        },
-        "likeIds": {
-          "type": "array",
-          "description": "References to Likes. (Relationship: Like 1:N Video)",
-          "items": {
-            "type": "string"
+        "uid": { "type": "string", "description": "Unique identifier for the User entity." },
+        "phone": { "type": "string", "description": "The user's phone number." },
+        "email": { "type": "string", "description": "The user's email address.", "format": "email" },
+        "handle": { "type": "string", "description": "The user's chosen username handle." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "bio": { "type": "string", "description": "A short biography or description of the user." },
+        "photoURL": { "type": "string", "description": "URL of the user's profile picture.", "format": "uri" },
+        "plan": { "type": "string", "enum": ["free", "trial", "paid"] },
+        "walletBalance": { "type": "number", "description": "The user's wallet balance." },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "following": { "type": "number" },
+            "followers": { "type": "number" },
+            "likes": { "type": "number" },
+            "postsCount": { "type": "number" }
           }
         },
-        "commentIds": {
-          "type": "array",
-          "description": "References to Comments. (Relationship: Comment 1:N Video)",
-          "items": {
-            "type": "string"
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "handle", "displayName"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Represents a media post created by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "media": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" },
+            "type": { "type": "string", "enum": ["image", "video", "audio", "text"] }
           }
         },
-        "topicSuggestion": {
-          "type": "string",
-          "description": "Topic suggested by the LLM."
-        }
+        "caption": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "likes": { "type": "number" },
+        "comments": { "type": "number" },
+        "shares": { "type": "number" },
+        "visibility": { "type": "string", "enum": ["public", "followers"] }
       },
-      "required": [
-        "id",
-        "userId",
-        "title",
-        "videoUrl",
-        "thumbnailUrl",
-        "uploadDate"
-      ]
+      "required": ["id", "authorId", "media", "createdAt"]
     },
-    "Comment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Comment",
+    "Clone": {
+      "title": "Clone",
+      "description": "Represents a user's digital clone (face, body, or voice).",
       "type": "object",
-      "description": "Represents a comment on a video.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Comment entity."
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["face", "fullbody", "voice"] },
+        "source": { "type": "string", "enum": ["upload", "capture"] },
+        "assets": {
+          "type": "object",
+          "properties": {
+            "model": { "type": "string" },
+            "preview": { "type": "string" },
+            "voice": { "type": "string" }
+          }
         },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Comment)"
-        },
-        "videoId": {
-          "type": "string",
-          "description": "Reference to Video. (Relationship: Video 1:N Comment)"
-        },
-        "text": {
-          "type": "string",
-          "description": "The text content of the comment."
-        },
-        "commentDate": {
-          "type": "string",
-          "description": "The date and time the comment was posted.",
-          "format": "date-time"
-        }
+        "status": { "type": "string", "enum": ["processing", "ready", "failed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "userId",
-        "videoId",
-        "text",
-        "commentDate"
-      ]
+      "required": ["id", "kind", "source", "status", "createdAt"]
     },
-    "Like": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Like",
+    "Agent": {
+      "title": "Agent",
+      "description": "Represents an AI agent that can perform tasks for a user.",
       "type": "object",
-      "description": "Represents a like on a video.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Like entity."
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "cloneId": { "type": "string" },
+        "role": { "type": "string", "enum": ["sales", "support", "marketing"] },
+        "assignedProducts": { "type": "array", "items": { "type": "string" } },
+        "kpis": {
+          "type": "object",
+          "properties": {
+            "impressions": { "type": "number" },
+            "clicks": { "type": "number" },
+            "leads": { "type": "number" },
+            "conversions": { "type": "number" },
+            "revenue": { "type": "number" }
+          }
         },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Like)"
-        },
-        "videoId": {
-          "type": "string",
-          "description": "Reference to Video. (Relationship: Video 1:N Like)"
-        },
-        "likeDate": {
-          "type": "string",
-          "description": "The date and time the video was liked.",
-          "format": "date-time"
-        }
+        "status": { "type": "string", "enum": ["active", "paused"] },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "userId",
-        "videoId",
-        "likeDate"
-      ]
+      "required": ["id", "label", "role", "status", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Represents a product or service sold by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "media": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "inventory": { "type": "number" },
+        "assignedAgentIds": { "type": "array", "items": { "type": "string" } },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "views": { "type": "number" },
+            "shares": { "type": "number" },
+            "unitsSold": { "type": "number" },
+            "revenue": { "type": "number" }
+          }
+        },
+        "type": { "type": "string", "enum": ["physical", "digital", "service"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "title", "price", "currency", "type", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Represents a customer's order for a product.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "paid", "fulfilled", "cancelled", "refunded"] },
+        "escrow": {
+          "type": "object",
+          "properties": {
+            "held": { "type": "boolean" },
+            "releaseDate": { "type": "string", "format": "date-time" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "productId", "buyerId", "sellerId", "quantity", "amount", "currency", "status", "createdAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Represents the financial transaction for an order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "amountGross": { "type": "number" },
+        "fees": {
+          "type": "object",
+          "properties": {
+            "platform": { "type": "number" },
+            "commission": { "type": "number" },
+            "taxes": { "type": "number" },
+            "transferFee": { "type": "number" }
+          }
+        },
+        "amountNet": { "type": "number" },
+        "breakdown": {
+            "type": "object",
+            "properties": {
+                "ownerShare": {"type": "number"},
+                "akilipesaShare": {"type": "number"},
+                "commissionShare": {"type": "number"}
+            }
+        },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orderId", "sellerId", "amountGross", "amountNet", "status", "createdAt"]
+    },
+    "Plan": {
+        "title": "Plan",
+        "description": "Describes a subscription plan for users.",
+        "type": "object",
+        "properties": {
+            "id": {"type": "string"},
+            "name": {"type": "string", "enum": ["Free", "Trial", "Premium"]},
+            "price": {"type": "number"},
+            "durationDays": {"type": "number"},
+            "features": {"type": "array", "items": {"type": "string"}},
+            "createdAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "name", "price"]
     }
   },
   "auth": {
@@ -193,117 +208,36 @@
     "structure": [
       {
         "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profiles. Path-based ownership guarantees only the user can read/write their data.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            }
-          ]
-        }
+        "definition": { "schema": { "$ref": "#/entities/UserProfile" }, "description": "Stores user profiles." }
       },
       {
-        "path": "/users/{userId}/videos/{videoId}",
-        "definition": {
-          "entityName": "Video",
-          "schema": {
-            "$ref": "#/backend/entities/Video"
-          },
-          "description": "Stores videos uploaded by each user. Path-based ownership simplifies security rules and guarantees only the user can manage their videos.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "videoId",
-              "description": "The unique identifier of the video."
-            }
-          ]
-        }
+        "path": "/posts/{postId}",
+        "definition": { "schema": { "$ref": "#/entities/Post" }, "description": "Stores all user posts." }
       },
       {
-        "path": "/videos/{videoId}",
-        "definition": {
-          "entityName": "Video",
-          "schema": {
-            "$ref": "#/backend/entities/Video"
-          },
-          "description": "Stores all videos on the platform. Enables easy listing of videos. Includes `userId` for denormalized owner authorization.",
-          "params": [
-            {
-              "name": "videoId",
-              "description": "The unique identifier of the video."
-            }
-          ]
-        }
+        "path": "/users/{userId}/clones/{cloneId}",
+        "definition": { "schema": { "$ref": "#/entities/Clone" }, "description": "Stores user-specific digital clones." }
       },
       {
-        "path": "/videos/{videoId}/comments/{commentId}",
-        "definition": {
-          "entityName": "Comment",
-          "schema": {
-            "$ref": "#/backend/entities/Comment"
-          },
-          "description": "Stores comments for each video. Ensures easy comment retrieval per video. Includes `userId` and `videoId` for denormalized owner authorization.",
-          "params": [
-            {
-              "name": "videoId",
-              "description": "The unique identifier of the video."
-            },
-            {
-              "name": "commentId",
-              "description": "The unique identifier of the comment."
-            }
-          ]
-        }
+        "path": "/users/{userId}/agents/{agentId}",
+        "definition": { "schema": { "$ref": "#/entities/Agent" }, "description": "Stores user-specific AI agents." }
       },
       {
-        "path": "/videos/{videoId}/likes/{likeId}",
-        "definition": {
-          "entityName": "Like",
-          "schema": {
-            "$ref": "#/backend/entities/Like"
-          },
-          "description": "Stores likes for each video. Ensures efficient like retrieval per video. Includes `userId` and `videoId` for denormalized owner authorization.",
-          "params": [
-            {
-              "name": "videoId",
-              "description": "The unique identifier of the video."
-            },
-            {
-              "name": "likeId",
-              "description": "The unique identifier of the like."
-            }
-          ]
-        }
+        "path": "/products/{productId}",
+        "definition": { "schema": { "$ref": "#/entities/Product" }, "description": "Stores all products and services." }
       },
       {
-        "path": "/followers/{userId}/following/{followingId}",
-        "definition": {
-          "entityName": "Follower",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores the follow relationships. This collection facilitates efficient querying of followers and following.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "followingId",
-              "description": "The unique identifier of the user being followed."
-            }
-          ]
-        }
+        "path": "/orders/{orderId}",
+        "definition": { "schema": { "$ref": "#/entities/Order" }, "description": "Stores all orders." }
+      },
+      {
+        "path": "/payments/{paymentId}",
+        "definition": { "schema": { "$ref": "#/entities/Payment" }, "description": "Stores all payment and commission data." }
+      },
+      {
+          "path": "/plans/{planId}",
+          "definition": { "schema": {"$ref": "#/entities/Plan"}, "description": "Stores available subscription plans."}
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to mirror TikTok's core functionality, emphasizing efficient data retrieval and robust security rules. The primary focus is on user-generated video content and the associated social interactions (likes, comments, follows). Authorization Independence is achieved through path-based ownership for user-specific data and explicit denormalization. Segregation is achieved via dedicated collections based on entity type, allowing for simpler, QAP-compliant rules.\n\n*   `/users/{userId}`: Stores user profiles. Path-based ownership guarantees only the user can read/write their data.\n*   `/users/{userId}/videos/{videoId}`: Stores videos uploaded by each user. Path-based ownership simplifies security rules and guarantees only the user can manage their videos.\n*   `/videos/{videoId}`: Stores all videos on the platform. Enables easy listing of videos. Includes `userId` for denormalized owner authorization.\n*   `/videos/{videoId}/comments/{commentId}`: Stores comments for each video. Ensures easy comment retrieval per video. Includes `userId` and `videoId` for denormalized owner authorization.\n*   `/videos/{videoId}/likes/{likeId}`: Stores likes for each video. Ensures efficient like retrieval per video. Includes `userId` and `videoId` for denormalized owner authorization.\n*   `/followers/{userId}/following/{followingId}`: Stores the follow relationships. This collection facilitates efficient querying of followers and following."
+    ]
   }
 }
