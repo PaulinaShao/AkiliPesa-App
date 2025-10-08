@@ -3,6 +3,7 @@
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
 import type { User } from '@/lib/definitions';
+import Link from 'next/link';
 
 interface ProfileHeaderProps {
   user: User;
@@ -38,7 +39,9 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
       <p className="text-sm max-w-md">{user.bio}</p>
 
       <div className="flex gap-2 my-4">
-        <Button className="flex-1 bg-secondary text-secondary-foreground font-bold">Edit Profile</Button>
+        <Button asChild className="flex-1 bg-secondary text-secondary-foreground font-bold">
+          <Link href="edit">Edit Profile</Link>
+        </Button>
         <Button className="flex-1 bg-secondary text-secondary-foreground font-bold">Share Profile</Button>
       </div>
     </header>

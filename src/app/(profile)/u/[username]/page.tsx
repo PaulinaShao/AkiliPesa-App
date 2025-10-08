@@ -8,6 +8,7 @@ import { VideoCard } from '@/components/video-card';
 import { Header } from '@/components/header';
 import { ProfileHeader } from './components/ProfileHeader';
 import { ProfileQuickActions } from './components/ProfileQuickActions';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const params = useParams();
@@ -28,12 +29,12 @@ export default function ProfilePage() {
         <ProfileQuickActions />
 
         <Tabs defaultValue="posts" className="mt-4">
-          <TabsList className="grid w-full grid-cols-5 bg-transparent border-b rounded-none">
+           <TabsList className="grid w-full grid-cols-5 bg-transparent border-b rounded-none">
             <TabsTrigger value="posts" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Grid3x3 /></TabsTrigger>
-            <TabsTrigger value="agents" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Briefcase /></TabsTrigger>
-            <TabsTrigger value="shop" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><ShoppingBag /></TabsTrigger>
-            <TabsTrigger value="orders" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Receipt /></TabsTrigger>
-            <TabsTrigger value="settings" className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Settings /></TabsTrigger>
+            <TabsTrigger value="agents" asChild className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Link href="agents"><Briefcase /></Link></TabsTrigger>
+            <TabsTrigger value="shop" asChild className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Link href="shop"><ShoppingBag /></Link></TabsTrigger>
+            <TabsTrigger value="orders" asChild className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Link href="orders"><Receipt /></Link></TabsTrigger>
+            <TabsTrigger value="settings" asChild className="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none"><Link href="settings"><Settings /></Link></TabsTrigger>
           </TabsList>
           
           <TabsContent value="posts">
@@ -48,26 +49,6 @@ export default function ProfilePage() {
                 <p>Your posted reels will appear here. This section is under construction.</p>
               </div>
             )}
-          </TabsContent>
-          <TabsContent value="agents">
-             <div className="text-center py-16 text-muted-foreground">
-                <p>Your AI agents will appear here. This section is under construction.</p>
-              </div>
-          </TabsContent>
-           <TabsContent value="shop">
-             <div className="text-center py-16 text-muted-foreground">
-                <p>Your storefront will appear here. This section is under construction.</p>
-              </div>
-          </TabsContent>
-          <TabsContent value="orders">
-            <div className="text-center py-16 text-muted-foreground">
-                <p>Your orders and payments will appear here. This section is under construction.</p>
-              </div>
-          </TabsContent>
-           <TabsContent value="settings">
-             <div className="text-center py-16 text-muted-foreground">
-                <p>Your settings will appear here. This section is under construction.</p>
-              </div>
           </TabsContent>
         </Tabs>
       </div>
