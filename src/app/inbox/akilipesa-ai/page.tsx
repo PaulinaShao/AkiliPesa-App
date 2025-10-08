@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Sparkles, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,11 @@ export default function AkiliPesaAIChatPage() {
 
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [newMessage, setNewMessage] = useState('');
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
 
     if (!currentUser) {
@@ -113,12 +118,14 @@ export default function AkiliPesaAIChatPage() {
                             msg.senderId === currentUser.id ? "bg-primary text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"
                         )}>
                             <p className="text-sm">{msg.text}</p>
-                            <p className={cn(
-                                "text-xs mt-1",
-                                msg.senderId === currentUser.id ? "text-primary-foreground/70 text-right" : "text-muted-foreground"
-                            )}>
-                                {format(new Date(msg.timestamp), 'h:mm a')}
-                            </p>
+                            {isClient && (
+                                <p className={cn(
+                                    "text-xs mt-1",
+                                    msg.senderId === currentUser.id ? "text-primary-foreground/70 text-right" : "text-muted-foreground"
+                                )}>
+                                    {format(new Date(msg.timestamp), 'h:mm a')}
+                                </p>
+                            )}
                         </div>
                     </div>
                 ))}

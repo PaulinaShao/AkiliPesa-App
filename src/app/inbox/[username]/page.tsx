@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ChevronLeft, Paperclip, Mic, Send, Phone, Video } from 'lucide-react';
 import { users, messages as allMessages } from '@/lib/data';
@@ -28,6 +28,11 @@ export default function ChatPage() {
         ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     );
     const [newMessage, setNewMessage] = useState('');
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
 
     if (!currentUser || !otherUser) {
@@ -78,12 +83,14 @@ export default function ChatPage() {
                             msg.senderId === currentUser.id ? "bg-primary text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"
                         )}>
                             <p className="text-sm">{msg.text}</p>
-                            <p className={cn(
-                                "text-xs mt-1",
-                                msg.senderId === currentUser.id ? "text-primary-foreground/70 text-right" : "text-muted-foreground"
-                            )}>
-                                {format(new Date(msg.timestamp), 'h:mm a')}
-                            </p>
+                            {isClient && (
+                                <p className={cn(
+                                    "text-xs mt-1",
+                                    msg.senderId === currentUser.id ? "text-primary-foreground/70 text-right" : "text-muted-foreground"
+                                )}>
+                                    {format(new Date(msg.timestamp), 'h:mm a')}
+                                </p>
+                            )}
                         </div>
                     </div>
                 ))}
