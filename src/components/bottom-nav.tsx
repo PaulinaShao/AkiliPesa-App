@@ -16,7 +16,7 @@ const navLinks = [
 export function BottomNavWrapper() {
   const pathname = usePathname();
   
-  const showNav = !pathname.startsWith('/upload') && !pathname.startsWith('/edit');
+  const showNav = !pathname.startsWith('/upload') && !pathname.startsWith('/edit') && pathname !== '/inbox/akilipesa-ai';
 
   if (!showNav) {
     return null;
