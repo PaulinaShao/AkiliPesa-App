@@ -57,6 +57,7 @@ export default function AiCreatePage() {
   const handleCall = (type: 'audio' | 'video') => {
     // In a real app, this would check auth and wallet, then initiate a call
     // For now, it will just show an alert
+    // This logic is now placeholder, actual logic would be implemented based on new requirements.
     alert(`Starting ${type} call... (Auth & Wallet check pending implementation)`);
   }
 

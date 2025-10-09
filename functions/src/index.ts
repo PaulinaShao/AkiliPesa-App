@@ -14,8 +14,16 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
     handle: user.email?.split('@')[0] || `user_${user.uid.substring(0, 5)}`,
     displayName: user.displayName || 'New User',
     photoURL: user.photoURL || '',
-    plan: 'free',
-    walletBalance: 0,
+    wallet: {
+        balance: 0,
+        escrow: 0,
+        plan: {
+            id: 'free',
+            credits: 0,
+            expiry: null
+        },
+        lastDeduction: null
+    },
     stats: { following: 0, followers: 0, likes: 0, postsCount: 0 },
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -103,7 +111,7 @@ export const buyPlan = functions.https.onCall(async (data, context) => {
 
   await admin.firestore().runTransaction(async (t) => {
     const userDoc = await t.get(userRef);
-    const wallet = userDoc.data()?.wallet || { balance: 0 };
+    const wallet = userDoc.data()?.wallet || { balance: 0, plan: {} };
 
     if (method === 'wallet') {
       if (wallet.balance < plan.price) {
@@ -116,7 +124,7 @@ export const buyPlan = functions.https.onCall(async (data, context) => {
         'wallet.balance': admin.firestore.FieldValue.increment(-plan.price),
         'wallet.plan': {
           id: planId,
-          credits: plan.credits,
+          credits: admin.firestore.FieldValue.increment(plan.credits),
           expiry: admin.firestore.Timestamp.fromDate(
             new Date(Date.now() + plan.validityDays * 86400000)
           ),

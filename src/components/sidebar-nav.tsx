@@ -41,7 +41,7 @@ export function SidebarNav() {
             } else if (label === 'Profile') {
               isActive = pathname.startsWith('/u/');
             } else if (label === 'Create') {
-              isActive = pathname.startsWith('/create') || pathname.startsWith('/upload');
+              isActive = pathname.startsWith('/create');
             } else {
               isActive = pathname.startsWith(href);
             }
