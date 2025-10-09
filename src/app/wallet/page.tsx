@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { transactions as allTransactions } from '@/lib/data';
 import type { Transaction } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
-import { ArrowDownLeft, ArrowUpRight, Plus, Send, ShieldCheck, Bell, Hourglass } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Plus, Send, ShieldCheck, Bell, Hourglass, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -21,6 +22,7 @@ const transactionIcons: Record<string, JSX.Element> = {
   Withdraw: <ArrowUpRight className="h-5 w-5 text-red-400" />,
   'Escrow Hold': <Hourglass className="h-5 w-5 text-yellow-400" />,
   'Escrow Release': <ShieldCheck className="h-5 w-5 text-blue-400" />,
+  'Purchase': <CreditCard className="h-5 w-5 text-blue-400" />,
 };
 
 const isCredit = (type: Transaction['type']) => ['Received', 'Earned', 'Add Funds', 'Commission', 'Escrow Release'].includes(type);
@@ -31,7 +33,7 @@ export default function WalletPage() {
 
   return (
     <div className="dark">
-      <Header />
+      <Header isMuted={true} onToggleMute={() => {}}/>
       <div className="max-w-2xl mx-auto p-4 md:p-6 pt-20">
         <Card className="mb-6 shadow-2xl bg-primary/90 text-primary-foreground border-none overflow-hidden">
           <div className="relative p-6">
@@ -46,30 +48,45 @@ export default function WalletPage() {
           </div>
         </Card>
         
-        <Card className="mb-6 shadow-lg bg-card/50 backdrop-blur-md border-border/50">
-            <CardHeader className="flex-row items-center justify-between p-4">
-              <div>
-                <CardTitle className="text-sm font-light text-muted-foreground">Funds in Escrow</CardTitle>
-                <CardDescription className="text-2xl font-bold text-foreground">TZS {escrowBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</CardDescription>
-              </div>
-              <Hourglass className="h-8 w-8 text-yellow-400"/>
-            </CardHeader>
-        </Card>
+        <div className="grid grid-cols-2 gap-4 mb-6">
+            <Card className="shadow-lg bg-card/50 backdrop-blur-md border-border/50">
+                <CardHeader className="flex-row items-center justify-between p-4">
+                <div>
+                    <CardTitle className="text-sm font-light text-muted-foreground">Escrow</CardTitle>
+                    <CardDescription className="text-xl font-bold text-foreground">TZS {escrowBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</CardDescription>
+                </div>
+                <Hourglass className="h-8 w-8 text-yellow-400"/>
+                </CardHeader>
+            </Card>>
+            <Card className="shadow-lg bg-card/50 backdrop-blur-md border-border/50">
+                <CardHeader className="flex-row items-center justify-between p-4">
+                <div>
+                    <CardTitle className="text-sm font-light text-muted-foreground">Plan Credits</CardTitle>
+                    <CardDescription className="text-xl font-bold text-foreground">100</CardDescription>
+                </div>
+                <CreditCard className="h-8 w-8 text-green-400"/>
+                </CardHeader>
+            </Card>
+        </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <Button size="lg" className="h-16 text-base bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20">
-            <Plus className="h-5 w-5 mr-2" /> Add Funds
+
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <Button size="lg" className="h-16 text-base bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 flex-col">
+            <Plus className="h-5 w-5 mb-1" /> Add Funds
           </Button>
-          <Button size="lg" variant="secondary" className="h-16 text-base bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20">
-            <Send className="h-5 w-5 mr-2" /> Send
+          <Button size="lg" variant="secondary" className="h-16 text-base bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 flex-col">
+            <Send className="h-5 w-5 mb-1" /> Send
+          </Button>
+           <Button size="lg" variant="secondary" className="h-16 text-base bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 flex-col">
+            <CreditCard className="h-5 w-5 mb-1" /> Buy Plan
           </Button>
         </div>
 
         <Tabs defaultValue="activity" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="notifications">
-                    <Bell className="h-4 w-4 mr-2" /> Notifications <span className="ml-2 bg-accent text-accent-foreground h-5 w-5 text-xs rounded-full flex items-center justify-center">3</span>
+                <TabsTrigger value="plan">
+                    <CreditCard className="h-4 w-4 mr-2" /> Plan Usage
                 </TabsTrigger>
             </TabsList>
             <TabsContent value="activity">
@@ -99,12 +116,12 @@ export default function WalletPage() {
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="notifications">
+            <TabsContent value="plan">
                  <Card className="bg-card/50 border-border/50 mt-4">
                     <CardContent className="p-6 text-center text-muted-foreground">
-                        <Bell className="h-12 w-12 mx-auto mb-4 text-primary/50" />
-                        <p className="font-semibold mb-1">No new notifications</p>
-                        <p className="text-sm">Updates about your account and transactions will appear here.</p>
+                        <CreditCard className="h-12 w-12 mx-auto mb-4 text-primary/50" />
+                        <p className="font-semibold mb-1">Plan details will appear here.</p>
+                        <p className="text-sm">This section is under construction.</p>
                     </CardContent>
                  </Card>
             </TabsContent>

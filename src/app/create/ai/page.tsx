@@ -53,6 +53,12 @@ export default function AiCreatePage() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
   };
+  
+  const handleCall = (type: 'audio' | 'video') => {
+    // In a real app, this would check auth and wallet, then initiate a call
+    // For now, it will just show an alert
+    alert(`Starting ${type} call... (Auth & Wallet check pending implementation)`);
+  }
 
   return (
     <div className="flex flex-col h-screen dark bg-background text-foreground">
@@ -62,8 +68,8 @@ export default function AiCreatePage() {
         </Button>
         <h1 className="text-lg font-semibold">Create</h1>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon"><Phone className="h-5 w-5 text-primary" /></Button>
-          <Button variant="ghost" size="icon"><VideoIcon className="h-5 w-5 text-primary" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => handleCall('audio')}><Phone className="h-5 w-5 text-primary" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => handleCall('video')}><VideoIcon className="h-5 w-5 text-primary" /></Button>
         </div>
       </header>
 

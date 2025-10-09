@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -12,8 +13,22 @@
         "displayName": { "type": "string", "description": "The user's display name." },
         "bio": { "type": "string", "description": "A short biography or description of the user." },
         "photoURL": { "type": "string", "description": "URL of the user's profile picture.", "format": "uri" },
-        "plan": { "type": "string", "enum": ["free", "trial", "paid"] },
-        "walletBalance": { "type": "number", "description": "The user's wallet balance." },
+        "wallet": {
+          "type": "object",
+          "properties": {
+            "balance": { "type": "number", "description": "The user's main wallet balance in TZS." },
+            "escrow": { "type": "number", "description": "Funds held in escrow for pending transactions." },
+            "plan": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "The ID of the user's current plan." },
+                "credits": { "type": "number", "description": "Remaining credits in the user's plan." },
+                "expiry": { "type": "string", "format": "date-time", "description": "The expiry date of the current plan." }
+              }
+            },
+            "lastDeduction": { "type": "string", "format": "date-time", "description": "Timestamp of the last credit deduction." }
+          }
+        },
         "stats": {
           "type": "object",
           "properties": {
@@ -179,18 +194,52 @@
       "required": ["id", "orderId", "sellerId", "amountGross", "amountNet", "status", "createdAt"]
     },
     "Plan": {
-        "title": "Plan",
-        "description": "Describes a subscription plan for users.",
-        "type": "object",
-        "properties": {
-            "planId": {"type": "string"},
-            "name": {"type": "string", "enum": ["Free", "Trial", "Premium"]},
-            "price": {"type": "number"},
-            "commissionRate": {"type": "number"},
-            "features": {"type": "array", "items": {"type": "string"}},
-            "createdAt": {"type": "string", "format": "date-time"}
-        },
-        "required": ["planId", "name", "price"]
+      "title": "Plan",
+      "description": "Describes a subscription plan for users.",
+      "type": "object",
+      "properties": {
+        "planId": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "credits": { "type": "number" },
+        "validityDays": { "type": "number" },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["planId", "name", "price", "credits"]
+    },
+    "Call": {
+      "title": "Call",
+      "description": "Represents a real-time call session.",
+      "type": "object",
+      "properties": {
+        "callId": { "type": "string" },
+        "channelName": { "type": "string" },
+        "userId": { "type": "string" },
+        "agentId": { "type": "string" },
+        "mode": { "type": "string", "enum": ["audio", "video"] },
+        "status": { "type": "string", "enum": ["active", "ended"] },
+        "creditsUsed": { "type": "number" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["callId", "channelName", "userId", "mode", "status", "startedAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A record of a financial transaction.",
+      "type": "object",
+      "properties": {
+        "txId": { "type": "string" },
+        "uid": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "type": { "type": "string", "enum": ["purchase", "deduction", "topup", "transfer"] },
+        "method": { "type": "string", "enum": ["wallet", "mobileMoney"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["txId", "uid", "amount", "currency", "type", "description", "createdAt"]
     }
   },
   "auth": {
@@ -231,8 +280,16 @@
         "definition": { "schema": { "$ref": "#/entities/Payment" }, "description": "Stores all payment and commission data." }
       },
       {
-          "path": "/plans/{planId}",
-          "definition": { "schema": {"$ref": "#/entities/Plan"}, "description": "Stores available subscription plans."}
+        "path": "/plans/{planId}",
+        "definition": { "schema": { "$ref": "#/entities/Plan" }, "description": "Stores available subscription plans."}
+      },
+      {
+        "path": "/calls/{callId}",
+        "definition": { "schema": { "$ref": "#/entities/Call" }, "description": "Stores active and past call sessions."}
+      },
+      {
+        "path": "/transactions/{txId}",
+        "definition": { "schema": { "$ref": "#/entities/Transaction" }, "description": "Stores a log of all financial transactions."}
       }
     ]
   }

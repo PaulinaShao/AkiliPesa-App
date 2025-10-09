@@ -25,9 +25,9 @@ export function BottomNavWrapper() {
     return null;
   }
   
-  // Hide on create flow screens, which have their own tab nav
-  const hideOnCreate = pathname.startsWith('/create');
-  if(hideOnCreate) {
+  // Hide on create flow screens (except the main 'ai' one)
+  const hideOnDeepCreate = /^\/create\/(camera|upload|edit|describe|preview)/.test(pathname);
+  if(hideOnDeepCreate) {
     return null;
   }
 
