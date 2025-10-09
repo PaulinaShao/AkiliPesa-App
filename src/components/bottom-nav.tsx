@@ -17,10 +17,17 @@ const navLinks = [
 export function BottomNavWrapper() {
   const pathname = usePathname();
   
-  // Hide nav on upload, edit, and any deep inbox (chat) pages.
-  const showNav = !pathname.startsWith('/upload') && !pathname.startsWith('/edit') && !pathname.startsWith('/inbox/akilipesa-ai') && !/^\/inbox\/[^/]+$/.test(pathname);
+  // Hide nav on any deep inbox (chat) pages.
+  const showNav = !/^\/inbox\/[^/]+$/.test(pathname) && !pathname.startsWith('/inbox/akilipesa-ai');
+
 
   if (!showNav) {
+    return null;
+  }
+  
+  // Hide on create flow screens, which have their own tab nav
+  const hideOnCreate = pathname.startsWith('/create');
+  if(hideOnCreate) {
     return null;
   }
 
@@ -34,7 +41,7 @@ export function BottomNavWrapper() {
           } else if (label === 'Profile') {
             isActive = pathname.startsWith('/u/');
           } else if (label === 'Create') {
-            isActive = pathname.startsWith('/create') || pathname.startsWith('/upload');
+            isActive = pathname.startsWith('/create');
           } else {
             isActive = pathname.startsWith(href);
           }

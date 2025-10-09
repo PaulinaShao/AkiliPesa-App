@@ -4,17 +4,16 @@
 import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Camera, Upload, X, SwitchCamera, Zap, Timer, Settings } from 'lucide-react';
+import { Camera, Upload, X, SwitchCamera, Zap, Timer, Settings, Phone, Video as VideoIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const tabs = ['Camera', 'Templates', 'AI'];
 
-export default function UploadPage() {
+export default function CameraPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('Camera');
   const [hasCameraPermission, setHasCameraPermission] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -53,24 +52,29 @@ export default function UploadPage() {
 
   return (
     <div className="flex flex-col h-screen bg-black text-white">
-      {/* Header */}
-      <header className="absolute top-0 left-0 right-0 z-20 flex justify-between items-center p-4">
-        <Button variant="ghost" size="icon" className="rounded-full bg-black/50" onClick={() => router.back()}>
+      <header className="flex items-center justify-between p-2 border-b border-b-neutral-800 shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
+        <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
           <X className="h-6 w-6" />
         </Button>
-        <div className="flex gap-2 items-center text-sm p-1 rounded-full bg-black/50">
-            <Zap className="h-5 w-5 text-yellow-300"/>
-            <span className="font-semibold">AI Tools</span>
-        </div>
-        <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="rounded-full bg-black/50"><SwitchCamera className="h-6 w-6"/></Button>
-            <Button variant="ghost" size="icon" className="rounded-full bg-black/50"><Timer className="h-6 w-6"/></Button>
-            <Button variant="ghost" size="icon" className="rounded-full bg-black/50"><Settings className="h-6 w-6"/></Button>
+        <h1 className="text-lg font-semibold">Create</h1>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon"><Phone className="h-5 w-5 text-primary" /></Button>
+          <Button variant="ghost" size="icon"><VideoIcon className="h-5 w-5 text-primary" /></Button>
         </div>
       </header>
 
+      <div className="flex justify-center p-2 border-b border-b-neutral-800">
+          <Tabs defaultValue="camera" className="w-auto">
+            <TabsList>
+              <TabsTrigger value="ai" onClick={() => router.push('/create/ai')}>AkiliPesa AI</TabsTrigger>
+              <TabsTrigger value="camera" onClick={() => router.push('/create/camera')}>Camera</TabsTrigger>
+              <TabsTrigger value="upload" onClick={() => router.push('/create/upload')}>Upload</TabsTrigger>
+            </TabsList>
+          </Tabs>
+      </div>
+
       {/* Main Content (Camera View) */}
-      <main className="flex-1 relative flex items-center justify-center">
+      <main className="flex-1 relative flex items-center justify-center bg-black">
         <video ref={videoRef} className="w-full h-full object-cover" playsInline autoPlay muted />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
          {!hasCameraPermission && (
@@ -83,35 +87,26 @@ export default function UploadPage() {
               </Alert>
             </div>
         )}
+         <div className="absolute top-4 right-4 flex flex-col gap-4">
+            <Button variant="ghost" size="icon" className="rounded-full bg-black/50"><SwitchCamera className="h-6 w-6"/></Button>
+            <Button variant="ghost" size="icon" className="rounded-full bg-black/50"><Timer className="h-6 w-6"/></Button>
+            <Button variant="ghost" size="icon" className="rounded-full bg-black/50"><Settings className="h-6 w-6"/></Button>
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="z-10 p-4">
-        <div className="flex items-center justify-between">
-          <Button variant="outline" className="bg-white/90 text-black font-bold">
-            <Upload className="h-5 w-5 mr-2" />
-            Upload
+      <footer className="z-10 p-4 bg-black">
+        <div className="flex items-center justify-around">
+          <Button variant="ghost" className="font-bold text-base">
+            Effects
           </Button>
           <div className="flex flex-col items-center">
             <button className="w-20 h-20 rounded-full bg-red-500 border-4 border-white"></button>
           </div>
-          <Button variant="secondary" className="font-bold">
-            Effects
+           <Button variant="ghost" className="font-bold text-base" onClick={() => router.push('/create/upload')}>
+            <Upload className="h-5 w-5 mr-2" />
+            Upload
           </Button>
-        </div>
-        <div className="flex justify-center gap-8 mt-4">
-          {tabs.map(tab => (
-            <button 
-              key={tab} 
-              onClick={() => setActiveTab(tab)}
-              className={cn(
-                "text-lg font-semibold",
-                activeTab === tab ? 'text-white' : 'text-gray-400'
-              )}
-            >
-              {tab}
-            </button>
-          ))}
         </div>
       </footer>
     </div>

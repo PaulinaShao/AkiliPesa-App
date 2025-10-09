@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { X, Phone, Video as VideoIcon, Sparkles, Globe, Paperclip, Mic, SendHorizonal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { users } from '@/lib/data';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Message {
   id: string;
@@ -56,10 +57,10 @@ export default function AiCreatePage() {
   return (
     <div className="flex flex-col h-screen dark bg-background text-foreground">
       <header className="flex items-center justify-between p-2 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+        <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
           <X className="h-6 w-6" />
         </Button>
-        <h1 className="text-lg font-semibold">AkiliPesa AI</h1>
+        <h1 className="text-lg font-semibold">Create</h1>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon"><Phone className="h-5 w-5 text-primary" /></Button>
           <Button variant="ghost" size="icon"><VideoIcon className="h-5 w-5 text-primary" /></Button>
@@ -67,9 +68,14 @@ export default function AiCreatePage() {
       </header>
 
       <main className="flex-1 flex flex-col">
-        <div className="flex items-center p-2 border-b gap-2">
-            <Link href="/create/camera"><Button variant="outline" className="text-xs h-8">Camera</Button></Link>
-            <Link href="/create/upload"><Button variant="outline" className="text-xs h-8">Upload</Button></Link>
+        <div className="flex justify-center p-2 border-b">
+           <Tabs defaultValue="ai" className="w-auto">
+              <TabsList>
+                <TabsTrigger value="ai" onClick={() => router.push('/create/ai')}>AkiliPesa AI</TabsTrigger>
+                <TabsTrigger value="camera" onClick={() => router.push('/create/camera')}>Camera</TabsTrigger>
+                <TabsTrigger value="upload" onClick={() => router.push('/create/upload')}>Upload</TabsTrigger>
+              </TabsList>
+            </Tabs>
         </div>
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-6">
