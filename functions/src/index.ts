@@ -1,12 +1,10 @@
 'use strict';
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { HttpsError } from 'firebase-functions/v2/https';
 
 admin.initializeApp();
-functions.setGlobalOptions({ region: 'us-central1' });
 
-// Trigger when a new user signs up
+// User signup → create profile
 export const onusercreate = functions.auth.user().onCreate(async user => {
   const profile = {
     uid: user.uid,
@@ -14,7 +12,6 @@ export const onusercreate = functions.auth.user().onCreate(async user => {
     email: user.email || null,
     handle: user.email?.split('@')[0] || `user_${user.uid.substring(0, 5)}`,
     displayName: user.displayName || 'New User',
-    bio: '',
     photoURL: user.photoURL || '',
     plan: 'free',
     walletBalance: 0,
@@ -23,29 +20,33 @@ export const onusercreate = functions.auth.user().onCreate(async user => {
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  await admin.firestore().collection('users').doc(user.uid).set(profile);
+  return admin.firestore().collection('users').doc(user.uid).set(profile);
 });
 
-// Trigger when a post is created
+// Post created → increment user post count
 export const onpostcreate = functions.firestore
   .document('posts/{postId}')
-  .onCreate(async (snap, context) => {
+  .onCreate(async snap => {
     const post = snap.data();
-    if (post?.authorId) {
-      await admin.firestore().collection('users').doc(post.authorId).update({
+    if (!post) return null;
+
+    return admin
+      .firestore()
+      .collection('users')
+      .doc(post.authorId)
+      .update({
         'stats.postsCount': admin.firestore.FieldValue.increment(1),
       });
-    }
   });
 
-// Trigger when an order is updated
+// Order updated → trigger payments (stub)
 export const onorderupdate = functions.firestore
   .document('orders/{orderId}')
   .onUpdate(async (change, context) => {
     const after = change.after.data();
-    const orderId = context.params.orderId;
+    if (!after) return null;
 
-    if (after?.status === 'paid') {
+    if (after.status === 'paid') {
       // Example: update product metrics & create payment record
       const productRef = admin
         .firestore()
@@ -58,38 +59,46 @@ export const onorderupdate = functions.firestore
         'metrics.revenue': admin.firestore.FieldValue.increment(after.amount),
       });
 
-      await admin.firestore().collection('payments').add({
-        orderId: orderId,
-        sellerId: after.sellerId,
-        amountGross: after.amount,
-        fees: { platform: after.amount * 0.1, taxes: after.amount * 0.05 },
-        amountNet: after.amount * 0.85,
-        status: 'completed',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      await admin
+        .firestore()
+        .collection('payments')
+        .add({
+          orderId: context.params.orderId,
+          sellerId: after.sellerId,
+          amountGross: after.amount,
+          fees: { platform: after.amount * 0.1, taxes: after.amount * 0.05 },
+          amountNet: after.amount * 0.85,
+          status: 'completed',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
     }
+    return null;
   });
 
-// Seed demo data
-export const seeddemo = functions.https.onCall(async (data, context) => {
+// Callable demo seeder
+export const seeddemo = functions.https.onCall(async (_data, context) => {
   if (!context.auth) {
-    throw new HttpsError(
+    throw new functions.https.HttpsError(
       'unauthenticated',
       'The function must be called while authenticated.'
     );
   }
 
   const uid = context.auth.uid;
-  await admin.firestore().collection('users').doc(uid).set({
-    uid,
-    displayName: 'Demo User',
-    handle: 'demo',
-    bio: 'Seeded demo profile',
-    walletBalance: 100,
-    stats: { following: 0, followers: 0, likes: 0, postsCount: 0 },
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
 
-  return { success: true };
+  await admin
+    .firestore()
+    .collection('posts')
+    .add({
+      authorId: uid,
+      media: { url: 'https://placekitten.com/200/200', type: 'image' },
+      caption: 'Hello AkiliPesa!',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      visibility: 'public',
+    });
+
+  return { success: true, message: 'Demo data seeded.' };
 });
