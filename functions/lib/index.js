@@ -34,23 +34,17 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.seeddemo = exports.onorderupdate = exports.onpostcreate = exports.onusercreate = void 0;
+const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
-const options_1 = require("firebase-functions/v2/options");
-const https_1 = require("firebase-functions/v2/https");
-const firestore_1 = require("firebase-functions/v2/firestore");
-const identity_1 = require("firebase-functions/v2/identity");
 admin.initializeApp();
-(0, options_1.setGlobalOptions)({ region: 'us-central1' });
-// Trigger when a new user signs up
-exports.onusercreate = (0, identity_1.onUserCreated)(async (event) => {
-    const user = event.data;
+// User signup → create profile
+exports.onusercreate = functions.auth.user().onCreate(async (user) => {
     const profile = {
         uid: user.uid,
         phone: user.phoneNumber || null,
         email: user.email || null,
         handle: user.email?.split('@')[0] || `user_${user.uid.substring(0, 5)}`,
         displayName: user.displayName || 'New User',
-        bio: '',
         photoURL: user.photoURL || '',
         plan: 'free',
         walletBalance: 0,
@@ -58,27 +52,31 @@ exports.onusercreate = (0, identity_1.onUserCreated)(async (event) => {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
-    await admin.firestore().collection('users').doc(user.uid).set(profile);
+    return admin.firestore().collection('users').doc(user.uid).set(profile);
 });
-// Trigger when a post is created
-exports.onpostcreate = (0, firestore_1.onDocumentCreated)('posts/{postId}', async (event) => {
-    const snap = event.data;
-    if (!snap) {
-        console.log('No data associated with the event');
-        return;
-    }
+// Post created → increment user post count
+exports.onpostcreate = functions.firestore
+    .document('posts/{postId}')
+    .onCreate(async (snap) => {
     const post = snap.data();
-    if (post?.authorId) {
-        await admin.firestore().collection('users').doc(post.authorId).update({
-            'stats.postsCount': admin.firestore.FieldValue.increment(1),
-        });
-    }
+    if (!post)
+        return null;
+    return admin
+        .firestore()
+        .collection('users')
+        .doc(post.authorId)
+        .update({
+        'stats.postsCount': admin.firestore.FieldValue.increment(1),
+    });
 });
-// Trigger when an order is updated
-exports.onorderupdate = (0, firestore_1.onDocumentUpdated)('orders/{orderId}', async (event) => {
-    const after = event.data?.after.data();
-    const orderId = event.params.orderId;
-    if (after?.status === 'paid') {
+// Order updated → trigger payments (stub)
+exports.onorderupdate = functions.firestore
+    .document('orders/{orderId}')
+    .onUpdate(async (change, context) => {
+    const after = change.after.data();
+    if (!after)
+        return null;
+    if (after.status === 'paid') {
         // Example: update product metrics & create payment record
         const productRef = admin
             .firestore()
@@ -88,8 +86,11 @@ exports.onorderupdate = (0, firestore_1.onDocumentUpdated)('orders/{orderId}', a
             'metrics.unitsSold': admin.firestore.FieldValue.increment(after.quantity),
             'metrics.revenue': admin.firestore.FieldValue.increment(after.amount),
         });
-        await admin.firestore().collection('payments').add({
-            orderId: orderId,
+        await admin
+            .firestore()
+            .collection('payments')
+            .add({
+            orderId: context.params.orderId,
             sellerId: after.sellerId,
             amountGross: after.amount,
             fees: { platform: after.amount * 0.1, taxes: after.amount * 0.05 },
@@ -98,22 +99,26 @@ exports.onorderupdate = (0, firestore_1.onDocumentUpdated)('orders/{orderId}', a
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
     }
+    return null;
 });
-// Seed demo data
-exports.seeddemo = (0, https_1.onCall)(async (request) => {
-    if (!request.auth) {
-        throw new options_1.HttpsError('unauthenticated', 'The function must be called while authenticated.');
+// Callable demo seeder
+exports.seeddemo = functions.https.onCall(async (_data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
     }
-    const uid = request.auth.uid;
-    await admin.firestore().collection('users').doc(uid).set({
-        uid,
-        displayName: 'Demo User',
-        handle: 'demo',
-        bio: 'Seeded demo profile',
-        walletBalance: 100,
-        stats: { following: 0, followers: 0, likes: 0, postsCount: 0 },
+    const uid = context.auth.uid;
+    await admin
+        .firestore()
+        .collection('posts')
+        .add({
+        authorId: uid,
+        media: { url: 'https://placekitten.com/200/200', type: 'image' },
+        caption: 'Hello AkiliPesa!',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        visibility: 'public',
     });
-    return { success: true };
+    return { success: true, message: 'Demo data seeded.' };
 });

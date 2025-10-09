@@ -1,3 +1,4 @@
+
 'use strict';
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
@@ -5,7 +6,7 @@ import * as admin from 'firebase-admin';
 admin.initializeApp();
 
 // User signup → create profile
-export const onusercreate = functions.auth.user().onCreate(async user => {
+export const onusercreate = functions.auth.user().onCreate(async (user: functions.auth.UserRecord) => {
   const profile = {
     uid: user.uid,
     phone: user.phoneNumber || null,
@@ -26,7 +27,7 @@ export const onusercreate = functions.auth.user().onCreate(async user => {
 // Post created → increment user post count
 export const onpostcreate = functions.firestore
   .document('posts/{postId}')
-  .onCreate(async snap => {
+  .onCreate(async (snap: functions.firestore.QueryDocumentSnapshot) => {
     const post = snap.data();
     if (!post) return null;
 
@@ -42,7 +43,7 @@ export const onpostcreate = functions.firestore
 // Order updated → trigger payments (stub)
 export const onorderupdate = functions.firestore
   .document('orders/{orderId}')
-  .onUpdate(async (change, context) => {
+  .onUpdate(async (change: functions.Change<functions.firestore.DocumentSnapshot>, context: functions.EventContext) => {
     const after = change.after.data();
     if (!after) return null;
 
@@ -76,7 +77,7 @@ export const onorderupdate = functions.firestore
   });
 
 // Callable demo seeder
-export const seeddemo = functions.https.onCall(async (_data, context) => {
+export const seeddemo = functions.https.onCall(async (_data, context: functions.https.CallableContext) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
