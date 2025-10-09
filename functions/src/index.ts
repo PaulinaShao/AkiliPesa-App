@@ -1,20 +1,13 @@
 'use strict';
+import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { setGlobalOptions, HttpsError } from 'firebase-functions/v2/options';
-import { onCall, CallableRequest } from 'firebase-functions/v2/https';
-import {
-  onDocumentCreated,
-  onDocumentUpdated,
-} from 'firebase-functions/v2/firestore';
-import { onUserCreated, UserRecord } from 'firebase-functions/v2/identity';
-import { Change, DocumentSnapshot } from 'firebase-functions/v1/firestore';
+import { HttpsError } from 'firebase-functions/v2/https';
 
 admin.initializeApp();
-setGlobalOptions({ region: 'us-central1' });
+functions.setGlobalOptions({ region: 'us-central1' });
 
 // Trigger when a new user signs up
-export const onusercreate = onUserCreated(async event => {
-  const user = event.data;
+export const onusercreate = functions.auth.user().onCreate(async user => {
   const profile = {
     uid: user.uid,
     phone: user.phoneNumber || null,
@@ -34,29 +27,23 @@ export const onusercreate = onUserCreated(async event => {
 });
 
 // Trigger when a post is created
-export const onpostcreate = onDocumentCreated(
-  'posts/{postId}',
-  async event => {
-    const snap = event.data;
-    if (!snap) {
-      console.log('No data associated with the event');
-      return;
-    }
+export const onpostcreate = functions.firestore
+  .document('posts/{postId}')
+  .onCreate(async (snap, context) => {
     const post = snap.data();
     if (post?.authorId) {
       await admin.firestore().collection('users').doc(post.authorId).update({
         'stats.postsCount': admin.firestore.FieldValue.increment(1),
       });
     }
-  }
-);
+  });
 
 // Trigger when an order is updated
-export const onorderupdate = onDocumentUpdated(
-  'orders/{orderId}',
-  async event => {
-    const after = event.data?.after.data();
-    const orderId = event.params.orderId;
+export const onorderupdate = functions.firestore
+  .document('orders/{orderId}')
+  .onUpdate(async (change, context) => {
+    const after = change.after.data();
+    const orderId = context.params.orderId;
 
     if (after?.status === 'paid') {
       // Example: update product metrics & create payment record
@@ -81,19 +68,18 @@ export const onorderupdate = onDocumentUpdated(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
-  }
-);
+  });
 
 // Seed demo data
-export const seeddemo = onCall(async (request: CallableRequest) => {
-  if (!request.auth) {
+export const seeddemo = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
     throw new HttpsError(
       'unauthenticated',
       'The function must be called while authenticated.'
     );
   }
 
-  const uid = request.auth.uid;
+  const uid = context.auth.uid;
   await admin.firestore().collection('users').doc(uid).set({
     uid,
     displayName: 'Demo User',
