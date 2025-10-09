@@ -77,7 +77,7 @@ export const onorderupdate = functions.firestore
   });
 
 // Callable demo seeder
-export const seeddemo = functions.https.onCall(async (_data, context: functions.https.CallableContext) => {
+export const seeddemo = functions.https.onCall(async (_data: any, context: functions.https.CallableContext) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
