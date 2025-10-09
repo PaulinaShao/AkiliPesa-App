@@ -1,4 +1,6 @@
 import * as admin from "firebase-admin";
+
+// v2 Firebase Functions modular imports
 import { setGlobalOptions } from "firebase-functions/v2/options";
 import { onCall, CallableRequest } from "firebase-functions/v2/https";
 import { onDocumentCreated, onDocumentUpdated, Change, DocumentSnapshot } from "firebase-functions/v2/firestore";
@@ -7,7 +9,10 @@ import { onUserCreated, UserRecord } from "firebase-functions/v2/auth";
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1" });
 
-
+/**
+ * Auth Trigger for New User Creation
+ * Creates a user profile document in Firestore when a new user signs up.
+ */
 export const onUserCreate = onUserCreated(async (event: { data: UserRecord }) => {
   const user = event.data;
   const profile = {
@@ -26,6 +31,10 @@ export const onUserCreate = onUserCreated(async (event: { data: UserRecord }) =>
   await admin.firestore().collection("users").doc(user.uid).set(profile, { merge: true });
 });
 
+/**
+ * Firestore Trigger for New Post Creation
+ * Increments the author's post count when a new post is created.
+ */
 export const onPostCreate = onDocumentCreated("posts/{postId}", async (event) => {
   const snap = event.data;
   if (!snap) return;
@@ -36,10 +45,15 @@ export const onPostCreate = onDocumentCreated("posts/{postId}", async (event) =>
   });
 });
 
+/**
+ * Firestore Trigger for Order Updates
+ * Handles payment processing when an order's status is changed to "paid".
+ */
 export const onOrderUpdate = onDocumentUpdated("orders/{orderId}", async (event) => {
   const after = event.data?.after.data();
   const before = event.data?.before.data();
 
+  // Exit if status didn't change to "paid"
   if (!before || !after || before.status === "paid" || after.status !== "paid") {
     return;
   }
@@ -87,44 +101,73 @@ export const onOrderUpdate = onDocumentUpdated("orders/{orderId}", async (event)
   }, { merge: true });
 });
 
+/**
+ * HTTPS Callable Function for Seeding Demo Data
+ * Populates the database with sample data for the authenticated user.
+ */
 export const seedDemo = onCall(async (request: CallableRequest) => {
   if (!request.auth) {
     throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
   }
   const uid = request.auth.uid;
 
+  // 1. Seed User Profile
   await admin.firestore().doc(`users/${uid}`).set({
-    uid, handle: `demo_${uid.slice(0,5)}`, displayName: "Demo User",
-    plan: "trial", walletBalance: 20000,
+    uid,
+    handle: `demo_${uid.slice(0,5)}`,
+    displayName: "Demo User",
+    plan: "trial",
+    walletBalance: 20000,
     stats: { following: 10, followers: 2100000, likes: 15300000, postsCount: 0 },
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
 
+  // 2. Seed a Post
   const p = admin.firestore().collection("posts").doc();
   await p.set({
-    id: p.id, authorId: uid,
+    id: p.id,
+    authorId: uid,
     media: { url: "https://picsum.photos/600/800", type: "image" },
     caption: "Chasing waterfalls!",
-    tags: ["nature","travel"], createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    likes: 15000, comments: 520, shares: 320, visibility: "public"
+    tags: ["nature","travel"],
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    likes: 15000,
+    comments: 520,
+    shares: 320,
+    visibility: "public"
   });
 
+  // 3. Seed a Product
   const prod = admin.firestore().collection("products").doc();
   await prod.set({
-    id: prod.id, ownerId: uid, kind: "service",
-    title: "Content Strategy Session", description: "30-min video call",
+    id: prod.id,
+    ownerId: uid,
+    kind: "service",
+    title: "Content Strategy Session",
+    description: "30-min video call to boost your content game.",
     media: "https://picsum.photos/seed/akili/640/360",
-    price: 5000, currency: "TZS", taxRate: 0.00, inventory: 999,
-    assignedAgentIds: [], metrics: { views: 0, shares: 0, unitsSold: 0, revenue: 0 },
+    price: 5000,
+    currency: "TZS",
+    taxRate: 0.00,
+    inventory: 999,
+    assignedAgentIds: [],
+    metrics: { views: 0, shares: 0, unitsSold: 0, revenue: 0 },
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
-
+  
+  // 4. Seed an Order (and trigger onOrderUpdate)
   const order = admin.firestore().collection("orders").doc();
   await order.set({
-    id: order.id, productId: prod.id, buyerId: "demoBuyer", sellerId: uid,
-    quantity: 1, amount: 5000, currency: "TZS",
-    status: "paid", escrow: { held: false },
+    id: order.id,
+    productId: prod.id,
+    buyerId: "demoBuyer",
+    sellerId: uid,
+    quantity: 1,
+    amount: 5000,
+    currency: "TZS",
+    status: "paid", // Set to 'paid' to trigger payment creation
+    escrow: { held: false },
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
