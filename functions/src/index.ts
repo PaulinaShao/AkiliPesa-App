@@ -2,9 +2,9 @@ import * as admin from "firebase-admin";
 
 // v2 Firebase Functions modular imports
 import { setGlobalOptions } from "firebase-functions/v2/options";
-import { onCall, CallableRequest } from "firebase-functions/v2/https";
+import { onCall, CallableRequest, HttpsError } from "firebase-functions/v2/https";
 import { onDocumentCreated, onDocumentUpdated, Change, DocumentSnapshot } from "firebase-functions/v2/firestore";
-import { onUserCreated, UserRecord } from "firebase-functions/v2/auth";
+import { onUserCreated, UserRecord } from "firebase-functions/v2/identity";
 
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1" });
@@ -107,7 +107,7 @@ export const onOrderUpdate = onDocumentUpdated("orders/{orderId}", async (event)
  */
 export const seedDemo = onCall(async (request: CallableRequest) => {
   if (!request.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+    throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
   }
   const uid = request.auth.uid;
 
