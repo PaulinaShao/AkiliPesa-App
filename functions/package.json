@@ -1,7 +1,6 @@
 {
   "name": "functions",
   "private": true,
-  "type": "module",
   "main": "lib/index.js",
   "engines": {
     "node": "20"
@@ -10,8 +9,8 @@
     "build": "tsc"
   },
   "dependencies": {
-    "firebase-admin": "^11.10.1",
-    "firebase-functions": "^6.5.0"
+    "firebase-admin": "^12.3.0",
+    "firebase-functions": "^5.0.1"
   },
   "devDependencies": {
     "@types/node": "^20",
