@@ -6,7 +6,7 @@ Use the functions in `src/firebase/testFlows.ts` from your browser's developer c
 
 ✅ Run `testCreatePost()` → check Firestore `users/{uid}.stats.postsCount` has incremented.
 
-✅ Run `testOrderUpdate()` → check Firestore `payments` collection for a new payment document.
+✅ Run `testOrderUpdate()` → check Firestore `payments` collection for a new payment record.
 
 ✅ Run `testSeedDemo()` → check Firestore `posts` collection for a new post with a kitten image.
 
