@@ -1,11 +1,6 @@
 
-// Triggering a re-deploy at user's request.
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
-import { UserRecord } from "firebase-functions/v1/auth";
-import { Change, EventContext } from "firebase-functions/v1";
-import { DocumentSnapshot } from "firebase-functions/v1/firestore";
-import { HttpsContext } from "firebase-functions/v1/https";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -48,7 +43,7 @@ function computePayout(input: {
 
 /** Auth → create user profile */
 export const onUserCreate = functions.region(region).auth.user()
-  .onCreate(async (user: UserRecord) => {
+  .onCreate(async (user) => {
     const profile = {
       uid: user.uid,
       phone: user.phoneNumber ?? null,
@@ -68,7 +63,7 @@ export const onUserCreate = functions.region(region).auth.user()
 /** Posts → increment postsCount */
 export const onPostCreate = functions.region(region).firestore
   .document("posts/{postId}")
-  .onCreate(async (snap: DocumentSnapshot) => {
+  .onCreate(async (snap) => {
     const post = snap.data() as any;
     if (!post?.authorId) return;
     await db.doc(`users/${post.authorId}`).update({
@@ -79,7 +74,7 @@ export const onPostCreate = functions.region(region).firestore
 /** Orders → when status becomes 'paid' create Payment and update product metrics */
 export const onOrderUpdate = functions.region(region).firestore
   .document("orders/{orderId}")
-  .onUpdate(async (change: Change<DocumentSnapshot>, ctx: EventContext) => {
+  .onUpdate(async (change, ctx) => {
     const before = change.before.data() as any;
     const after = change.after.data() as any;
     if (before.status === "paid" || after.status !== "paid") return;
@@ -120,7 +115,7 @@ export const onOrderUpdate = functions.region(region).firestore
   });
 
 /** One-time seed function (callable) */
-export const seedDemo = functions.region(region).https.onCall(async (_data: any, context: HttpsContext) => {
+export const seedDemo = functions.region(region).https.onCall(async (_data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Sign in");
   const uid = context.auth.uid;
 
