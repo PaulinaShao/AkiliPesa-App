@@ -6,7 +6,7 @@ admin.initializeApp();
 
 // User signup → create profile
 export const onusercreate = functions.auth.user().onCreate(
-  async (user: admin.auth.UserRecord) => {
+  async (user) => {
     const profile = {
       uid: user.uid,
       phone: user.phoneNumber || null,
@@ -27,7 +27,7 @@ export const onusercreate = functions.auth.user().onCreate(
 // Post created → increment user post count
 export const onpostcreate = functions.firestore
   .document('posts/{postId}')
-  .onCreate(async (snap: functions.firestore.QueryDocumentSnapshot) => {
+  .onCreate(async (snap) => {
     const post = snap.data();
     if (!post) return null;
 
@@ -41,8 +41,8 @@ export const onorderupdate = functions.firestore
   .document('orders/{orderId}')
   .onUpdate(
     async (
-      change: functions.Change<functions.firestore.DocumentSnapshot>,
-      context: functions.EventContext
+      change,
+      context
     ) => {
       const after = change.after.data();
       if (!after) return null;
@@ -76,7 +76,7 @@ export const onorderupdate = functions.firestore
 
 // Callable demo seeder
 export const seeddemo = functions.https.onCall(
-  async (_data: any, context: functions.https.CallableContext) => {
+  async (_data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError(
         'unauthenticated',
