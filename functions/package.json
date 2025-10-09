@@ -2,10 +2,15 @@
   "name": "functions",
   "private": true,
   "type": "module",
-  "engines": { "node": "20" },
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "firebase-admin": "^12.5.0",
     "firebase-functions": "^6.1.0"
-  },
-  "main": "lib/index.js"
+  }
 }
