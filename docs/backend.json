@@ -33,8 +33,10 @@
       "description": "Represents a media post created by a user.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
+        "postId": { "type": "string" },
         "authorId": { "type": "string" },
+        "caption": { "type": "string" },
+        "contentType": { "type": "string", "enum": ["Service", "Digital", "Physical"] },
         "media": {
           "type": "object",
           "properties": {
@@ -42,36 +44,37 @@
             "type": { "type": "string", "enum": ["image", "video", "audio", "text"] }
           }
         },
-        "caption": { "type": "string" },
-        "tags": { "type": "array", "items": { "type": "string" } },
-        "createdAt": { "type": "string", "format": "date-time" },
+        "pricing": {
+          "type": "object",
+          "properties": {
+            "price": { "type": "number" },
+            "commission": { "type": "number" }
+          }
+        },
+        "agentId": { "type": "string" },
+        "allowCall": { "type": "boolean" },
         "likes": { "type": "number" },
         "comments": { "type": "number" },
         "shares": { "type": "number" },
-        "visibility": { "type": "string", "enum": ["public", "followers"] }
+        "visibility": { "type": "string", "enum": ["public", "followers"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "scheduledAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "authorId", "media", "createdAt"]
+      "required": ["postId", "authorId", "media", "createdAt"]
     },
     "Clone": {
       "title": "Clone",
       "description": "Represents a user's digital clone (face, body, or voice).",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "kind": { "type": "string", "enum": ["face", "fullbody", "voice"] },
-        "source": { "type": "string", "enum": ["upload", "capture"] },
-        "assets": {
-          "type": "object",
-          "properties": {
-            "model": { "type": "string" },
-            "preview": { "type": "string" },
-            "voice": { "type": "string" }
-          }
-        },
-        "status": { "type": "string", "enum": ["processing", "ready", "failed"] },
+        "cloneId": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["face", "fullbody", "voice"] },
+        "voiceModelUrl": { "type": "string", "format": "uri" },
+        "avatarUrl": { "type": "string", "format": "uri" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "kind", "source", "status", "createdAt"]
+      "required": ["cloneId", "userId", "type", "createdAt"]
     },
     "Agent": {
       "title": "Agent",
@@ -131,24 +134,17 @@
       "description": "Represents a customer's order for a product.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
+        "orderId": { "type": "string" },
         "productId": { "type": "string" },
         "buyerId": { "type": "string" },
         "sellerId": { "type": "string" },
-        "quantity": { "type": "number" },
         "amount": { "type": "number" },
-        "currency": { "type": "string" },
+        "quantity": { "type": "number" },
         "status": { "type": "string", "enum": ["pending", "paid", "fulfilled", "cancelled", "refunded"] },
-        "escrow": {
-          "type": "object",
-          "properties": {
-            "held": { "type": "boolean" },
-            "releaseDate": { "type": "string", "format": "date-time" }
-          }
-        },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "productId", "buyerId", "sellerId", "quantity", "amount", "currency", "status", "createdAt"]
+      "required": ["orderId", "productId", "buyerId", "sellerId", "quantity", "amount", "status", "createdAt"]
     },
     "Payment": {
       "title": "Payment",
@@ -187,14 +183,14 @@
         "description": "Describes a subscription plan for users.",
         "type": "object",
         "properties": {
-            "id": {"type": "string"},
+            "planId": {"type": "string"},
             "name": {"type": "string", "enum": ["Free", "Trial", "Premium"]},
             "price": {"type": "number"},
-            "durationDays": {"type": "number"},
+            "commissionRate": {"type": "number"},
             "features": {"type": "array", "items": {"type": "string"}},
             "createdAt": {"type": "string", "format": "date-time"}
         },
-        "required": ["id", "name", "price"]
+        "required": ["planId", "name", "price"]
     }
   },
   "auth": {

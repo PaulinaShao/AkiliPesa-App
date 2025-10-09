@@ -1,19 +1,55 @@
 
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Camera, Upload, X, SwitchCamera, Zap, Timer, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const tabs = ['Camera', 'Templates', 'AI'];
 
 export default function UploadPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('Camera');
+  const [hasCameraPermission, setHasCameraPermission] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Not Supported',
+          description: 'Your browser does not support camera access.',
+        });
+        return;
+      }
+      
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({video: true});
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to use this feature.',
+        });
+      }
+    };
+
+    getCameraPermission();
+  }, [toast]);
 
   return (
     <div className="flex flex-col h-screen bg-black text-white">
@@ -34,9 +70,19 @@ export default function UploadPage() {
       </header>
 
       {/* Main Content (Camera View) */}
-      <main className="flex-1 relative">
-        <video ref={videoRef} className="w-full h-full object-cover" playsInline autoPlay muted loop/>
+      <main className="flex-1 relative flex items-center justify-center">
+        <video ref={videoRef} className="w-full h-full object-cover" playsInline autoPlay muted />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+         {!hasCameraPermission && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4">
+                <Alert variant="destructive">
+                  <AlertTitle>Camera Access Required</AlertTitle>
+                  <AlertDescription>
+                    Please allow camera access in your browser settings to use this feature.
+                  </AlertDescription>
+              </Alert>
+            </div>
+        )}
       </main>
 
       {/* Footer */}

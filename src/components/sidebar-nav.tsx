@@ -14,7 +14,7 @@ const mainNavLinks = [
   { href: '/', icon: Home, label: 'Home' },
   { href: '/search', icon: Search, label: 'Discover' },
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
-  { href: '/upload', icon: PlusSquare, label: 'Create' },
+  { href: '/create/ai', icon: PlusSquare, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
   { href: '/u/financeWizard', icon: User, label: 'Profile' },
 ];
@@ -40,6 +40,8 @@ export function SidebarNav() {
               isActive = pathname === '/';
             } else if (label === 'Profile') {
               isActive = pathname.startsWith('/u/');
+            } else if (label === 'Create') {
+              isActive = pathname.startsWith('/create') || pathname.startsWith('/upload');
             } else {
               isActive = pathname.startsWith(href);
             }
