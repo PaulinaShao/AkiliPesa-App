@@ -39,14 +39,14 @@ const admin = __importStar(require("firebase-admin"));
 const options_1 = require("firebase-functions/v2/options");
 const https_1 = require("firebase-functions/v2/https");
 const firestore_1 = require("firebase-functions/v2/firestore");
-const auth_1 = require("firebase-functions/v2/auth");
+const identity_1 = require("firebase-functions/v2/identity");
 admin.initializeApp();
 (0, options_1.setGlobalOptions)({ region: "us-central1" });
 /**
  * Auth Trigger for New User Creation
  * Creates a user profile document in Firestore when a new user signs up.
  */
-exports.onUserCreate = (0, auth_1.onUserCreated)(async (event) => {
+exports.onUserCreate = (0, identity_1.onUserCreated)(async (event) => {
     const user = event.data;
     const profile = {
         uid: user.uid,
@@ -130,7 +130,7 @@ exports.onOrderUpdate = (0, firestore_1.onDocumentUpdated)("orders/{orderId}", a
  */
 exports.seedDemo = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+        throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
     const uid = request.auth.uid;
     // 1. Seed User Profile
