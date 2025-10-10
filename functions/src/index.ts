@@ -15,11 +15,11 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
     displayName: user.displayName || 'New User',
     photoURL: user.photoURL || '',
     wallet: {
-        balance: 0,
+        balance: 10,
         escrow: 0,
         plan: {
-            id: 'free',
-            credits: 0,
+            id: 'trial',
+            credits: 10,
             expiry: null
         },
         lastDeduction: null

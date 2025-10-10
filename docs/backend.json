@@ -16,12 +16,12 @@
         "wallet": {
           "type": "object",
           "properties": {
-            "balance": { "type": "number", "description": "The user's main wallet balance in TZS." },
+            "balance": { "type": "number", "description": "The user's main wallet balance in TZS. Can also be used for trial credits." },
             "escrow": { "type": "number", "description": "Funds held in escrow for pending transactions." },
             "plan": {
               "type": "object",
               "properties": {
-                "id": { "type": "string", "description": "The ID of the user's current plan." },
+                "id": { "type": "string", "description": "The ID of the user's current plan (e.g., 'trial', 'basic')." },
                 "credits": { "type": "number", "description": "Remaining credits in the user's plan." },
                 "expiry": { "type": "string", "format": "date-time", "description": "The expiry date of the current plan." }
               }

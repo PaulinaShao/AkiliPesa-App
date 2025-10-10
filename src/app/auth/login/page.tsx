@@ -1,26 +1,52 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Chrome, Phone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { 
+  auth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  db, 
+  doc, 
+  setDoc, 
+  getDoc 
+} from '@/firebase/client';
 
 export default function LoginPage() {
   const router = useRouter();
 
-  // Placeholder functions for auth logic
   const handleGoogleSignIn = async () => {
-    // In a real app, you would call your Firebase auth function here
-    console.log('Initiating Google Sign-In...');
-    // e.g., await signInWithGoogleWeb();
-    router.push('/'); // Redirect on success
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        // Give trial credits on first login
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          phone: user.phoneNumber || null,
+          wallet: { balance: 10, plan: "trial", lastDeduction: null, escrow: 0, credits: 10, expiry: null },
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      router.push('/create/ai');
+    } catch (err) {
+      console.error("Google Sign-in error:", err);
+    }
   };
 
   const handlePhoneSignIn = () => {
-    // In a real app, this would likely navigate to a more detailed phone input screen
-    console.log('Initiating Phone Sign-In...');
-    // e.g., router.push('/auth/phone');
+    router.push('/auth/phone');
   };
 
   return (
