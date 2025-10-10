@@ -25,10 +25,11 @@ export default function PhoneLoginPage() {
 
   const sendOtp = async () => {
     try {
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+      // It's recommended to have window typed correctly, but for this case we'll use 'any'
+      if (!(window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
       }
-      const verifier = window.recaptchaVerifier;
+      const verifier = (window as any).recaptchaVerifier;
       const result = await signInWithPhoneNumber(auth, phone, verifier);
       setConfirmationResult(result);
       setOtpSent(true);
@@ -47,13 +48,8 @@ export default function PhoneLoginPage() {
       const userSnap = await getDoc(userRef);
 
       if (!userSnap.exists()) {
-        // Assign 10 trial credits on first signup
-        await setDoc(userRef, {
-            uid: user.uid,
-            phone: user.phoneNumber,
-            wallet: { balance: 10, plan: "trial", lastDeduction: null, escrow: 0, credits: 10, expiry: null },
-            createdAt: new Date().toISOString(),
-        }, { merge: true });
+        // The onusercreate Firebase function will handle creating the user document
+        // with trial credits. This is just for client-side awareness.
       }
 
       router.push("/create/ai");

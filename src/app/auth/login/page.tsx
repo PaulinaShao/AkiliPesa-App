@@ -27,16 +27,8 @@ export default function LoginPage() {
       const userSnap = await getDoc(userRef);
 
       if (!userSnap.exists()) {
-        // Give trial credits on first login
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          phone: user.phoneNumber || null,
-          wallet: { balance: 10, plan: "trial", lastDeduction: null, escrow: 0, credits: 10, expiry: null },
-          createdAt: new Date().toISOString(),
-        });
+        // The onusercreate Firebase Function will handle creating the user document
+        // with trial credits. This check is for client-side redirection.
       }
 
       router.push('/create/ai');

@@ -26,7 +26,8 @@
                 "expiry": { "type": "string", "format": "date-time", "description": "The expiry date of the current plan." }
               }
             },
-            "lastDeduction": { "type": "string", "format": "date-time", "description": "Timestamp of the last credit deduction." }
+            "lastDeduction": { "type": "string", "format": "date-time", "description": "Timestamp of the last credit deduction." },
+            "lastTrialReset": { "type": "string", "format": "date-time", "description": "Timestamp of the last trial credit daily reset." }
           }
         },
         "stats": {

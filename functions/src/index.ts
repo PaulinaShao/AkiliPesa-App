@@ -20,9 +20,9 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
         plan: {
             id: 'trial',
             credits: 10,
-            expiry: null
         },
-        lastDeduction: null
+        lastDeduction: null,
+        lastTrialReset: admin.firestore.FieldValue.serverTimestamp(),
     },
     stats: { following: 0, followers: 0, likes: 0, postsCount: 0 },
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -171,3 +171,39 @@ export const seeddemo = functions.https.onCall(async (_data, context) => {
 
   return { success: true, message: 'Demo data seeded.' };
 });
+
+// Daily trial credit reset
+export const resetTrialCredits = functions.pubsub
+  .schedule("every day 00:00")
+  .onRun(async () => {
+    const usersRef = admin.firestore().collection("users");
+    const snapshot = await usersRef.where("wallet.plan.id", "==", "trial").get();
+
+    if (snapshot.empty) {
+      console.log("No trial users found to reset.");
+      return null;
+    }
+
+    const batch = admin.firestore().batch();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+
+    snapshot.docs.forEach(doc => {
+      const user = doc.data();
+      const lastReset = user.wallet.lastTrialReset?.toDate();
+      
+      // Check if last reset was before today
+      if (!lastReset || lastReset.getTime() < today.getTime()) {
+        const userRef = usersRef.doc(doc.id);
+        batch.update(userRef, {
+          "wallet.balance": 10,
+          "wallet.credits": 10,
+          "wallet.lastTrialReset": admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    });
+
+    await batch.commit();
+    console.log(`Reset trial credits for ${snapshot.size} users.`);
+    return null;
+  });
