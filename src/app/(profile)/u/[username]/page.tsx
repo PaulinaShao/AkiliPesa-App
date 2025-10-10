@@ -27,7 +27,7 @@ export default function ProfilePage() {
         <ProfileQuickActions />
         <ProfileNav />
         
-        <div>
+        <div className="pb-16 md:pb-0">
             {userVideos.length > 0 ? (
               <div className="grid grid-cols-3 gap-1 mt-4">
                 {userVideos.map(video => (

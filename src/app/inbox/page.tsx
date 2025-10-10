@@ -24,7 +24,7 @@ export default function InboxPage() {
                 <div className="w-10"></div>
             </header>
 
-            <main className="flex-1 overflow-y-auto supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[env(safe-area-inset-bottom)]">
+            <main className="flex-1 overflow-y-auto supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(env(safe-area-inset-bottom)+64px)] md:supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-0">
                 {/* Pinned AkiliPesa AI Chat */}
                 <Link href="/inbox/akilipesa-ai" className="flex items-center gap-4 p-4 hover:bg-muted transition-colors cursor-pointer">
                     <Avatar className="w-14 h-14 bg-gradient-tanzanite p-1">
