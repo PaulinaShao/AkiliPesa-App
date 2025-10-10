@@ -1,14 +1,14 @@
-
 'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/user-avatar';
 import { conversations, users } from '@/lib/data';
 import { Phone, Sparkles, Video, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function InboxPage() {
     const router = useRouter();
@@ -27,8 +27,10 @@ export default function InboxPage() {
             <main className="flex-1 overflow-y-auto">
                 {/* Pinned AkiliPesa AI Chat */}
                 <Link href="/inbox/akilipesa-ai" className="flex items-center gap-4 p-4 hover:bg-muted transition-colors cursor-pointer">
-                    <Avatar className="w-14 h-14 border-2 border-primary">
-                        <AvatarFallback><Sparkles className="w-6 h-6"/></AvatarFallback>
+                    <Avatar className="w-14 h-14 bg-gradient-tanzanite p-1">
+                        <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
+                            <Sparkles className="w-6 h-6 text-white"/>
+                        </div>
                     </Avatar>
                     <div className="flex-1">
                         <p className="font-bold">AkiliPesa AI</p>
@@ -52,7 +54,10 @@ export default function InboxPage() {
                             <Link href={`/inbox/${otherUser.username}`} key={convo.id} className="flex items-center gap-4 p-4 border-b hover:bg-muted transition-colors cursor-pointer">
                                 <div className="relative">
                                     <UserAvatar src={otherUser.avatar} username={otherUser.username} className="w-14 h-14"/>
-                                    {isUnread && <span className="absolute top-0 right-0 block h-3 w-3 rounded-full bg-primary ring-2 ring-background" />}
+                                    {isUnread && <span className={cn(
+                                        "absolute top-0 right-0 block h-3.5 w-3.5 rounded-full ring-2 ring-background",
+                                        "bg-gradient-tanzanite animate-pulse"
+                                    )} />}
                                 </div>
                                 <div className="flex-1 overflow-hidden">
                                     <div className="flex justify-between items-start">

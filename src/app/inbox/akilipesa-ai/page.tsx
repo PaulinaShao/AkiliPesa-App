@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Sparkles, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { UserAvatar } from '@/components/user-avatar';
 import { Input } from '@/components/ui/input';
 import { Paperclip, Mic, Send } from 'lucide-react';
@@ -89,8 +88,10 @@ export default function AkiliPesaAIChatPage() {
                     <ChevronLeft className="h-6 w-6" />
                 </Button>
                 <div className="flex items-center gap-3">
-                     <Avatar className="w-10 h-10 border-2 border-primary">
-                        <AvatarFallback><Sparkles className="w-5 h-5"/></AvatarFallback>
+                     <Avatar className="w-10 h-10 bg-gradient-tanzanite p-0.5">
+                        <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
+                            <Sparkles className="w-5 h-5 text-white" />
+                        </div>
                     </Avatar>
                     <span className="font-bold text-lg">{aiUser.username}</span>
                 </div>
@@ -107,15 +108,17 @@ export default function AkiliPesaAIChatPage() {
                         msg.senderId === currentUser.id ? "ml-auto flex-row-reverse" : "mr-auto"
                     )}>
                         {msg.senderId !== currentUser.id ? (
-                            <Avatar className="w-8 h-8 border-2 border-primary self-start">
-                                <AvatarFallback><Sparkles className="w-4 h-4"/></AvatarFallback>
+                            <Avatar className="w-8 h-8 bg-gradient-tanzanite p-0.5 self-start">
+                                <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
+                                    <Sparkles className="w-4 h-4 text-white"/>
+                                </div>
                             </Avatar>
                         ) : (
                            <UserAvatar src={currentUser.avatar} username={currentUser.username} className="w-8 h-8" />
                         )}
                         <div className={cn(
                             "rounded-2xl px-4 py-2",
-                            msg.senderId === currentUser.id ? "bg-primary text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"
+                            msg.senderId === currentUser.id ? "bg-gradient-tanzanite text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"
                         )}>
                             <p className="text-sm">{msg.text}</p>
                             {isClient && (
@@ -145,7 +148,7 @@ export default function AkiliPesaAIChatPage() {
                     <Button variant="ghost" size="icon" className="shrink-0">
                         <Mic className="h-5 w-5" />
                     </Button>
-                    <Button type="submit" size="icon" className="shrink-0 h-9 w-9 rounded-full bg-primary">
+                    <Button type="submit" size="icon" className="shrink-0 h-9 w-9 rounded-full bg-gradient-tanzanite">
                         <Send className="h-5 w-5" />
                     </Button>
                 </form>

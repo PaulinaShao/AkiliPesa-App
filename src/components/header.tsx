@@ -21,8 +21,8 @@ export function Header({ transparent, isMuted, onToggleMute }: HeaderProps) {
       transparent ? "border-transparent" : "bg-background/80 backdrop-blur-sm"
     )}>
       <Link href="/" className="flex items-center gap-2">
-        <Logo className="h-8 w-8 text-primary" />
-        <h1 className="text-xl font-bold font-headline hidden md:block">AkiliPesa</h1>
+        <Logo className="h-8 w-8" />
+        <h1 className="text-xl font-bold font-headline hidden md:block text-gradient">AkiliPesa</h1>
       </Link>
       
       <div className="flex flex-nowrap shrink items-center gap-2 md:gap-4 overflow-hidden">

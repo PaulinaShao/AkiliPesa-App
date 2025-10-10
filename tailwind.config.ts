@@ -1,5 +1,7 @@
 import type {Config} from 'tailwindcss';
 
+const plugin = require('tailwindcss/plugin')
+
 export default {
   darkMode: ['class'],
   content: [
@@ -98,7 +100,23 @@ export default {
         'accordion-up': 'accordion-up 0.2s ease-out',
         'like-beat': 'like-beat 0.3s ease-in-out',
       },
+      backgroundImage: {
+        'gradient-tanzanite': 'linear-gradient(135deg, var(--gradient-violet), var(--gradient-sapphire), var(--gradient-teal))',
+      },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [
+      require('tailwindcss-animate'),
+      plugin(function({ addUtilities }: { addUtilities: any }) {
+        addUtilities({
+            '.text-gradient': {
+                'background-image': 'linear-gradient(135deg, var(--gradient-violet), var(--gradient-sapphire), var(--gradient-teal))',
+                '-webkit-background-clip': 'text',
+                '-webkit-text-fill-color': 'transparent',
+                'background-clip': 'text',
+                'color': 'transparent',
+            },
+        })
+    })
+  ],
 } satisfies Config;

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -27,8 +26,8 @@ export function SidebarNav() {
   return (
     <aside className="hidden md:flex flex-col w-64 border-r bg-background fixed h-full p-4 space-y-6">
       <Link href="/" className="flex items-center gap-2 px-2">
-        <Logo className="h-8 w-8 text-primary" />
-        <h1 className="text-xl font-bold font-headline">AkiliPesa</h1>
+        <Logo className="h-8 w-8" />
+        <h1 className="text-xl font-bold font-headline text-gradient">AkiliPesa</h1>
       </Link>
       
       <nav className="flex-1">

@@ -97,7 +97,7 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
         >
           <div className="flex items-start gap-3 mb-2">
             <div className="relative">
-              <Link href={`/profile/${user.username}`}>
+              <Link href={`/u/${user.username}`}>
                 <UserAvatar src={user.avatar} username={user.username} className="h-12 w-12 border-2 border-white" />
               </Link>
               <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
@@ -105,15 +105,15 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
               </button>
             </div>
             <div className="pt-2">
-              <Link href={`/profile/${user.username}`}>
+              <Link href={`/u/${user.username}`}>
                 <h3 className="font-bold text-lg text-white">@{user.username}</h3>
               </Link>
             </div>
           </div>
 
           <div className='flex gap-2 mb-2'>
-            <Button size="sm" className="bg-primary font-bold text-xs h-8">Buy TSh.5,000</Button>
-            <Button size="sm" className="bg-primary font-bold text-xs h-8">Earn TSh.500</Button>
+            <Button size="sm" className="bg-gradient-tanzanite bg-opacity-60 backdrop-blur-sm font-bold text-xs h-8 text-white border border-white/20">Buy TSh.5,000</Button>
+            <Button size="sm" className="bg-gradient-tanzanite bg-opacity-60 backdrop-blur-sm font-bold text-xs h-8 text-white border border-white/20">Earn TSh.500</Button>
           </div>
           
           <p className="text-sm text-white">
@@ -179,7 +179,7 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
           <Share2 size={32} />
           <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
         </button>
-         <p className="font-bold text-white/80">AkiliPesa</p>
+         <p className="font-bold text-gradient">AkiliPesa</p>
       </div>
     </div>
   );

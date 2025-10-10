@@ -1,18 +1,30 @@
 import type { SVGProps } from 'react';
+import { cn } from '@/lib/utils';
 
-export function Logo(props: SVGProps<SVGSVGElement>) {
+export function Logo({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg
+      viewBox="0 0 100 100"
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 256 256"
-      width="1em"
-      height="1em"
+      className={cn("h-8 w-8", className)}
       {...props}
     >
-      <g fill="currentColor">
-        <path d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm0 192a88 88 0 1 1 88-88a88.1 88.1 0 0 1-88 88Z" />
-        <path d="M172.4 76.51A40 40 0 0 0 132 68.17v81.5a40 40 0 0 0 40.4-39.17a39.77 39.77 0 0 0-33.56-39.67l31.28-31.28a8 8 0 0 0-11.32-11.32ZM156 110.49a24 24 0 1 1-24-24a24 24 0 0 1 24 24Z" />
-      </g>
+      <defs>
+        <linearGradient id="tanzanite-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style={{ stopColor: 'var(--gradient-violet)' }} />
+          <stop offset="50%" style={{ stopColor: 'var(--gradient-sapphire)' }} />
+          <stop offset="100%" style={{ stopColor: 'var(--gradient-teal)' }} />
+        </linearGradient>
+      </defs>
+      <path
+        d="M50,5 C74.85,5 95,25.15 95,50 C95,74.85 74.85,95 50,95 C25.15,95 5,74.85 5,50 C5,25.15 25.15,5 50,5 Z M50,15 C30.67,15 15,30.67 15,50 C15,69.33 30.67,85 50,85 C69.33,85 85,69.33 85,50 C85,30.67 69.33,15 50,15 Z"
+        fill="url(#tanzanite-gradient)"
+      />
+      <path
+        d="M50 25 L 75 75 L 65 75 L 56 55 L 44 55 L 35 75 L 25 75 Z M 50 35 L 59 55 L 41 55 Z"
+        transform="translate(0, -5)"
+        fill="white"
+      />
     </svg>
   );
 }

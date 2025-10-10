@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -25,6 +24,21 @@ interface Message {
 const capabilities = [
   "Create Video", "Create Song", "Design Ad", "Clone Voice"
 ]
+
+const GradientIcon = ({ icon: Icon, ...props }: { icon: React.ElementType, [key: string]: any }) => {
+    return (
+        <>
+            <svg width="0" height="0" className="absolute">
+                <linearGradient id="tanzanite-icon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style={{ stopColor: 'var(--gradient-violet)' }} />
+                    <stop offset="50%" style={{ stopColor: 'var(--gradient-sapphire)' }} />
+                    <stop offset="100%" style={{ stopColor: 'var(--gradient-teal)' }} />
+                </linearGradient>
+            </svg>
+            <Icon {...props} style={{ fill: 'url(#tanzanite-icon-gradient)', stroke: 'url(#tanzanite-icon-gradient)' }} />
+        </>
+    );
+};
 
 export default function AiCreatePage() {
   const router = useRouter();
@@ -62,8 +76,8 @@ export default function AiCreatePage() {
         </Button>
         <h1 className="text-lg font-semibold">Create</h1>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" asChild><Link href="/call/audio"><Phone className="h-5 w-5 text-primary" /></Link></Button>
-          <Button variant="ghost" size="icon" asChild><Link href="/call/video"><VideoIcon className="h-5 w-5 text-primary" /></Link></Button>
+          <Button variant="ghost" size="icon" asChild><Link href="/call/audio"><GradientIcon icon={Phone} className="h-5 w-5" /></Link></Button>
+          <Button variant="ghost" size="icon" asChild><Link href="/call/video"><GradientIcon icon={VideoIcon} className="h-5 w-5" /></Link></Button>
         </div>
       </header>
 
@@ -85,8 +99,10 @@ export default function AiCreatePage() {
                 msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
               )}>
                 {msg.sender === 'ai' ? (
-                  <Avatar className="w-8 h-8 border-2 border-primary">
-                    <AvatarFallback><Sparkles className="w-4 h-4" /></AvatarFallback>
+                  <Avatar className="w-8 h-8 bg-gradient-tanzanite p-0.5">
+                    <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 text-white" />
+                    </div>
                   </Avatar>
                 ) : (
                   <UserAvatar src={msg.avatar} username={msg.username} className="w-8 h-8" />
@@ -94,7 +110,7 @@ export default function AiCreatePage() {
                 <div className={cn(
                   "rounded-2xl px-4 py-2.5 text-sm",
                   msg.sender === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-br-none'
+                    ? 'bg-gradient-tanzanite text-primary-foreground rounded-br-none'
                     : 'bg-secondary rounded-bl-none'
                 )}>
                   <p>{msg.text}</p>
@@ -108,7 +124,7 @@ export default function AiCreatePage() {
       <footer className="p-2 border-t bg-background">
         <div className="bg-muted/50 rounded-xl p-2 space-y-2">
            <div className="flex items-center gap-2 px-1">
-             <Globe className="h-5 w-5 text-primary"/>
+             <Globe className="h-5 w-5 text-gradient"/>
              <div className="flex-1 flex flex-wrap gap-2">
                 {capabilities.map(cap => (
                     <Button key={cap} variant="outline" size="sm" className="h-7 text-xs bg-background" onClick={() => setInput(cap)}>{cap}</Button>
@@ -132,7 +148,7 @@ export default function AiCreatePage() {
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
                 <Button variant="ghost" size="icon" className="h-8 w-8"><Paperclip className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8"><Mic className="h-5 w-5" /></Button>
-                <Button onClick={handleSend} size="icon" className="h-8 w-8 rounded-full bg-primary"><SendHorizonal className="h-5 w-5" /></Button>
+                <Button onClick={handleSend} size="icon" className="h-8 w-8 rounded-full bg-gradient-tanzanite"><SendHorizonal className="h-5 w-5" /></Button>
             </div>
           </div>
         </div>

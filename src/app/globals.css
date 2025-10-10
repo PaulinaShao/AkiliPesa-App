@@ -4,48 +4,66 @@
 
 @layer base {
   :root {
-    --background: 220 13% 95%; /* #F0F2F5 */
-    --foreground: 240 10% 3.9%;
-    --card: 220 13% 95%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 220 13% 95%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 231 48% 48%; /* #3F51B5 */
+    --background: 0 0% 0%; /* Black */
+    --foreground: 0 0% 98%; /* White */
+    
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 283 100% 25%; /* Violet: #4B0082 */
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 274 100% 50%; /* #8F00FF */
+
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 0 0% 60%; /* Lighter gray for text */
+
+    --accent: 171 100% 40%; /* Teal: #00C9A7 */
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
+
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 231 48% 48%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 171 100% 40%;
+    
     --radius: 0.5rem;
+
+    /* Tanzanite Gradient Colors */
+    --gradient-violet: #4B0082;
+    --gradient-sapphire: #0C3C8C;
+    --gradient-teal: #00C9A7;
   }
  
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 0 0% 2.5%; /* Near black */
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 231 48% 48%;
+    --primary: 283 100% 35%;
     --primary-foreground: 0 0% 98%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 274 100% 60%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 171 100% 50%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 231 48% 48%;
+    --ring: 171 100% 50%;
+  }
+
+  body {
+    background-color: #0A0A0A;
   }
 }
  
@@ -63,5 +81,14 @@
   .hide-scrollbar {
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-[var(--gradient-violet)] via-[var(--gradient-sapphire)] to-[var(--gradient-teal)] bg-clip-text text-transparent;
+  }
+  .bg-gradient-tanzanite {
+    @apply bg-gradient-to-r from-[var(--gradient-violet)] via-[var(--gradient-sapphire)] to-[var(--gradient-teal)];
   }
 }
