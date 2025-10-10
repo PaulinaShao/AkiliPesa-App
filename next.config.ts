@@ -1,7 +1,7 @@
-import type {NextConfig} from 'next';
+// next.config.js
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -11,28 +11,31 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "placehold.co",
+        port: "",
+        pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        port: "",
+        pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "picsum.photos",
+        port: "",
+        pathname: "/**",
       },
     ],
   },
-  devIndicators: {
-    allowedDevOrigins: ["*.cloudworkstations.dev"],
-  },
+  // ✅ This fixes the Cross-Origin warning for your dev server
+  allowedDevOrigins: [
+    "http://localhost:3000",
+    "http://10.88.0.3:3000",
+    "*.cloudworkstations.dev",
+  ],
 };
 
 export default nextConfig;
