@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -9,10 +10,16 @@ import { conversations, users } from '@/lib/data';
 import { Phone, Sparkles, Video, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 export default function InboxPage() {
     const router = useRouter();
     const currentUser = users.find(u => u.id === 'u1'); // Assuming current user is 'u1'
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
@@ -63,7 +70,7 @@ export default function InboxPage() {
                                     <div className="flex justify-between items-start">
                                         <p className="font-bold truncate">{otherUser.username}</p>
                                         <p className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                                            {formatDistanceToNow(new Date(convo.timestamp), { addSuffix: true })}
+                                            {isClient ? formatDistanceToNow(new Date(convo.timestamp), { addSuffix: true }) : ''}
                                         </p>
                                     </div>
                                     <p className={`text-sm truncate ${isUnread ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
