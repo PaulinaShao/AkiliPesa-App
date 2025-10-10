@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Sparkles, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 export default function AkiliPesaAIChatPage() {
     const router = useRouter();
     const currentUser = users.find(u => u.id === 'u1');
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
 
     const initialMessages: Message[] = [
         {
@@ -41,6 +42,12 @@ export default function AkiliPesaAIChatPage() {
     useEffect(() => {
         setIsClient(true);
     }, []);
+
+    useEffect(() => {
+        if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+    }, [messages]);
 
 
     if (!currentUser) {
@@ -83,7 +90,7 @@ export default function AkiliPesaAIChatPage() {
 
     return (
         <div className="flex flex-col h-screen bg-muted/30 text-foreground">
-            <header className="flex items-center justify-between p-2 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
+            <header className="flex items-center justify-between p-2 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10 supports-[padding-top:env(safe-area-inset-top)]:pt-[env(safe-area-inset-top)]">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ChevronLeft className="h-6 w-6" />
                 </Button>
@@ -101,7 +108,7 @@ export default function AkiliPesaAIChatPage() {
                 </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto p-4 space-y-4">
+            <main ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map(msg => (
                     <div key={msg.id} className={cn(
                         "flex items-end gap-2 max-w-[80%]",

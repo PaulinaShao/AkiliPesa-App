@@ -16,7 +16,7 @@ export default function InboxPage() {
 
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
-            <header className="flex items-center justify-between p-4 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
+            <header className="flex items-center justify-between p-4 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10 supports-[padding-top:env(safe-area-inset-top)]:pt-[env(safe-area-inset-top)]">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <X className="h-6 w-6" />
                 </Button>
@@ -24,7 +24,7 @@ export default function InboxPage() {
                 <div className="w-10"></div>
             </header>
 
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 overflow-y-auto supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[env(safe-area-inset-bottom)]">
                 {/* Pinned AkiliPesa AI Chat */}
                 <Link href="/inbox/akilipesa-ai" className="flex items-center gap-4 p-4 hover:bg-muted transition-colors cursor-pointer">
                     <Avatar className="w-14 h-14 bg-gradient-tanzanite p-1">

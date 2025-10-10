@@ -22,7 +22,7 @@ export default function ProfilePage() {
   return (
     <div className="dark">
       <Header isMuted={true} onToggleMute={() => {}} />
-      <div className="max-w-xl mx-auto p-4 pt-20">
+      <div className="max-w-xl mx-auto p-4 pt-20 supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(env(safe-area-inset-bottom)+80px)]">
         <ProfileHeader user={user} />
         <ProfileQuickActions />
         <ProfileNav />

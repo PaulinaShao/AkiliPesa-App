@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState, useEffect } from 'react';
+import { FormEvent, useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ChevronLeft, Paperclip, Mic, Send, Phone, Video } from 'lucide-react';
 import { users, messages as allMessages } from '@/lib/data';
@@ -29,10 +29,17 @@ export default function ChatPage() {
     );
     const [newMessage, setNewMessage] = useState('');
     const [isClient, setIsClient] = useState(false);
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setIsClient(true);
     }, []);
+
+    useEffect(() => {
+      if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      }
+    }, [messages]);
 
 
     if (!currentUser || !otherUser) {
@@ -57,7 +64,7 @@ export default function ChatPage() {
 
     return (
         <div className="flex flex-col h-screen bg-muted/30 text-foreground">
-            <header className="flex items-center justify-between p-2 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
+            <header className="flex items-center justify-between p-2 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10 supports-[padding-top:env(safe-area-inset-top)]:pt-[env(safe-area-inset-top)]">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ChevronLeft className="h-6 w-6" />
                 </Button>
@@ -71,7 +78,7 @@ export default function ChatPage() {
                 </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto p-4 space-y-4">
+            <main ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map(msg => (
                     <div key={msg.id} className={cn(
                         "flex items-end gap-2 max-w-[80%]",
