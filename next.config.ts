@@ -27,13 +27,11 @@ const nextConfig = {
     ],
   },
   // ✅ Fixes Cross-Origin dev warning
-  experimental: {
-    allowedDevOrigins: [
-      "http://localhost:3000",
-      "http://10.88.0.3:3000",
-      "*.cloudworkstations.dev",
-    ],
-  },
+  allowedDevOrigins: [
+    "http://localhost:3000",
+    "http://10.88.0.3:3000",
+    "*.cloudworkstations.dev",
+  ],
 };
 
 export default nextConfig;
