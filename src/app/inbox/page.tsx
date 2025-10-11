@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -21,8 +20,12 @@ export default function InboxPage() {
         setIsClient(true);
     }, []);
 
+    if (!isClient) {
+        return null;
+    }
+
     return (
-        <div className="flex flex-col h-screen bg-background text-foreground overflow-x-hidden">
+        <div className="flex flex-col h-screen bg-background text-foreground overflow-x-hidden w-full max-w-full">
             <header className="flex items-center justify-between p-4 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10 supports-[padding-top:env(safe-area-inset-top)]:pt-[env(safe-area-inset-top)]">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <X className="h-6 w-6" />

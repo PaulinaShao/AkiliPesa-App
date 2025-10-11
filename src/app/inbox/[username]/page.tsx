@@ -63,7 +63,7 @@ export default function ChatPage() {
     };
 
     return (
-        <div className="flex flex-col h-screen bg-muted/30 text-foreground overflow-x-hidden">
+        <div className="flex flex-col h-screen bg-muted/30 text-foreground overflow-x-hidden w-full max-w-full">
             <header className="flex items-center justify-between p-2 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10 supports-[padding-top:env(safe-area-inset-top)]:pt-[env(safe-area-inset-top)]">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ChevronLeft className="h-6 w-6" />

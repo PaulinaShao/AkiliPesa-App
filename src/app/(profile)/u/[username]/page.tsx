@@ -20,7 +20,7 @@ export default function ProfilePage() {
   const userVideos = allVideos.filter(v => v.userId === user.id);
 
   return (
-    <div className="dark overflow-x-hidden">
+    <div className="dark overflow-x-hidden w-full max-w-full">
       <Header isMuted={true} onToggleMute={() => {}} />
       <div className="max-w-xl mx-auto p-4 pt-20 supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(env(safe-area-inset-bottom)+80px)]">
         <ProfileHeader user={user} />

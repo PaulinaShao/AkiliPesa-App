@@ -26,11 +26,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
-      <body className={cn('font-body antialiased', inter.variable)}>
+      <body className={cn('font-body antialiased w-full max-w-full overflow-x-hidden', inter.variable)}>
         <FirebaseClientProvider>
           <div className="flex min-h-screen">
             <SidebarNav />
-            <main className="flex-1 md:ml-64">
+            <main className="flex-1 md:ml-64 w-full max-w-full overflow-x-hidden">
               {children}
             </main>
             <BottomNavWrapper />
