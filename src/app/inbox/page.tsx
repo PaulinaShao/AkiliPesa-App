@@ -22,7 +22,7 @@ export default function InboxPage() {
     }, []);
 
     return (
-        <div className="flex flex-col h-screen bg-background text-foreground">
+        <div className="flex flex-col h-screen bg-background text-foreground overflow-x-hidden">
             <header className="flex items-center justify-between p-4 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10 supports-[padding-top:env(safe-area-inset-top)]:pt-[env(safe-area-inset-top)]">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <X className="h-6 w-6" />
@@ -43,7 +43,7 @@ export default function InboxPage() {
                         <p className="font-bold">AkiliPesa AI</p>
                         <p className="text-sm text-muted-foreground">Click to chat...</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                         <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
                         <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
                     </div>
@@ -59,7 +59,7 @@ export default function InboxPage() {
 
                         return (
                             <Link href={`/inbox/${otherUser.username}`} key={convo.id} className="flex items-center gap-4 p-4 border-b hover:bg-muted transition-colors cursor-pointer">
-                                <div className="relative">
+                                <div className="relative shrink-0">
                                     <UserAvatar src={otherUser.avatar} username={otherUser.username} className="w-14 h-14"/>
                                     {isUnread && <span className={cn(
                                         "absolute top-0 right-0 block h-3.5 w-3.5 rounded-full ring-2 ring-background",
@@ -69,7 +69,7 @@ export default function InboxPage() {
                                 <div className="flex-1 overflow-hidden">
                                     <div className="flex justify-between items-start">
                                         <p className="font-bold truncate">{otherUser.username}</p>
-                                        <p className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                                        <p className="text-xs text-muted-foreground whitespace-nowrap ml-2 shrink-0">
                                             {isClient ? formatDistanceToNow(new Date(convo.timestamp), { addSuffix: true }) : ''}
                                         </p>
                                     </div>

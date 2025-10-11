@@ -63,16 +63,16 @@ export default function ChatPage() {
     };
 
     return (
-        <div className="flex flex-col h-screen bg-muted/30 text-foreground">
+        <div className="flex flex-col h-screen bg-muted/30 text-foreground overflow-x-hidden">
             <header className="flex items-center justify-between p-2 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10 supports-[padding-top:env(safe-area-inset-top)]:pt-[env(safe-area-inset-top)]">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ChevronLeft className="h-6 w-6" />
                 </Button>
-                <div className="flex items-center gap-3">
-                    <UserAvatar src={otherUser.avatar} username={otherUser.username} className="w-10 h-10" />
-                    <span className="font-bold text-lg">{otherUser.username}</span>
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <UserAvatar src={otherUser.avatar} username={otherUser.username} className="w-10 h-10 shrink-0" />
+                    <span className="font-bold text-lg truncate">{otherUser.username}</span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
                     <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
                 </div>
@@ -84,7 +84,7 @@ export default function ChatPage() {
                         "flex items-end gap-2 max-w-[80%]",
                         msg.senderId === currentUser.id ? "ml-auto flex-row-reverse" : "mr-auto"
                     )}>
-                        <UserAvatar src={users.find(u => u.id === msg.senderId)?.avatar} username={users.find(u => u.id === msg.senderId)?.username} className="w-8 h-8" />
+                        <UserAvatar src={users.find(u => u.id === msg.senderId)?.avatar} username={users.find(u => u.id === msg.senderId)?.username} className="w-8 h-8 shrink-0" />
                         <div className={cn(
                             "rounded-2xl px-4 py-2",
                             msg.senderId === currentUser.id ? "bg-primary text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"
