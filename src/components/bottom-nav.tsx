@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Wallet, PlusSquare, Inbox, User } from 'lucide-react';
+import { Home, Wallet, Plus, Inbox, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
   { href: '/', icon: Home, label: 'Home' },
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
-  { href: '/create/ai', icon: PlusSquare, label: 'Create' },
+  { href: '/create/ai', icon: Plus, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
   { href: '/u/financeWizard', icon: User, label: 'Profile' },
 ];
@@ -50,7 +50,7 @@ export function BottomNavWrapper() {
                  <div className="relative w-16 h-16 mx-auto">
                     <div className="absolute inset-0 bg-gradient-tanzanite rounded-full p-0.5" style={{boxShadow: '0 0 15px 3px rgba(0,201,167,0.35)'}}>
                         <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
-                             <Icon className="h-8 w-8 text-gradient" />
+                             <Icon className="h-8 w-8 text-white" />
                         </div>
                     </div>
                 </div>
