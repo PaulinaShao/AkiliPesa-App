@@ -17,21 +17,18 @@ export function BottomNavWrapper() {
   const pathname = usePathname();
   
   // Hide nav on any deep inbox (chat) pages.
-  const showNav = !/^\/inbox\/[^/]+$/.test(pathname) && !pathname.startsWith('/inbox/akilipesa-ai');
-
-
-  if (!showNav) {
-    return null;
-  }
+  const isChatPage = /^\/inbox\/(?!akilipesa-ai)[^/]+$/.test(pathname);
+  const isAIChatPage = pathname === '/inbox/akilipesa-ai';
   
   // Hide on create flow screens (except the main 'ai' one) and call screens
   const hideOnDeepCreate = /^\/create\/(camera|upload|edit|describe|preview)/.test(pathname) || /^\/call\/(audio|video)/.test(pathname);
-  if(hideOnDeepCreate) {
+
+  if (isChatPage || isAIChatPage || hideOnDeepCreate) {
     return null;
   }
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50 supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-safe">
       <div className="flex justify-around items-center h-16">
         {navLinks.map(({ href, icon: Icon, label }) => {
           let isActive = false;
