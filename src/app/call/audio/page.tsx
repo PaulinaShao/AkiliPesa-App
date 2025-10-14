@@ -3,77 +3,32 @@
 
 import { useSearchParams } from "next/navigation";
 import RequireAuthRedirect from "@/components/RequireAuthRedirect";
-import { Suspense, useEffect, useState } from "react";
-import AgoraRTC from "agora-rtc-sdk-ng";
+import { Suspense, useEffect } from "react";
 import { PhoneOff } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
-import { useFirebase } from "@/firebase";
-import { httpsCallable } from "firebase/functions";
+import useSessionManager from "@/lib/sessionManager";
+import useAgoraConnection from "@/lib/agoraConnection";
 
 function AudioCallUI() {
     const params = useSearchParams();
-    const { functions } = useFirebase();
-    const targetId = params.get("to") || "AkiliPesa AI";
+    const agentId = params.get("agentId") || "akilipesa-ai";
     const callId = params.get("callId");
-    const channelName = params.get("channelName");
-    const token = params.get("token");
-    const appId = params.get("appId");
-    const [callState, setCallState] = useState<"connecting" | "in-call" | "ended">("connecting");
-    const [rtcClient, setRtcClient] = useState<any>(null);
+
+    // The channel name is derived from the callId to ensure it's unique per call
+    const { session, loading: sessionLoading, updateSession } = useSessionManager(agentId, "audio");
+    const { connected, publishAudio } = useAgoraConnection(callId);
 
     useEffect(() => {
-        const initAgora = async () => {
-            if (!appId || !channelName || !token) {
-                 console.error("Agora call details are not set in search params.");
-                 setCallState("ended");
-                 return;
-            }
-            try {
-                const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-                setRtcClient(client);
-
-                await client.join(appId, channelName, token, null);
-
-                // Publish local audio
-                const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-                await client.publish([audioTrack]);
-
-                // Listen for remote users
-                client.on("user-published", async (user, mediaType) => {
-                    await client.subscribe(user, mediaType);
-                    if (mediaType === "audio") {
-                        user.audioTrack?.play();
-                    }
-                });
-
-                setCallState("in-call");
-            } catch (err) {
-                console.error("Agora init error:", err);
-                setCallState("ended");
-            }
-        };
-        initAgora();
-
-        return () => {
-            rtcClient?.leave();
-            rtcClient?.removeAllListeners();
-        };
-    }, [appId, channelName, token]);
-
-    const handleEndCall = async () => {
-        rtcClient?.leave();
-        setCallState("ended");
-        if (callId) {
-            try {
-                const endCallFn = httpsCallable(functions, 'endCall');
-                // For simplicity, we'll assume a fixed duration or calculate it client-side.
-                // A more robust solution would calculate this on the backend based on startTime.
-                await endCallFn({ callId, seconds: 30 });
-            } catch(e) {
-                console.error("Error ending call:", e);
-            }
+        if (connected && session?.isActive) {
+            publishAudio();
+            updateSession({ lastUpdated: Date.now() });
         }
+    }, [connected, session, publishAudio, updateSession]);
+
+    const handleEndCall = () => {
+        updateSession({ isActive: false });
+        // A real implementation would also call the endCall Firebase Function here.
         window.history.back();
     }
 
@@ -87,9 +42,9 @@ function AudioCallUI() {
                         </div>
                     </Avatar>
                 </div>
-                <h2 className="text-3xl font-bold mb-2">Calling {targetId}</h2>
+                <h2 className="text-3xl font-bold mb-2">Calling {agentId}</h2>
                 <p className="text-gray-400 mb-8 capitalize">
-                    {callState}
+                    {sessionLoading ? "Initializing Session..." : connected ? "Connected" : "Connecting..."}
                 </p>
 
                 <div className="flex space-x-6">
@@ -100,6 +55,7 @@ function AudioCallUI() {
                        <PhoneOff size={36} />
                     </button>
                 </div>
+                 <p className="text-xs text-muted-foreground mt-6">Session ID: {session?.sessionId}</p>
             </div>
         </div>
     );

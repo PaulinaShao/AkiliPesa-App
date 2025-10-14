@@ -3,84 +3,42 @@
 
 import { useSearchParams } from "next/navigation";
 import RequireAuthRedirect from "@/components/RequireAuthRedirect";
-import { useEffect, useState, Suspense } from "react";
-import AgoraRTC, { ICameraVideoTrack } from "agora-rtc-sdk-ng";
+import { useEffect, Suspense } from "react";
 import { PhoneOff, VideoOff, MicOff } from "lucide-react";
-import { useFirebase } from "@/firebase";
-import { httpsCallable } from "firebase/functions";
+import useSessionManager from "@/lib/sessionManager";
+import useAgoraConnection from "@/lib/agoraConnection";
 
 function VideoCallUI() {
   const params = useSearchParams();
-  const { functions } = useFirebase();
-
-  const targetId = params.get("to") || "AkiliPesa AI";
+  const agentId = params.get("agentId") || "akilipesa-ai";
   const callId = params.get("callId");
-  const channelName = params.get("channelName");
-  const token = params.get("token");
-  const appId = params.get("appId");
-  
-  const [callState, setCallState] = useState<"connecting" | "in-call" | "ended">("connecting");
-  const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
-  const [client, setClient] = useState<any>(null);
+
+  const { session, loading: sessionLoading, updateSession } = useSessionManager(agentId, "video");
+  const { connected, publishVideo, publishAudio, localVideoTrack } = useAgoraConnection(callId);
 
   useEffect(() => {
-    const initAgoraVideo = async () => {
-       if (!appId || !channelName || !token) {
-            console.error("Agora call details are not set in search params.");
-            setCallState("ended");
-            return;
-       }
-      try {
-        const agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-        setClient(agoraClient);
-        await agoraClient.join(appId, channelName, token, null);
-        
-        const videoTrack = await AgoraRTC.createCameraVideoTrack();
-        videoTrack.play("local-player");
-        setLocalVideoTrack(videoTrack);
-        
-        // Also create and publish audio track
-        const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-        await agoraClient.publish([videoTrack, audioTrack]);
-
-        setCallState("in-call");
-      } catch (err) {
-        console.error("Video call init failed:", err);
-        setCallState("ended");
-      }
-    };
-    initAgoraVideo();
-
-    return () => {
-      localVideoTrack?.stop();
-      localVideoTrack?.close();
-      client?.leave();
-      setCallState("ended");
-    };
-  }, [appId, channelName, token]);
-
-  const handleEndCall = async () => {
-    localVideoTrack?.stop();
-    localVideoTrack?.close();
-    client?.leave();
-    setCallState("ended");
-    if (callId) {
-        try {
-            const endCallFn = httpsCallable(functions, 'endCall');
-            // A more robust solution would calculate duration based on a start time.
-            await endCallFn({ callId, seconds: 30 }); 
-        } catch(e) {
-            console.error("Error ending call:", e);
-        }
+    if (connected && session?.isActive) {
+      publishVideo().then(track => {
+        if(track) track.play("local-player");
+      });
+      publishAudio();
+      updateSession({ lastUpdated: Date.now() });
     }
+  }, [connected, session, publishVideo, publishAudio, updateSession]);
+
+  const handleEndCall = () => {
+    localVideoTrack?.stop();
+    updateSession({ isActive: false });
+    // A real implementation would also call the endCall Firebase Function here.
     window.history.back();
   }
 
   return (
     <div className="flex flex-col items-center justify-between h-screen bg-[#0a0a0a] text-white relative">
+      
       {/* Remote user video would go here */}
       <div className="w-full h-full bg-black flex items-center justify-center text-muted-foreground">
-          <p>Waiting for {targetId}...</p>
+          <p>{connected ? `Waiting for ${agentId}...` : "Connecting..."}</p>
       </div>
 
       {/* Local user preview */}
@@ -100,6 +58,9 @@ function VideoCallUI() {
           <PhoneOff size={32} />
         </button>
       </div>
+
+      {sessionLoading && <div className="absolute top-4 left-4 text-xs">Initializing session...</div>}
+       <p className="absolute bottom-2 left-2 text-xs text-muted-foreground">Session ID: {session?.sessionId}</p>
     </div>
   );
 }

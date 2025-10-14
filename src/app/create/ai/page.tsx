@@ -1,9 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,6 +16,7 @@ import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { httpsCallable } from 'firebase/functions';
 import { AgentPicker } from '@/components/AgentPicker';
+import useSessionManager from '@/lib/sessionManager';
 
 
 interface Message {
@@ -50,6 +50,7 @@ export default function AiCreatePage() {
   const router = useRouter();
   const { functions, user: currentUserAuth } = useFirebase();
   const { toast } = useToast();
+  const { session, updateSession } = useSessionManager('akilipesa-ai', 'chat');
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -65,6 +66,15 @@ export default function AiCreatePage() {
   
   const currentUser = users.find(u => u.id === 'u1'); // Mock current user
 
+  useEffect(() => {
+    if (session?.isActive) {
+      updateSession({ lastUpdated: Date.now() });
+      if (session.lastMessage) {
+        // Here you could restore chat history from the session
+      }
+    }
+  }, [session, updateSession]);
+
   const handleSend = () => {
     if (!input.trim()) return;
 
@@ -77,6 +87,7 @@ export default function AiCreatePage() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    updateSession({ lastMessage: input });
     setInput('');
   };
   
@@ -94,32 +105,32 @@ export default function AiCreatePage() {
     setShowAgentPicker(true);
   };
 
-  const handleAgentSelect = async (agent: { id: string, type: 'admin' | 'user' }) => {
+  const handleAgentSelect = async (agent: { id: string; type: 'admin' | 'user' }) => {
     setShowAgentPicker(false);
-    if (!callMode) return;
+    if (!callMode || !functions) return;
 
     try {
-      const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
-      const result = await getAgoraToken({ agentId: agent.id, agentType: agent.type, mode: callMode });
-      const { token, channelName, callId, appId } = result.data as any;
+        const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
+        const result = await getAgoraToken({ agentId: agent.id, agentType: agent.type, mode: callMode });
+        const { token, channelName, callId, appId } = result.data as any;
 
-      const query = new URLSearchParams({
-        to: agent.id,
-        callId,
-        channelName,
-        token,
-        appId
-      }).toString();
-      
-      router.push(`/call/${callMode}?${query}`);
+        const query = new URLSearchParams({
+            agentId: agent.id,
+            callId,
+            channelName,
+            token,
+            appId,
+        }).toString();
+        
+        router.push(`/call/${callMode}?${query}`);
 
     } catch (error: any) {
-      console.error('Error getting Agora token:', error);
-      toast({
-        variant: "destructive",
-        title: "Call Failed",
-        description: error.message || "Could not initiate the call. Please try again.",
-      });
+        console.error('Error getting Agora token:', error);
+        toast({
+            variant: "destructive",
+            title: "Call Failed",
+            description: error.message || "Could not initiate the call.",
+        });
     }
   };
 
@@ -212,6 +223,7 @@ export default function AiCreatePage() {
                 <Button onClick={handleSend} size="icon" className="h-8 w-8 rounded-full bg-gradient-tanzanite"><SendHorizonal className="h-5 w-5" /></Button>
             </div>
           </div>
+           <p className="text-xs text-muted-foreground px-2">Session: {session?.sessionId ?? 'Inactive'}</p>
         </div>
       </footer>
     </div>
