@@ -1,190 +1,86 @@
 
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { doc, getDoc } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
-import { Mic, MicOff, PhoneOff, Video, VideoOff } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import { AgentPicker } from '@/components/AgentPicker';
-import { setPostLoginRedirect } from '@/lib/redirect';
+import { useSearchParams } from "next/navigation";
+import RequireAuthRedirect from "@/components/RequireAuthRedirect";
+import { useEffect, useState, Suspense } from "react";
+import AgoraRTC, { ICameraVideoTrack } from "agora-rtc-sdk-ng";
+import { PhoneOff, VideoOff, MicOff } from "lucide-react";
 
-
-function VideoCallComponent() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
-
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(true);
-  const [showPicker, setShowPicker] = useState(false);
-  const [agent, setAgent] = useState<any>(null);
-  const [callDetails, setCallDetails] = useState<any>(null);
-  const [callDuration, setCallDuration] = useState(0);
-  const [callStatus, setCallStatus] = useState('Connecting...');
-
-  const userVideoRef = useRef<HTMLVideoElement>(null);
-  const agentVideoRef = useRef<HTMLVideoElement>(null); // This would be the remote stream
-
-  const agentId = searchParams.get('agentId');
-  const agentType = searchParams.get('agentType');
+function VideoCallUI() {
+  const params = useSearchParams();
+  const targetId = params.get("to") || "AkiliPesa AI";
+  const [callState, setCallState] = useState<"connecting" | "in-call" | "ended">("connecting");
+  const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
+  const [client, setClient] = useState<any>(null);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (callStatus === 'Connected') {
-      timer = setInterval(() => {
-        setCallDuration(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [callStatus]);
-
-  useEffect(() => {
-    if (isUserLoading) return; // Wait for auth state
-
-    if (!user) {
-      const target = setPostLoginRedirect();
-      router.replace(`/auth/login?redirect=${encodeURIComponent(target)}`);
-      return;
-    }
-
-    const setupDevicesAndCall = async (id: string, type: string) => {
-      setCallStatus('Initializing...');
-      let agentDocRef;
-      if (type === 'admin') {
-        agentDocRef = doc(firestore, 'adminAgents', id);
-      } else {
-        toast({ variant: 'destructive', title: 'Call Failed', description: 'Calling user agents is not supported yet.' });
-        router.back();
-        return;
-      }
-      
-      const agentSnap = await getDoc(agentDocRef);
-
-      if (!agentSnap.exists()) {
-        toast({ variant: 'destructive', title: 'Agent not found' });
-        router.back();
-        return;
-      }
-      setAgent(agentSnap.data());
-      
+    const initAgoraVideo = async () => {
+       if (!process.env.NEXT_PUBLIC_AGORA_APP_ID) {
+            console.error("Agora App ID is not set in environment variables.");
+            setCallState("ended");
+            return;
+       }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (userVideoRef.current) {
-          userVideoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Device Access Denied', description: 'Please enable camera and microphone permissions.' });
-        router.back();
-        return;
-      }
-      
-      const functions = getFunctions();
-      const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
-      try {
-        const result: any = await getAgoraToken({ agentId: id, agentType: type, mode: 'video' });
-        setCallDetails(result.data);
-        setCallStatus('Connected'); // Mock
-      } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Call Failed', description: error.message || 'Could not start the call.' });
-        console.error("Error getting Agora token:", error);
+        const agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        setClient(agoraClient);
+        await agoraClient.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, "akilipesa_video_channel", null, null);
+        
+        const videoTrack = await AgoraRTC.createCameraVideoTrack();
+        videoTrack.play("local-player");
+        setLocalVideoTrack(videoTrack);
+        
+        // Also create and publish audio track
+        const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        await agoraClient.publish([videoTrack, audioTrack]);
+
+        setCallState("in-call");
+      } catch (err) {
+        console.error("Video call init failed:", err);
+        setCallState("ended");
       }
     };
-
-    if (agentId && agentType) {
-      setupDevicesAndCall(agentId, agentType);
-    } else {
-      setShowPicker(true);
-    }
+    initAgoraVideo();
 
     return () => {
-      if (userVideoRef.current?.srcObject) {
-        const stream = userVideoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
+      localVideoTrack?.stop();
+      localVideoTrack?.close();
+      client?.leave();
+      setCallState("ended");
     };
-  }, [user, isUserLoading, agentId, agentType, router, firestore, toast]);
+  }, []);
 
-  const handleAgentSelect = (selectedAgent: { id: string; type: 'admin' | 'user' }) => {
-    setShowPicker(false);
-    const newPath = `${pathname}?agentId=${selectedAgent.id}&agentType=${selectedAgent.type}`;
-    router.push(newPath);
-  };
-
-  const handleEndCall = async () => {
-    if (callDetails?.callId) {
-      const functions = getFunctions();
-      const endCall = httpsCallable(functions, 'endCall');
-      await endCall({ callId: callDetails.callId, seconds: callDuration }).catch(e => console.error("Error ending call:", e));
-    }
-    router.push('/');
-  };
-
-  const toggleCamera = () => {
-    if (userVideoRef.current?.srcObject) {
-      const stream = userVideoRef.current.srcObject as MediaStream;
-      stream.getVideoTracks().forEach(track => track.enabled = !isCameraOn);
-      setIsCameraOn(!isCameraOn);
-    }
-  };
-
-  const toggleMute = () => {
-    if (userVideoRef.current?.srcObject) {
-      const stream = userVideoRef.current.srcObject as MediaStream;
-      stream.getAudioTracks().forEach(track => track.enabled = !isMuted);
-      setIsMuted(!isMuted);
-    }
-  };
-  
-  if (showPicker) {
-      return <AgentPicker show={true} onSelect={handleAgentSelect} onCancel={() => router.back()} />;
-  }
-
-  // Render nothing until auth state is determined
-  if (isUserLoading || !user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-black">
-        <p className="text-white">Authenticating...</p>
-      </div>
-    );
+  const handleEndCall = () => {
+    localVideoTrack?.stop();
+    localVideoTrack?.close();
+    client?.leave();
+    setCallState("ended");
+    window.history.back();
   }
 
   return (
-    <div className="dark relative flex h-screen w-full flex-col items-center justify-between bg-black">
-      <video ref={agentVideoRef} className="h-full w-full object-cover" playsInline autoPlay muted style={{ backgroundColor: '#222' }} />
-      
-       <div className="absolute top-4 left-4 text-white bg-black/50 p-2 rounded-lg">
-            <p>{agent?.name || 'Agent'}</p>
-            <p className="text-sm text-muted-foreground">{callStatus}</p>
-            <p className="text-sm">{new Date(callDuration * 1000).toISOString().substr(14, 5)}</p>
-        </div>
-
-      <div className="absolute right-4 top-4 h-48 w-32 overflow-hidden rounded-lg border-2 border-secondary">
-        <video ref={userVideoRef} className={cn('h-full w-full object-cover', !isCameraOn && 'hidden')} playsInline autoPlay muted />
-        {!isCameraOn && (
-            <div className="h-full w-full flex items-center justify-center bg-black">
-                <VideoOff className="h-8 w-8 text-muted-foreground"/>
-            </div>
-        )}
+    <div className="flex flex-col items-center justify-between h-screen bg-[#0a0a0a] text-white relative">
+      {/* Remote user video would go here */}
+      <div className="w-full h-full bg-black flex items-center justify-center text-muted-foreground">
+          <p>Waiting for {targetId}...</p>
       </div>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center justify-center gap-6">
-        <Button variant="secondary" size="icon" className="h-14 w-14 rounded-full bg-white/20 hover:bg-white/30" onClick={toggleMute}>
-          {isMuted ? <MicOff size={28} /> : <Mic size={28} />}
-        </Button>
-        <Button variant="secondary" size="icon" className="h-14 w-14 rounded-full bg-white/20 hover:bg-white/30" onClick={toggleCamera}>
-          {isCameraOn ? <Video size={28} /> : <VideoOff size={28} />}
-        </Button>
-        <Button variant="destructive" size="icon" className="h-16 w-16 rounded-full" onClick={handleEndCall}>
+      {/* Local user preview */}
+      <div id="local-player" className="absolute w-32 h-48 top-4 right-4 bg-gray-800 rounded-lg overflow-hidden border-2 border-primary"></div>
+      
+      <div className="absolute bottom-8 flex space-x-6 z-10">
+        <button className="bg-white/20 rounded-full w-16 h-16 flex items-center justify-center shadow-md hover:bg-white/30">
+            <MicOff size={28} />
+        </button>
+        <button className="bg-white/20 rounded-full w-16 h-16 flex items-center justify-center shadow-md hover:bg-white/30">
+            <VideoOff size={28} />
+        </button>
+        <button
+          className="bg-[#E63946] rounded-full w-16 h-16 flex items-center justify-center shadow-md hover:bg-[#ff4d5e]"
+          onClick={handleEndCall}
+        >
           <PhoneOff size={32} />
-        </Button>
+        </button>
       </div>
     </div>
   );
@@ -192,8 +88,11 @@ function VideoCallComponent() {
 
 export default function VideoCallPage() {
     return (
-        <Suspense fallback={<div className="dark flex h-screen w-full items-center justify-center bg-black"><p>Loading...</p></div>}>
-            <VideoCallComponent />
-        </Suspense>
-    )
+        <RequireAuthRedirect>
+            <Suspense fallback={<div>Loading...</div>}>
+                <VideoCallUI />
+            </Suspense>
+        </RequireAuthRedirect>
+    );
 }
+

@@ -77,8 +77,8 @@ export default function AiCreatePage() {
         </Button>
         <h1 className="text-lg font-semibold">Create</h1>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" asChild><Link href="/call/audio"><GradientIcon icon={Phone} className="h-5 w-5" /></Link></Button>
-          <Button variant="ghost" size="icon" asChild><Link href="/call/video"><GradientIcon icon={VideoIcon} className="h-5 w-5" /></Link></Button>
+          <Button variant="ghost" size="icon" asChild><Link href="/call/audio?to=AkiliPesa%20AI"><GradientIcon icon={Phone} className="h-5 w-5" /></Link></Button>
+          <Button variant="ghost" size="icon" asChild><Link href="/call/video?to=AkiliPesa%20AI"><GradientIcon icon={VideoIcon} className="h-5 w-5" /></Link></Button>
         </div>
       </header>
 

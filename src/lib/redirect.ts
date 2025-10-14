@@ -1,3 +1,4 @@
+
 "use client";
 
 export const REDIRECT_KEY = "postLoginRedirect";
@@ -7,7 +8,7 @@ export function setPostLoginRedirect(url?: string) {
   try {
     sessionStorage.setItem(REDIRECT_KEY, target);
   } catch (e) {
-    console.error("Failed to set redirect in sessionStorage", e);
+    console.error("Session storage is unavailable:", e);
   }
   return target;
 }
@@ -20,7 +21,7 @@ export function getPostLoginRedirect(fallback: string = "/") {
       return v;
     }
   } catch (e) {
-    console.error("Failed to get redirect from sessionStorage", e);
+     console.error("Session storage is unavailable:", e);
   }
   return fallback;
 }

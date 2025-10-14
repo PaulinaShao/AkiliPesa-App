@@ -136,12 +136,12 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
             right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
         }}
       >
-        <Link href="/call/audio" passHref>
+        <Link href={`/call/audio?to=${user.username}`} passHref>
           <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
             <Phone size={32} />
           </button>
         </Link>
-         <Link href="/call/video" passHref>
+         <Link href={`/call/video?to=${user.username}`} passHref>
           <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
             <VideoIcon size={32} />
           </button>

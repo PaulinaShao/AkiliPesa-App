@@ -105,8 +105,8 @@ export default function AkiliPesaAIChatPage() {
                     <span className="font-bold text-lg">{aiUser.username}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <Button asChild variant="ghost" size="icon"><Link href="/call/audio"><Phone className="h-6 w-6 text-primary"/></Link></Button>
-                    <Button asChild variant="ghost" size="icon"><Link href="/call/video"><Video className="h-6 w-6 text-primary"/></Link></Button>
+                    <Button asChild variant="ghost" size="icon"><Link href="/call/audio?to=AkiliPesa%20AI"><Phone className="h-6 w-6 text-primary"/></Link></Button>
+                    <Button asChild variant="ghost" size="icon"><Link href="/call/video?to=AkiliPesa%20AI"><Video className="h-6 w-6 text-primary"/></Link></Button>
                 </div>
             </header>
 
