@@ -44,7 +44,8 @@ function AudioCallComponent() {
   useEffect(() => {
     if (isUserLoading) return;
     if (!user) {
-      router.push(`/auth/login?redirect=${pathname}?${searchParams.toString()}`);
+      const fullPath = agentId ? `${pathname}?${searchParams.toString()}` : pathname;
+      router.push(`/auth/login?redirect=${encodeURIComponent(fullPath)}`);
       return;
     }
 

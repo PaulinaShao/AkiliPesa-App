@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from '@/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,13 +21,18 @@ export default function PhoneLoginPage() {
   const auth = useAuth();
   const { toast } = useToast();
 
+  // Set up reCAPTCHA verifier once
+  useEffect(() => {
+    if (!auth) return;
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+    }
+  }, [auth]);
+
   const sendOtp = async () => {
     if (!auth || !phone || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      if (!(window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
-      }
       const verifier = (window as any).recaptchaVerifier;
       const result = await signInWithPhoneNumber(auth, phone, verifier);
       setConfirmationResult(result);
@@ -35,6 +40,12 @@ export default function PhoneLoginPage() {
     } catch (err) {
       console.error("OTP send error:", err);
       toast({ variant: "destructive", title: "Error", description: (err as Error).message });
+      // Reset reCAPTCHA on error
+      if ((window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.render().then((widgetId: any) => {
+           grecaptcha.reset(widgetId);
+        });
+      }
     } finally {
         setIsSubmitting(false);
     }
