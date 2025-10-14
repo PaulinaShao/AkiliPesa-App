@@ -1,9 +1,10 @@
 'use strict';
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { RtcTokenBuilder, RtcRole } from 'agora-token';
+import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
 
 admin.initializeApp();
+const db = admin.firestore();
 
 // --- Existing Functions ---
 
@@ -30,7 +31,7 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
-  return admin.firestore().collection('users').doc(user.uid).set(profile);
+  return db.collection('users').doc(user.uid).set(profile);
 });
 
 // Post created → increment user post count
@@ -40,8 +41,7 @@ export const onpostcreate = functions.firestore
     const post = snap.data();
     if (!post) return null;
 
-    return admin
-      .firestore()
+    return db
       .collection('users')
       .doc(post.authorId)
       .update({
@@ -57,8 +57,7 @@ export const onorderupdate = functions.firestore
     if (!after) return null;
 
     if (after.status === 'paid') {
-      const productRef = admin
-        .firestore()
+      const productRef = db
         .collection('products')
         .doc(after.productId);
       await productRef.update({
@@ -72,7 +71,7 @@ export const onorderupdate = functions.firestore
       const ownerShare = after.amount * (1 - commissionRate);
       const akilipesaShare = after.amount * commissionRate;
 
-      await admin.firestore().collection('payments').add({
+      await db.collection('payments').add({
         orderId: context.params.orderId,
         sellerId: after.sellerId,
         amountGross: after.amount,
@@ -102,16 +101,16 @@ export const buyPlan = functions.https.onCall(async (data, context) => {
   const uid = context.auth.uid;
   const { planId, method } = data;
 
-  const planRef = admin.firestore().collection('plans').doc(planId);
+  const planRef = db.collection('plans').doc(planId);
   const planDoc = await planRef.get();
   if (!planDoc.exists) {
     throw new functions.https.HttpsError('not-found', 'Plan not found');
   }
 
   const plan = planDoc.data()!;
-  const userRef = admin.firestore().collection('users').doc(uid);
+  const userRef = db.collection('users').doc(uid);
 
-  await admin.firestore().runTransaction(async (t) => {
+  await db.runTransaction(async (t) => {
     const userDoc = await t.get(userRef);
     const wallet = userDoc.data()?.wallet || { balance: 0, plan: {} };
 
@@ -133,7 +132,7 @@ export const buyPlan = functions.https.onCall(async (data, context) => {
         },
       });
 
-      const txRef = admin.firestore().collection('transactions').doc();
+      const txRef = db.collection('transactions').doc();
       t.set(txRef, {
         uid,
         amount: -plan.price,
@@ -160,7 +159,7 @@ export const seeddemo = functions.https.onCall(async (_data, context) => {
 
   const uid = context.auth.uid;
 
-  await admin.firestore().collection('posts').add({
+  await db.collection('posts').add({
     authorId: uid,
     media: { url: 'https://placekitten.com/200/200', type: 'image' },
     caption: 'Hello AkiliPesa!',
@@ -178,7 +177,7 @@ export const seeddemo = functions.https.onCall(async (_data, context) => {
 export const resetTrialCredits = functions.pubsub
   .schedule("every day 00:00")
   .onRun(async () => {
-    const usersRef = admin.firestore().collection("users");
+    const usersRef = db.collection("users");
     const snapshot = await usersRef.where("wallet.plan.id", "==", "trial").get();
 
     if (snapshot.empty) {
@@ -186,7 +185,7 @@ export const resetTrialCredits = functions.pubsub
       return null;
     }
 
-    const batch = admin.firestore().batch();
+    const batch = db.batch();
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Start of today
 
@@ -212,107 +211,125 @@ export const resetTrialCredits = functions.pubsub
 
 // --- New Functions ---
 
-const APP_ID = functions.config().agora?.appid || "e1b8492f15d848609591e0a29352c3c5";
-const APP_CERTIFICATE = functions.config().agora?.certificate || "5718a99479a941f69201f807358b5493";
+/** Helper: read adminSettings once (w/ safe defaults) */
+async function getSettings() {
+  const snap = await db.collection('adminSettings').doc('pricing').get();
+  const tzsPerCredit = snap.exists ? (snap.data() as any).tzsPerCredit : 100;
+  return { tzsPerCredit };
+}
 
+/** getAgoraToken — validates wallet, reads agent pricing, logs call, returns token */
 export const getAgoraToken = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
-    }
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+  const uid = context.auth.uid;
+  const { agentId, agentType, mode } = data as { agentId: string; agentType: 'admin'|'user'; mode: 'audio'|'video' };
+  if (!agentId || !agentType || !mode) throw new functions.https.HttpsError('invalid-argument', 'Missing fields');
 
-    const { agentId, agentType, mode } = data;
-    const callerId = context.auth.uid;
-    const callRef = admin.firestore().collection('calls').doc();
-    const channelName = callRef.id;
+  // Fetch caller wallet
+  const userRef = db.collection('users').doc(uid);
+  const userDoc = await userRef.get();
+  if (!userDoc.exists) throw new functions.https.HttpsError('not-found', 'User not found');
+  const wallet = (userDoc.data() as any).wallet || { balance: 0 };
 
-    let agentDoc;
-    if (agentType === 'admin') {
-        agentDoc = await admin.firestore().collection('adminAgents').doc(agentId).get();
-    } else {
-        // This assumes user agents are in a subcollection, adjust if needed.
-        // The prompt seems to imply a subcollection `users/{uid}/agents/{agentId}`
-        // This requires knowing the agent's owner, which isn't passed.
-        // For now, let's assume a top-level `userAgents` collection for simplicity, or adjust if more info is given.
-        // Let's stick to the prompt's `users/{uid}/agents/{agentId}` but that makes the query complex without ownerId.
-        // Let's assume for now we can find the user agent without knowing the owner. A better model would be a top-level collection.
-        // Re-reading: the user agent is under the user, so we need the user's ID to fetch it.
-        // The call is made by the user, so we know their ID, but the agent could belong to another user.
-        // Let's assume for now agentId is globally unique and we search for it.
-        // This is inefficient. Let's assume `agentType: 'user'` means it belongs to the caller for now.
-        const userAgentRef = admin.firestore().collection('users').doc(callerId).collection('agents').doc(agentId);
-        agentDoc = await userAgentRef.get();
-    }
+  // Resolve agent + price
+  let pricePerSecondCredits = 0.1;
+  if (agentType === 'admin') {
+    const a = await db.collection('adminAgents').doc(agentId).get();
+    if (!a.exists) throw new functions.https.HttpsError('not-found', 'Admin agent not found');
+    if ((a.data() as any).status !== 'active') throw new functions.https.HttpsError('failed-precondition', 'Agent inactive');
+    pricePerSecondCredits = (a.data() as any).pricePerSecondCredits ?? 0.1;
+  } else {
+    // This is a simplification and assumes the agent belongs to another user. A real implementation might need the owner's UID.
+    // For this implementation, we can't reliably get a user agent without its owner's ID.
+    // Let's throw an error for now if a user agent is requested, as the UI doesn't support calling other users' agents yet.
+     throw new functions.https.HttpsError('unimplemented', 'Calling user-created agents is not yet supported.');
+  }
 
-    if (!agentDoc.exists) {
-        throw new functions.https.HttpsError('not-found', 'Agent not found.');
-    }
-    const agentData = agentDoc.data();
-    const pricePerSecondCredits = agentData?.pricePerSecondCredits || 0.1;
+  // Simple pre-check (must have at least 1 second of credit)
+  if ((wallet.credits ?? 0) < pricePerSecondCredits) {
+    throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits. Please recharge.');
+  }
 
-    // Create call document
-    const callDocData = {
-        callId: callRef.id,
-        channelName,
-        callerId,
-        agentId,
-        agentType,
-        mode,
-        pricePerSecondCredits,
-        status: 'active',
-        startedAt: admin.firestore.FieldValue.serverTimestamp(),
-        creditsUsed: 0,
-    };
-    await callRef.set(callDocData);
+  // Create channel + token
+  const channelName = `akili_${Date.now()}_${Math.floor(Math.random()*9999)}`;
+  const appId = functions.config().agora?.appid;
+  const appCert = functions.config().agora?.certificate;
 
-    // Generate Agora Token
-    const role = RtcRole.PUBLISHER;
-    const expirationTimeInSeconds = 3600; // 1 hour
-    const currentTimestamp = Math.floor(Date.now() / 1000);
-    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+  if (!appId || !appCert) {
+      throw new functions.https.HttpsError('failed-precondition', 'Agora credentials are not configured.');
+  }
 
-    const token = RtcTokenBuilder.buildTokenWithUid(APP_ID, APP_CERTIFICATE, channelName, 0, role, privilegeExpiredTs);
-    
-    return { token, channelName, callId: callRef.id };
+  const expire = 3600;
+  const token = RtcTokenBuilder.buildTokenWithUid(appId, appCert, channelName, 0, RtcRole.PUBLISHER, expire);
+
+  // Log call session
+  const callRef = db.collection('calls').doc();
+  await callRef.set({
+    callId: callRef.id,
+    channelName, callerId: uid, agentId, agentType, mode,
+    status: 'active', creditsUsed: 0, pricePerSecondCredits,
+    startedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  return { token, channelName, callId: callRef.id, appId };
 });
 
+/** endCall — closes call, finalizes billing now (client calls on hangup) */
 export const endCall = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
-    }
-    const { callId } = data;
-    const callerId = context.auth.uid;
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+  const uid = context.auth.uid;
+  const { callId, seconds } = data as { callId: string; seconds: number };
+  if (!callId || typeof seconds !== 'number') throw new functions.https.HttpsError('invalid-argument', 'Missing fields');
 
-    const callRef = admin.firestore().collection('calls').doc(callId);
-    const callDoc = await callRef.get();
+  const callRef = db.collection('calls').doc(callId);
+  const snap = await callRef.get();
+  if (!snap.exists) throw new functions.https.HttpsError('not-found', 'Call not found');
+  const call = snap.data() as any;
+  if (call.callerId !== uid) throw new functions.https.HttpsError('permission-denied', 'Only caller can end the call');
+  
+  if (call.status === 'ended') {
+      return { ok: true, message: 'Call already ended.' };
+  }
 
-    if (!callDoc.exists || callDoc.data()?.callerId !== callerId) {
-        throw new functions.https.HttpsError('not-found', 'Call not found or permission denied.');
-    }
+  const userRef = db.collection('users').doc(uid);
 
-    const callData = callDoc.data();
-    if (callData?.status === 'ended') {
-        return { success: true, message: 'Call already ended.' };
-    }
+  await db.runTransaction(async (t) => {
+    const u = await t.get(userRef);
+    const wallet = (u.data() as any).wallet || { credits: 0 };
+    const creditsToCharge = Math.ceil(seconds) * (call.pricePerSecondCredits ?? 0.1);
     
-    const endedAt = admin.firestore.Timestamp.now();
-    const startedAt = callData?.startedAt as admin.firestore.Timestamp;
-    const durationSeconds = endedAt.seconds - startedAt.seconds;
-    
-    const creditsUsed = durationSeconds * callData?.pricePerSecondCredits;
+    const finalCredits = (wallet.credits ?? 0) - creditsToCharge;
 
-    // Update call doc
-    await callRef.update({
-        status: 'ended',
-        endedAt: endedAt,
-        creditsUsed: creditsUsed,
-    });
-
-    // Deduct credits from user's wallet
-    const userRef = admin.firestore().collection('users').doc(callerId);
-    await userRef.update({
-        'wallet.credits': admin.firestore.FieldValue.increment(-creditsUsed),
+    t.update(userRef, {
+        'wallet.credits': admin.firestore.FieldValue.increment(-creditsToCharge),
         'wallet.lastDeduction': admin.firestore.FieldValue.serverTimestamp(),
     });
+    
+    t.update(callRef, {
+      status: 'ended',
+      endedAt: admin.firestore.FieldValue.serverTimestamp(),
+      creditsUsed: creditsToCharge,
+    });
 
-    return { success: true, creditsUsed };
+    // Transaction log
+    const txRef = db.collection('transactions').doc();
+    t.set(txRef, {
+      txId: txRef.id,
+      uid, 
+      amount: -creditsToCharge, 
+      currency: 'credits',
+      type: 'deduction',
+      method: 'wallet',
+      description: `Call ${call.mode} with ${call.agentType}:${call.agentId}`,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { ok: true };
+});
+
+/** (Optional) scheduler for long-running calls as a safety net */
+export const tickCalls = functions.pubsub.schedule('every 2 minutes').onRun(async () => {
+  // No-op or per-minute charging if you want passive metering.
+  return null;
 });
