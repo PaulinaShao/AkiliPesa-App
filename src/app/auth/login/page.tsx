@@ -13,6 +13,7 @@ import {
   setDoc, 
   getDoc 
 } from '@/firebase/client';
+import type { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,6 +34,12 @@ export default function LoginPage() {
 
       router.push('/create/ai');
     } catch (err) {
+      const error = err as FirebaseError;
+      // This is a standard error when the user closes the popup.
+      // We can safely ignore it and not log it as a console error.
+      if (error.code === 'auth/popup-closed-by-user') {
+        return;
+      }
       console.error("Google Sign-in error:", err);
     }
   };
