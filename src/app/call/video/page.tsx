@@ -24,12 +24,24 @@ function VideoCallComponent() {
   const [showPicker, setShowPicker] = useState(false);
   const [agent, setAgent] = useState<any>(null);
   const [callDetails, setCallDetails] = useState<any>(null);
+  const [callDuration, setCallDuration] = useState(0);
+  const [callStatus, setCallStatus] = useState('Connecting...');
 
   const userVideoRef = useRef<HTMLVideoElement>(null);
   const agentVideoRef = useRef<HTMLVideoElement>(null); // This would be the remote stream
 
   const agentId = searchParams.get('agentId');
   const agentType = searchParams.get('agentType');
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (callStatus === 'Connected') {
+      timer = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [callStatus]);
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -39,8 +51,18 @@ function VideoCallComponent() {
     }
 
     const setupDevicesAndCall = async (id: string, type: string) => {
-      // Get Agent Info
-      let agentDocRef = doc(firestore, type === 'admin' ? 'adminAgents' : `users/${user.uid}/agents`, id);
+      setCallStatus('Initializing...');
+      let agentDocRef;
+      if (type === 'admin') {
+        agentDocRef = doc(firestore, 'adminAgents', id);
+      } else {
+        // This is a simplification. Finding a user agent requires knowing the owner.
+        console.error("User agent calling not fully implemented in UI.");
+        toast({ variant: 'destructive', title: 'Call Failed', description: 'Calling user agents is not supported yet.' });
+        router.back();
+        return;
+      }
+      
       const agentSnap = await getDoc(agentDocRef);
 
       if (!agentSnap.exists()) {
@@ -69,8 +91,9 @@ function VideoCallComponent() {
         const result: any = await getAgoraToken({ agentId: id, agentType: type, mode: 'video' });
         setCallDetails(result.data);
         // TODO: Initialize Agora with token and join channel
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Call Failed', description: 'Could not start the call.' });
+        setCallStatus('Connected'); // Mock
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Call Failed', description: error.message || 'Could not start the call.' });
         console.error("Error getting Agora token:", error);
       }
     };
@@ -90,7 +113,7 @@ function VideoCallComponent() {
     };
   }, [user, isUserLoading, agentId, agentType, router, firestore, toast]);
 
-  const handleAgentSelect = (selectedAgent: { id: string, type: string }) => {
+  const handleAgentSelect = (selectedAgent: { id: string; type: 'admin' | 'user' }) => {
     setShowPicker(false);
     router.push(`/call/video?agentId=${selectedAgent.id}&agentType=${selectedAgent.type}`);
   };
@@ -99,7 +122,7 @@ function VideoCallComponent() {
     if (callDetails?.callId) {
       const functions = getFunctions();
       const endCall = httpsCallable(functions, 'endCall');
-      await endCall({ callId: callDetails.callId }).catch(e => console.error("Error ending call:", e));
+      await endCall({ callId: callDetails.callId, seconds: callDuration }).catch(e => console.error("Error ending call:", e));
     }
     // TODO: Leave Agora channel
     router.push('/');
@@ -128,7 +151,7 @@ function VideoCallComponent() {
   if (isUserLoading || !agent) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-black">
-        <p className="text-white">Setting up call...</p>
+        <p className="text-white">{callStatus}...</p>
       </div>
     );
   }
@@ -137,6 +160,12 @@ function VideoCallComponent() {
     <div className="dark relative flex h-screen w-full flex-col items-center justify-between bg-black">
       <video ref={agentVideoRef} className="h-full w-full object-cover" playsInline autoPlay muted style={{ backgroundColor: '#222' }} />
       
+       <div className="absolute top-4 left-4 text-white bg-black/50 p-2 rounded-lg">
+            <p>{agent.name}</p>
+            <p className="text-sm text-muted-foreground">{callStatus}</p>
+            <p className="text-sm">{new Date(callDuration * 1000).toISOString().substr(14, 5)}</p>
+        </div>
+
       <div className="absolute right-4 top-4 h-48 w-32 overflow-hidden rounded-lg border-2 border-secondary">
         <video ref={userVideoRef} className={cn('h-full w-full object-cover', !isCameraOn && 'hidden')} playsInline autoPlay muted />
         {!isCameraOn && (

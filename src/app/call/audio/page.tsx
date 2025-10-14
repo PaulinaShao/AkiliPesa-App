@@ -24,9 +24,20 @@ function AudioCallComponent() {
   const [callDetails, setCallDetails] = useState<any>(null);
   const [pricePerSec, setPricePerSec] = useState(0);
   const [tzsPerCredit, setTzsPerCredit] = useState(100);
+  const [callDuration, setCallDuration] = useState(0);
 
   const agentId = searchParams.get('agentId');
   const agentType = searchParams.get('agentType');
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (callStatus === 'Connected') {
+      timer = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [callStatus]);
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -41,10 +52,9 @@ function AudioCallComponent() {
         agentDocRef = doc(firestore, 'adminAgents', id);
       } else {
         // This is a simplification. Finding a user agent requires knowing the owner.
-        // Assuming for now the agentId is enough to find it or it belongs to current user.
-        // This needs a more robust implementation based on final data structure.
-        // For now, let's assume we can't fetch user agents this way easily.
-        console.error("User agent fetching not fully implemented in UI.");
+        // For now we assume we can't call user agents yet.
+        console.error("User agent calling not fully implemented in UI.");
+        setCallStatus('Call Failed: User agents not callable yet.');
         return;
       }
       
@@ -54,7 +64,7 @@ function AudioCallComponent() {
         setAgent(agentData);
         setPricePerSec(agentData.pricePerSecondCredits);
         
-        const settingsRef = doc(firestore, 'adminSettings', 'pricing');
+        const settingsRef = doc(firestore, 'adminSettings', 'settings');
         const settingsSnap = await getDoc(settingsRef);
         if (settingsSnap.exists()) {
             setTzsPerCredit(settingsSnap.data().pricing.tzsPerCredit);
@@ -64,13 +74,14 @@ function AudioCallComponent() {
         const functions = getFunctions();
         const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
         try {
+          setCallStatus('Initializing...');
           const result: any = await getAgoraToken({ agentId: id, agentType: type, mode: 'audio' });
           setCallDetails(result.data);
-          setCallStatus('Ringing...');
           // TODO: Initialize Agora with result.data.token and result.data.channelName
-        } catch (e) {
+          setCallStatus('Connected'); // Mock: "Connected"
+        } catch (e: any) {
           console.error("Error getting Agora token:", e);
-          setCallStatus('Call Failed');
+          setCallStatus(`Call Failed: ${e.message}`);
         }
 
       } else {
@@ -86,7 +97,7 @@ function AudioCallComponent() {
     }
   }, [user, isUserLoading, router, agentId, agentType, firestore]);
 
-  const handleAgentSelect = (selectedAgent: { id: string, type: string }) => {
+  const handleAgentSelect = (selectedAgent: { id: string, type: 'admin' | 'user' }) => {
     setShowPicker(false);
     router.push(`/call/audio?agentId=${selectedAgent.id}&agentType=${selectedAgent.type}`);
   };
@@ -96,7 +107,7 @@ function AudioCallComponent() {
         const functions = getFunctions();
         const endCall = httpsCallable(functions, 'endCall');
         try {
-            await endCall({ callId: callDetails.callId });
+            await endCall({ callId: callDetails.callId, seconds: callDuration });
         } catch (e) {
             console.error("Error ending call:", e);
         }
@@ -120,14 +131,19 @@ function AudioCallComponent() {
   return (
     <div className="dark flex h-screen w-full flex-col items-center justify-between bg-background p-8">
       <div className="flex flex-col items-center gap-4 pt-20 text-center">
-        <UserAvatar src={agent.avatarUrl} username={agent.name} className="h-32 w-32 border-4 border-primary" />
-        <h1 className="text-3xl font-bold">{agent.name}</h1>
-        <p className="text-lg text-muted-foreground">{callStatus}</p>
-        {pricePerSec > 0 && (
-            <p className="text-sm text-accent">
-                {pricePerSec} credits/sec (≈ TZS {(pricePerSec * tzsPerCredit).toFixed(2)})
-            </p>
+        {agent ? (
+            <>
+                <UserAvatar src={agent.avatarUrl} username={agent.name} className="h-32 w-32 border-4 border-primary" />
+                <h1 className="text-3xl font-bold">{agent.name}</h1>
+            </>
+        ) : (
+            <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center border-4 border-primary"></div>
         )}
+        <p className="text-lg text-muted-foreground">{callStatus}</p>
+        <p className="text-sm text-accent">
+            {pricePerSec > 0 && `~TZS ${(pricePerSec * tzsPerCredit).toFixed(2)}/sec`}
+        </p>
+         <p className="text-lg text-muted-foreground">{new Date(callDuration * 1000).toISOString().substr(14, 5)}</p>
       </div>
 
       <div className="w-full max-w-sm h-24 flex items-center justify-center">

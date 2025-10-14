@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,13 +29,31 @@ type AdminSettings = {
     }
 }
 
+const defaultSettings: AdminSettings = {
+    pricing: {
+        tzsPerCredit: 100,
+        defaultAdminPricePerSecondCredits: 0.1
+    },
+    commissionModels: {
+        product: {
+            platform: 0.1,
+            creator: 0.9
+        },
+        serviceAccess: {
+            platform: 0.1,
+            commission: 0.1,
+            creator: 0.8
+        }
+    }
+};
+
 export default function AdminSettingsPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [settings, setSettings] = useState<AdminSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const settingsDocRef = doc(firestore, 'adminSettings', 'pricing');
+  const settingsDocRef = doc(firestore, 'adminSettings', 'settings');
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -44,8 +62,10 @@ export default function AdminSettingsPage() {
       if (docSnap.exists()) {
         setSettings(docSnap.data() as AdminSettings);
       } else {
-        // Handle case where settings doc doesn't exist, maybe set defaults
-        console.log("No such document!");
+        // If doc doesn't exist, create it with default values
+        await setDoc(settingsDocRef, defaultSettings);
+        setSettings(defaultSettings);
+        console.log("No settings document found, created one with default values.");
       }
       setIsLoading(false);
     };
@@ -58,7 +78,7 @@ export default function AdminSettingsPage() {
     const keys = path.split('.');
     setSettings(prev => {
         const newSettings = JSON.parse(JSON.stringify(prev)); // Deep copy
-        let current = newSettings;
+        let current: any = newSettings;
         for(let i = 0; i < keys.length - 1; i++) {
             current = current[keys[i]];
         }
