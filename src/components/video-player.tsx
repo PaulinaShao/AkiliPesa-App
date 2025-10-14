@@ -135,12 +135,16 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
             right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
         }}
       >
-        <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <Phone size={32} />
-        </button>
-        <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
-          <VideoIcon size={32} />
-        </button>
+        <Link href="/call/audio" passHref>
+          <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+            <Phone size={32} />
+          </button>
+        </Link>
+         <Link href="/call/video" passHref>
+          <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+            <VideoIcon size={32} />
+          </button>
+        </Link>
         <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
           <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
           <span className="text-sm font-bold">{likes.toLocaleString()}</span>

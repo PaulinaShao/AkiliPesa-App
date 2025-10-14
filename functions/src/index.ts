@@ -1,9 +1,11 @@
-
 'use strict';
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { RtcTokenBuilder, RtcRole } from 'agora-token';
 
 admin.initializeApp();
+
+// --- Existing Functions ---
 
 // User signup → create profile
 export const onusercreate = functions.auth.user().onCreate(async (user) => {
@@ -207,3 +209,110 @@ export const resetTrialCredits = functions.pubsub
     console.log(`Reset trial credits for ${snapshot.size} users.`);
     return null;
   });
+
+// --- New Functions ---
+
+const APP_ID = functions.config().agora?.appid || "e1b8492f15d848609591e0a29352c3c5";
+const APP_CERTIFICATE = functions.config().agora?.certificate || "5718a99479a941f69201f807358b5493";
+
+export const getAgoraToken = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+
+    const { agentId, agentType, mode } = data;
+    const callerId = context.auth.uid;
+    const callRef = admin.firestore().collection('calls').doc();
+    const channelName = callRef.id;
+
+    let agentDoc;
+    if (agentType === 'admin') {
+        agentDoc = await admin.firestore().collection('adminAgents').doc(agentId).get();
+    } else {
+        // This assumes user agents are in a subcollection, adjust if needed.
+        // The prompt seems to imply a subcollection `users/{uid}/agents/{agentId}`
+        // This requires knowing the agent's owner, which isn't passed.
+        // For now, let's assume a top-level `userAgents` collection for simplicity, or adjust if more info is given.
+        // Let's stick to the prompt's `users/{uid}/agents/{agentId}` but that makes the query complex without ownerId.
+        // Let's assume for now we can find the user agent without knowing the owner. A better model would be a top-level collection.
+        // Re-reading: the user agent is under the user, so we need the user's ID to fetch it.
+        // The call is made by the user, so we know their ID, but the agent could belong to another user.
+        // Let's assume for now agentId is globally unique and we search for it.
+        // This is inefficient. Let's assume `agentType: 'user'` means it belongs to the caller for now.
+        const userAgentRef = admin.firestore().collection('users').doc(callerId).collection('agents').doc(agentId);
+        agentDoc = await userAgentRef.get();
+    }
+
+    if (!agentDoc.exists) {
+        throw new functions.https.HttpsError('not-found', 'Agent not found.');
+    }
+    const agentData = agentDoc.data();
+    const pricePerSecondCredits = agentData?.pricePerSecondCredits || 0.1;
+
+    // Create call document
+    const callDocData = {
+        callId: callRef.id,
+        channelName,
+        callerId,
+        agentId,
+        agentType,
+        mode,
+        pricePerSecondCredits,
+        status: 'active',
+        startedAt: admin.firestore.FieldValue.serverTimestamp(),
+        creditsUsed: 0,
+    };
+    await callRef.set(callDocData);
+
+    // Generate Agora Token
+    const role = RtcRole.PUBLISHER;
+    const expirationTimeInSeconds = 3600; // 1 hour
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+    const token = RtcTokenBuilder.buildTokenWithUid(APP_ID, APP_CERTIFICATE, channelName, 0, role, privilegeExpiredTs);
+    
+    return { token, channelName, callId: callRef.id };
+});
+
+export const endCall = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+    const { callId } = data;
+    const callerId = context.auth.uid;
+
+    const callRef = admin.firestore().collection('calls').doc(callId);
+    const callDoc = await callRef.get();
+
+    if (!callDoc.exists || callDoc.data()?.callerId !== callerId) {
+        throw new functions.https.HttpsError('not-found', 'Call not found or permission denied.');
+    }
+
+    const callData = callDoc.data();
+    if (callData?.status === 'ended') {
+        return { success: true, message: 'Call already ended.' };
+    }
+    
+    const endedAt = admin.firestore.Timestamp.now();
+    const startedAt = callData?.startedAt as admin.firestore.Timestamp;
+    const durationSeconds = endedAt.seconds - startedAt.seconds;
+    
+    const creditsUsed = durationSeconds * callData?.pricePerSecondCredits;
+
+    // Update call doc
+    await callRef.update({
+        status: 'ended',
+        endedAt: endedAt,
+        creditsUsed: creditsUsed,
+    });
+
+    // Deduct credits from user's wallet
+    const userRef = admin.firestore().collection('users').doc(callerId);
+    await userRef.update({
+        'wallet.credits': admin.firestore.FieldValue.increment(-creditsUsed),
+        'wallet.lastDeduction': admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, creditsUsed };
+});

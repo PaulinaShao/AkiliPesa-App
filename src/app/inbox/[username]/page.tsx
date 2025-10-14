@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/definitions';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 
 export default function ChatPage() {
@@ -73,8 +74,8 @@ export default function ChatPage() {
                     <span className="font-bold text-lg truncate">{otherUser.username}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
-                    <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
+                    <Button asChild variant="ghost" size="icon"><Link href="/call/audio"><Phone className="h-6 w-6 text-primary"/></Link></Button>
+                    <Button asChild variant="ghost" size="icon"><Link href="/call/video"><Video className="h-6 w-6 text-primary"/></Link></Button>
                 </div>
             </header>
 
