@@ -3,8 +3,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useUser } from '@/firebase/auth/use-user';
-import { useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,8 @@ import { Mic, MicOff, PhoneOff, Video, VideoOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { AgentPicker } from '@/components/AgentPicker';
+import { setPostLoginRedirect } from '@/lib/redirect';
+
 
 function VideoCallComponent() {
   const router = useRouter();
@@ -46,10 +47,11 @@ function VideoCallComponent() {
   }, [callStatus]);
 
   useEffect(() => {
-    if (isUserLoading) return;
+    if (isUserLoading) return; // Wait for auth state
+
     if (!user) {
-        const fullPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
-        router.push(`/auth/login?redirect=${encodeURIComponent(fullPath)}`);
+      const target = setPostLoginRedirect();
+      router.replace(`/auth/login?redirect=${encodeURIComponent(target)}`);
       return;
     }
 
@@ -59,8 +61,6 @@ function VideoCallComponent() {
       if (type === 'admin') {
         agentDocRef = doc(firestore, 'adminAgents', id);
       } else {
-        // This is a simplification. Finding a user agent requires knowing the owner.
-        console.error("User agent calling not fully implemented in UI.");
         toast({ variant: 'destructive', title: 'Call Failed', description: 'Calling user agents is not supported yet.' });
         router.back();
         return;
@@ -75,7 +75,6 @@ function VideoCallComponent() {
       }
       setAgent(agentSnap.data());
       
-      // Get Camera/Mic permissions
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (userVideoRef.current) {
@@ -87,13 +86,11 @@ function VideoCallComponent() {
         return;
       }
       
-      // Get Agora Token
       const functions = getFunctions();
       const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
       try {
         const result: any = await getAgoraToken({ agentId: id, agentType: type, mode: 'video' });
         setCallDetails(result.data);
-        // TODO: Initialize Agora with token and join channel
         setCallStatus('Connected'); // Mock
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Call Failed', description: error.message || 'Could not start the call.' });
@@ -108,17 +105,17 @@ function VideoCallComponent() {
     }
 
     return () => {
-      // Cleanup: stop media tracks on component unmount
       if (userVideoRef.current?.srcObject) {
         const stream = userVideoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [user, isUserLoading, agentId, agentType, router, firestore, toast, pathname, searchParams]);
+  }, [user, isUserLoading, agentId, agentType, router, firestore, toast]);
 
   const handleAgentSelect = (selectedAgent: { id: string; type: 'admin' | 'user' }) => {
     setShowPicker(false);
-    router.push(`/call/video?agentId=${selectedAgent.id}&agentType=${selectedAgent.type}`);
+    const newPath = `${pathname}?agentId=${selectedAgent.id}&agentType=${selectedAgent.type}`;
+    router.push(newPath);
   };
 
   const handleEndCall = async () => {
@@ -127,7 +124,6 @@ function VideoCallComponent() {
       const endCall = httpsCallable(functions, 'endCall');
       await endCall({ callId: callDetails.callId, seconds: callDuration }).catch(e => console.error("Error ending call:", e));
     }
-    // TODO: Leave Agora channel
     router.push('/');
   };
 
@@ -151,10 +147,11 @@ function VideoCallComponent() {
       return <AgentPicker show={true} onSelect={handleAgentSelect} onCancel={() => router.back()} />;
   }
 
-  if (isUserLoading || !agent) {
+  // Render nothing until auth state is determined
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-black">
-        <p className="text-white">{callStatus}...</p>
+        <p className="text-white">Authenticating...</p>
       </div>
     );
   }
@@ -164,7 +161,7 @@ function VideoCallComponent() {
       <video ref={agentVideoRef} className="h-full w-full object-cover" playsInline autoPlay muted style={{ backgroundColor: '#222' }} />
       
        <div className="absolute top-4 left-4 text-white bg-black/50 p-2 rounded-lg">
-            <p>{agent.name}</p>
+            <p>{agent?.name || 'Agent'}</p>
             <p className="text-sm text-muted-foreground">{callStatus}</p>
             <p className="text-sm">{new Date(callDuration * 1000).toISOString().substr(14, 5)}</p>
         </div>

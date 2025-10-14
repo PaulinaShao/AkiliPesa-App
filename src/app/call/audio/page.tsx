@@ -3,14 +3,14 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useUser } from '@/firebase/auth/use-user';
-import { useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, PhoneOff } from 'lucide-react';
 import { AgentPicker } from '@/components/AgentPicker';
 import { doc, getDoc } from 'firebase/firestore';
+import { setPostLoginRedirect } from '@/lib/redirect';
 
 function AudioCallComponent() {
   const router = useRouter();
@@ -42,10 +42,12 @@ function AudioCallComponent() {
   }, [callStatus]);
 
   useEffect(() => {
-    if (isUserLoading) return;
+    if (isUserLoading) return; // Wait until auth state is confirmed
+
     if (!user) {
-      const fullPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
-      router.push(`/auth/login?redirect=${encodeURIComponent(fullPath)}`);
+      // If not logged in, store the intended destination and redirect to login
+      const target = setPostLoginRedirect();
+      router.replace(`/auth/login?redirect=${encodeURIComponent(target)}`);
       return;
     }
 
@@ -54,8 +56,6 @@ function AudioCallComponent() {
       if (type === 'admin') {
         agentDocRef = doc(firestore, 'adminAgents', id);
       } else {
-        // This is a simplification. Finding a user agent requires knowing the owner.
-        // For now we assume we can't call user agents yet.
         console.error("User agent calling not fully implemented in UI.");
         setCallStatus('Call Failed: User agents not callable yet.');
         return;
@@ -80,7 +80,6 @@ function AudioCallComponent() {
           setCallStatus('Initializing...');
           const result: any = await getAgoraToken({ agentId: id, agentType: type, mode: 'audio' });
           setCallDetails(result.data);
-          // TODO: Initialize Agora with result.data.token and result.data.channelName
           setCallStatus('Connected'); // Mock: "Connected"
         } catch (e: any) {
           console.error("Error getting Agora token:", e);
@@ -98,11 +97,12 @@ function AudioCallComponent() {
     } else {
       setShowPicker(true);
     }
-  }, [user, isUserLoading, router, agentId, agentType, firestore, pathname, searchParams]);
+  }, [user, isUserLoading, router, agentId, agentType, firestore]);
 
   const handleAgentSelect = (selectedAgent: { id: string, type: 'admin' | 'user' }) => {
     setShowPicker(false);
-    router.push(`/call/audio?agentId=${selectedAgent.id}&agentType=${selectedAgent.type}`);
+    const newPath = `${pathname}?agentId=${selectedAgent.id}&agentType=${selectedAgent.type}`;
+    router.push(newPath);
   };
 
   const handleEndCall = async () => {
@@ -115,14 +115,14 @@ function AudioCallComponent() {
             console.error("Error ending call:", e);
         }
     }
-    // TODO: End Agora session properly
     router.push('/');
   };
 
-  if (isUserLoading || (!agent && !showPicker)) {
+  // Render nothing until auth state is determined to prevent UI flashes
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background dark">
-        <p>Loading...</p>
+        <p>Authenticating...</p>
       </div>
     );
   }

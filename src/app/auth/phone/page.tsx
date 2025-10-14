@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getPostLoginRedirect, setPostLoginRedirect } from "@/lib/redirect";
+
 
 export default function PhoneLoginPage() {
   const [phone, setPhone] = useState("");
@@ -20,6 +22,14 @@ export default function PhoneLoginPage() {
   const searchParams = useSearchParams();
   const auth = useAuth();
   const { toast } = useToast();
+
+  // If this page received a redirect param, store it as the authoritative target.
+  useEffect(() => {
+    const queryRedirect = searchParams.get('redirect');
+    if (queryRedirect) {
+      setPostLoginRedirect(decodeURIComponent(queryRedirect));
+    }
+  }, [searchParams]);
 
   // Set up reCAPTCHA verifier once
   useEffect(() => {
@@ -40,7 +50,6 @@ export default function PhoneLoginPage() {
     } catch (err) {
       console.error("OTP send error:", err);
       toast({ variant: "destructive", title: "Error", description: (err as Error).message });
-      // Reset reCAPTCHA on error
       if ((window as any).recaptchaVerifier) {
         (window as any).recaptchaVerifier.render().then((widgetId: any) => {
            grecaptcha.reset(widgetId);
@@ -56,8 +65,8 @@ export default function PhoneLoginPage() {
     setIsSubmitting(true);
     try {
       await confirmationResult.confirm(otp);
-      const redirectUrl = searchParams.get('redirect') || '/';
-      router.push(redirectUrl);
+      // After successful OTP verification, get the redirect path and navigate.
+      router.replace(getPostLoginRedirect('/'));
     } catch (err) {
       console.error("OTP verify error:", err);
       toast({ variant: "destructive", title: "Error", description: (err as Error).message });

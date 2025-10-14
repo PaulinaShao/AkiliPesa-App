@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -14,23 +15,31 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import type { FirebaseError } from 'firebase/app';
+import { getPostLoginRedirect, setPostLoginRedirect } from '@/lib/redirect';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuth();
+  
+  // When the component mounts, check if there's a 'redirect' query param.
+  // If so, store it in sessionStorage as the authoritative redirect target.
+  useEffect(() => {
+    const queryRedirect = searchParams.get('redirect');
+    if (queryRedirect) {
+      setPostLoginRedirect(decodeURIComponent(queryRedirect));
+    }
+  }, [searchParams]);
 
   const handleGoogleSignIn = async () => {
     if (!auth) return;
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      // Redirect on successful login
-      const redirectUrl = searchParams.get('redirect') || '/';
-      router.push(redirectUrl);
+      // After successful sign-in, retrieve the stored redirect path and navigate.
+      router.replace(getPostLoginRedirect('/'));
     } catch (err) {
       const error = err as FirebaseError;
-      // Silently ignore if the user closes the popup
       if (error.code === 'auth/popup-closed-by-user') {
         return;
       }
@@ -39,12 +48,9 @@ export default function LoginPage() {
   };
 
   const handlePhoneSignIn = () => {
-    const redirectUrl = searchParams.get('redirect');
-    let phoneAuthUrl = '/auth/phone';
-    if (redirectUrl) {
-      phoneAuthUrl += `?redirect=${encodeURIComponent(redirectUrl)}`;
-    }
-    router.push(phoneAuthUrl);
+    // Get the redirect target and pass it cleanly to the phone page.
+    const target = getPostLoginRedirect('/');
+    router.push(`/auth/phone?redirect=${encodeURIComponent(target)}`);
   };
 
   return (
