@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -47,8 +48,8 @@ export default function InboxPage() {
                         <p className="text-sm text-muted-foreground">Click to chat...</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                        <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
-                        <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
+                        <Button asChild variant="ghost" size="icon"><Link href="/call/audio"><Phone className="h-6 w-6 text-primary"/></Link></Button>
+                        <Button asChild variant="ghost" size="icon"><Link href="/call/video"><Video className="h-6 w-6 text-primary"/></Link></Button>
                     </div>
                 </Link>
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, FormEvent, useEffect, useRef } from 'react';
@@ -12,6 +13,7 @@ import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/definitions';
 import { users } from '@/lib/data';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 export default function AkiliPesaAIChatPage() {
     const router = useRouter();
@@ -103,8 +105,8 @@ export default function AkiliPesaAIChatPage() {
                     <span className="font-bold text-lg">{aiUser.username}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
-                    <Button variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
+                    <Button asChild variant="ghost" size="icon"><Link href="/call/audio"><Phone className="h-6 w-6 text-primary"/></Link></Button>
+                    <Button asChild variant="ghost" size="icon"><Link href="/call/video"><Video className="h-6 w-6 text-primary"/></Link></Button>
                 </div>
             </header>
 
