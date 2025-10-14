@@ -13,7 +13,7 @@ import {
 import { Chrome, Phone } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/firebase';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, User } from 'firebase/auth';
 import type { FirebaseError } from 'firebase/app';
 import { getPostLoginRedirect, setPostLoginRedirect } from '@/lib/redirect';
 
@@ -22,8 +22,6 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const auth = useAuth();
   
-  // When the component mounts, check if there's a 'redirect' query param.
-  // If so, store it in sessionStorage as the authoritative redirect target.
   useEffect(() => {
     const queryRedirect = searchParams.get('redirect');
     if (queryRedirect) {
@@ -31,13 +29,20 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
+  const handleSuccessfulLogin = (user: User) => {
+    if (user.email === 'blagridigital@gmail.com') {
+      router.replace('/admin/agents');
+    } else {
+      router.replace(getPostLoginRedirect('/'));
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     if (!auth) return;
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      // After successful sign-in, retrieve the stored redirect path and navigate.
-      router.replace(getPostLoginRedirect('/'));
+      const result = await signInWithPopup(auth, provider);
+      handleSuccessfulLogin(result.user);
     } catch (err) {
       const error = err as FirebaseError;
       if (error.code === 'auth/popup-closed-by-user') {
@@ -48,7 +53,6 @@ export default function LoginPage() {
   };
 
   const handlePhoneSignIn = () => {
-    // Get the redirect target and pass it cleanly to the phone page.
     const target = getPostLoginRedirect('/');
     router.push(`/auth/phone?redirect=${encodeURIComponent(target)}`);
   };
