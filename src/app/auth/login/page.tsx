@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/card';
 import { Chrome, Phone } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/firebase';
-import { GoogleAuthProvider, signInWithPopup, User } from 'firebase/auth';
+import { useAuth, useUser } from '@/firebase';
+import { GoogleAuthProvider, signInWithPopup, User, getRedirectResult, signInWithRedirect } from 'firebase/auth';
 import type { FirebaseError } from 'firebase/app';
 import { getPostLoginRedirect, setPostLoginRedirect } from '@/lib/redirect';
 
@@ -21,6 +21,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuth();
+  const { user, isUserLoading } = useUser();
   
   useEffect(() => {
     const queryRedirect = searchParams.get('redirect');
@@ -31,24 +32,49 @@ export default function LoginPage() {
 
   const handleSuccessfulLogin = (user: User) => {
     if (user.email === 'blagridigital@gmail.com') {
-      router.replace('/admin/agents');
+       router.replace('/admin/agents');
     } else {
       router.replace(getPostLoginRedirect('/'));
     }
   };
+  
+  // Handle redirect result on page load
+  useEffect(() => {
+    if (!auth || isUserLoading) return;
+    
+    // If a user is already authenticated, handle login
+    if (user) {
+        handleSuccessfulLogin(user);
+        return;
+    }
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          handleSuccessfulLogin(result.user);
+        }
+      })
+      .catch((err) => {
+        console.error("Redirect sign-in error:", err);
+      });
+  }, [auth, isUserLoading, user]);
+
 
   const handleGoogleSignIn = async () => {
     if (!auth) return;
+    const provider = new GoogleAuthProvider();
     try {
-      const provider = new GoogleAuthProvider();
+      // Prefer popup, but fallback to redirect
       const result = await signInWithPopup(auth, provider);
       handleSuccessfulLogin(result.user);
     } catch (err) {
       const error = err as FirebaseError;
-      if (error.code === 'auth/popup-closed-by-user') {
-        return;
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+        // Fallback to redirect method if popup is blocked
+        await signInWithRedirect(auth, provider);
+      } else if (error.code !== 'auth/popup-closed-by-user') {
+        console.error('Google Sign-in error:', err);
       }
-      console.error('Google Sign-in error:', err);
     }
   };
 
@@ -56,6 +82,14 @@ export default function LoginPage() {
     const target = getPostLoginRedirect('/');
     router.push(`/auth/phone?redirect=${encodeURIComponent(target)}`);
   };
+
+  if (isUserLoading || user) {
+    return (
+       <div className="flex h-screen w-full items-center justify-center bg-background dark">
+            <p>Authenticating...</p>
+        </div>
+    )
+  }
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background dark">

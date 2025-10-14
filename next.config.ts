@@ -20,13 +20,33 @@ const nextConfig = {
         pathname: "/**",
       },
       {
-        protocol: "https",
+        protocol: "https://",
         hostname: "picsum.photos",
         pathname: "/**",
       },
     ],
   },
-  // ✅ Fixes Cross-Origin dev warning
+  // ✅ Silence harmless dev warnings
+  webpack: (config, { dev, isServer }) => {
+    // Silences warnings about source maps not being generated for 3rd party packages.
+    // These are harmless and can be ignored.
+    if (!isServer) {
+        config.ignoreWarnings = [
+            ...(config.ignoreWarnings || []),
+            /Failed to parse source map/
+        ];
+    }
+    
+    // Silences harmless "module not found" warnings for 'encoding'
+    // This is a Node.js module that is not needed on the client-side.
+    config.resolve.fallback = {
+        ...config.resolve.fallback,
+        encoding: false,
+    };
+    
+    return config;
+  },
+  // ✅ Fixes Cross-Origin dev warnings
   allowedDevOrigins: [
     "http://localhost:3000",
     "http://10.88.0.3:3000",
