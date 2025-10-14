@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -14,6 +15,7 @@ import { AgentPicker } from '@/components/AgentPicker';
 
 function VideoCallComponent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -46,7 +48,8 @@ function VideoCallComponent() {
   useEffect(() => {
     if (isUserLoading) return;
     if (!user) {
-      router.push('/auth/login');
+        const fullPath = `${pathname}?${searchParams.toString()}`;
+        router.push(`/auth/login?redirect=${encodeURIComponent(fullPath)}`);
       return;
     }
 
@@ -111,7 +114,7 @@ function VideoCallComponent() {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [user, isUserLoading, agentId, agentType, router, firestore, toast]);
+  }, [user, isUserLoading, agentId, agentType, router, firestore, toast, pathname, searchParams]);
 
   const handleAgentSelect = (selectedAgent: { id: string; type: 'admin' | 'user' }) => {
     setShowPicker(false);

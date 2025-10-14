@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -13,6 +14,7 @@ import { doc, getDoc } from 'firebase/firestore';
 
 function AudioCallComponent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -42,7 +44,7 @@ function AudioCallComponent() {
   useEffect(() => {
     if (isUserLoading) return;
     if (!user) {
-      router.push('/auth/login');
+      router.push(`/auth/login?redirect=${pathname}?${searchParams.toString()}`);
       return;
     }
 
@@ -95,7 +97,7 @@ function AudioCallComponent() {
     } else {
       setShowPicker(true);
     }
-  }, [user, isUserLoading, router, agentId, agentType, firestore]);
+  }, [user, isUserLoading, router, agentId, agentType, firestore, pathname, searchParams]);
 
   const handleAgentSelect = (selectedAgent: { id: string, type: 'admin' | 'user' }) => {
     setShowPicker(false);

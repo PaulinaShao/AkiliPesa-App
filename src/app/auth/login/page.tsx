@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -9,13 +10,14 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Chrome, Phone } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import type { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const auth = useAuth();
 
   const handleGoogleSignIn = async () => {
@@ -24,7 +26,8 @@ export default function LoginPage() {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       // Redirect on successful login
-      router.push('/');
+      const redirectUrl = searchParams.get('redirect') || '/';
+      router.push(redirectUrl);
     } catch (err) {
       const error = err as FirebaseError;
       // Silently ignore if the user closes the popup
@@ -36,7 +39,12 @@ export default function LoginPage() {
   };
 
   const handlePhoneSignIn = () => {
-    router.push('/auth/phone');
+    const redirectUrl = searchParams.get('redirect');
+    let phoneAuthUrl = '/auth/phone';
+    if (redirectUrl) {
+      phoneAuthUrl += `?redirect=${encodeURIComponent(redirectUrl)}`;
+    }
+    router.push(phoneAuthUrl);
   };
 
   return (

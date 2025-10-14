@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { doc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -18,6 +19,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
@@ -33,14 +35,14 @@ export default function AdminLayout({
     if (isLoading) return; // Wait until we have all the data
 
     if (!user) {
-      router.replace('/auth/login'); // Not logged in, send to login
+      router.replace(`/auth/login?redirect=${pathname}`); // Not logged in, send to login with redirect
       return;
     }
 
     if (userProfile?.role !== 'admin') {
       router.replace('/'); // Not an admin, send to home
     }
-  }, [user, userProfile, isUserLoading, isProfileLoading, router]);
+  }, [user, userProfile, isUserLoading, isProfileLoading, router, pathname]);
 
   const isLoading = isUserLoading || isProfileLoading;
 

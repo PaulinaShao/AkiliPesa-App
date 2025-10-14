@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState } from "react";
 import { useAuth } from '@/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ export default function PhoneLoginPage() {
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const auth = useAuth();
   const { toast } = useToast();
 
@@ -43,7 +45,8 @@ export default function PhoneLoginPage() {
     setIsSubmitting(true);
     try {
       await confirmationResult.confirm(otp);
-      router.push("/");
+      const redirectUrl = searchParams.get('redirect') || '/';
+      router.push(redirectUrl);
     } catch (err) {
       console.error("OTP verify error:", err);
       toast({ variant: "destructive", title: "Error", description: (err as Error).message });
