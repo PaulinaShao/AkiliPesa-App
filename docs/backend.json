@@ -92,30 +92,22 @@
       },
       "required": ["cloneId", "userId", "type", "createdAt"]
     },
-    "Agent": {
-      "title": "Agent",
+    "UserAgent": {
+      "title": "User Agent",
       "description": "Represents an AI agent that can perform tasks for a user.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "label": { "type": "string" },
+        "name": { "type": "string" },
+        "avatarUrl": { "type": "string", "format": "uri" },
+        "specialty": { "type": "string" },
+        "pricePerSecondCredits": { "type": "number" },
+        "contentType": { "type": "string", "enum": ["service", "product"] },
         "cloneId": { "type": "string" },
-        "role": { "type": "string", "enum": ["sales", "support", "marketing"] },
-        "assignedProducts": { "type": "array", "items": { "type": "string" } },
-        "kpis": {
-          "type": "object",
-          "properties": {
-            "impressions": { "type": "number" },
-            "clicks": { "type": "number" },
-            "leads": { "type": "number" },
-            "conversions": { "type": "number" },
-            "revenue": { "type": "number" }
-          }
-        },
         "status": { "type": "string", "enum": ["active", "paused"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "label", "role", "status", "createdAt"]
+      "required": ["id", "name", "specialty", "pricePerSecondCredits", "status", "createdAt"]
     },
     "Product": {
       "title": "Product",
@@ -216,15 +208,17 @@
       "properties": {
         "callId": { "type": "string" },
         "channelName": { "type": "string" },
-        "userId": { "type": "string" },
+        "callerId": { "type": "string" },
         "agentId": { "type": "string" },
+        "agentType": { "type": "string", "enum": ["admin", "user"] },
         "mode": { "type": "string", "enum": ["audio", "video"] },
         "status": { "type": "string", "enum": ["active", "ended"] },
         "creditsUsed": { "type": "number" },
+        "pricePerSecondCredits": { "type": "number" },
         "startedAt": { "type": "string", "format": "date-time" },
         "endedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["callId", "channelName", "userId", "mode", "status", "startedAt"]
+      "required": ["callId", "channelName", "callerId", "agentId", "agentType", "mode", "status", "startedAt"]
     },
     "Transaction": {
       "title": "Transaction",
@@ -241,6 +235,65 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["txId", "uid", "amount", "currency", "type", "description", "createdAt"]
+    },
+    "AdminSettings": {
+      "title": "Admin Settings",
+      "description": "Stores global admin settings for the application.",
+      "type": "object",
+      "properties": {
+        "pricing": {
+          "type": "object",
+          "properties": {
+            "tzsPerCredit": { "type": "number" },
+            "defaultAdminPricePerSecondCredits": { "type": "number" }
+          }
+        },
+        "commissionModels": {
+          "type": "object",
+          "properties": {
+            "product": {
+              "type": "object",
+              "properties": {
+                "platform": { "type": "number" },
+                "creator": { "type": "number" }
+              }
+            },
+            "serviceAccess": {
+              "type": "object",
+              "properties": {
+                "platform": { "type": "number" },
+                "commission": { "type": "number" },
+                "creator": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "AdminAgent": {
+      "title": "Admin Agent",
+      "description": "Represents an AI agent created by an administrator.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "avatarUrl": { "type": "string", "format": "uri" },
+        "status": { "type": "string", "enum": ["active", "paused", "archived"] },
+        "pricePerSecondCredits": { "type": "number" },
+        "backends": {
+          "type": "object",
+          "properties": {
+            "voice": { "type": "string" },
+            "video": { "type": "string" },
+            "music": { "type": "string" },
+            "movie": { "type": "string" },
+            "design": { "type": "string" }
+          }
+        },
+        "visibility": { "type": "string", "enum": ["admin-only", "public"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "status", "pricePerSecondCredits", "visibility", "createdAt"]
     }
   },
   "auth": {
@@ -266,7 +319,7 @@
       },
       {
         "path": "/users/{userId}/agents/{agentId}",
-        "definition": { "schema": { "$ref": "#/entities/Agent" }, "description": "Stores user-specific AI agents." }
+        "definition": { "schema": { "$ref": "#/entities/UserAgent" }, "description": "Stores user-specific AI agents." }
       },
       {
         "path": "/products/{productId}",
@@ -291,7 +344,17 @@
       {
         "path": "/transactions/{txId}",
         "definition": { "schema": { "$ref": "#/entities/Transaction" }, "description": "Stores a log of all financial transactions."}
+      },
+      {
+        "path": "/adminSettings/{settingId}",
+        "definition": { "schema": { "$ref": "#/entities/AdminSettings" }, "description": "Stores global admin settings." }
+      },
+      {
+        "path": "/adminAgents/{agentId}",
+        "definition": { "schema": { "$ref": "#/entities/AdminAgent" }, "description": "Stores admin-created AI agents." }
       }
     ]
   }
 }
+
+    
