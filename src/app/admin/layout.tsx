@@ -22,7 +22,7 @@ export default function AdminLayout({
   const firestore = useFirestore();
 
   const userDocRef = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
 
@@ -40,7 +40,7 @@ export default function AdminLayout({
     if (userProfile?.role !== 'admin') {
       router.replace('/'); // Not an admin, send to home
     }
-  }, [user, userProfile, isLoading, router, isUserLoading, isProfileLoading]);
+  }, [user, userProfile, isUserLoading, isProfileLoading, router]);
 
   const isLoading = isUserLoading || isProfileLoading;
 
