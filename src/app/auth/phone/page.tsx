@@ -1,15 +1,8 @@
 'use client';
 
 import { useState } from "react";
-import { 
-  auth, 
-  RecaptchaVerifier, 
-  signInWithPhoneNumber, 
-  db, 
-  doc, 
-  setDoc,
-  getDoc
-} from "@/firebase/client";
+import { useAuth } from '@/firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +15,11 @@ export default function PhoneLoginPage() {
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [otpSent, setOtpSent] = useState(false);
   const router = useRouter();
+  const auth = useAuth();
 
   const sendOtp = async () => {
+    if (!auth) return;
     try {
-      // It's recommended to have window typed correctly, but for this case we'll use 'any'
       if (!(window as any).recaptchaVerifier) {
         (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
       }
@@ -35,27 +29,17 @@ export default function PhoneLoginPage() {
       setOtpSent(true);
     } catch (err) {
       console.error("OTP send error:", err);
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${(err as Error).message}`);
     }
   };
 
   const verifyOtp = async () => {
     try {
-      const result = await confirmationResult.confirm(otp);
-      const user = result.user;
-
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        // The onusercreate Firebase function will handle creating the user document
-        // with trial credits. This is just for client-side awareness.
-      }
-
+      await confirmationResult.confirm(otp);
       router.push("/create/ai");
     } catch (err) {
       console.error("OTP verify error:", err);
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${(err as Error).message}`);
     }
   };
 

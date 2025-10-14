@@ -4,39 +4,23 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Chrome, Phone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { 
-  auth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  db, 
-  doc, 
-  setDoc, 
-  getDoc 
-} from '@/firebase/client';
+import { useAuth } from '@/firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import type { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const router = useRouter();
+  const auth = useAuth();
 
   const handleGoogleSignIn = async () => {
+    if (!auth) return;
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        // The onusercreate Firebase Function will handle creating the user document
-        // with trial credits. This check is for client-side redirection.
-      }
-
+      await signInWithPopup(auth, provider);
+      // The onusercreate function and useUser hook will handle the rest.
       router.push('/create/ai');
     } catch (err) {
       const error = err as FirebaseError;
-      // This is a standard error when the user closes the popup.
-      // We can safely ignore it and not log it as a console error.
       if (error.code === 'auth/popup-closed-by-user') {
         return;
       }
