@@ -6,7 +6,7 @@ import type { Video, User } from '@/lib/definitions';
 import { useInView } from '@/lib/hooks';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Share2, Play, Pause, Phone, Video as VideoIcon, PlusCircle, Volume2, VolumeX } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Phone, Video as VideoIcon, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import {
   Sheet,
@@ -18,7 +18,11 @@ import {
 import { comments as allComments } from '@/lib/data';
 import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
-import { Logo } from '@/components/logo';
+import { useRouter } from 'next/navigation';
+import { useFirebase } from '@/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { useToast } from '@/hooks/use-toast';
+import { AgentPicker } from './AgentPicker';
 
 
 interface VideoPlayerProps {
@@ -30,9 +34,15 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const router = useRouter();
+  const { functions, user: currentUser } = useFirebase();
+  const { toast } = useToast();
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
-  
+  const [showAgentPicker, setShowAgentPicker] = useState(false);
+  const [callMode, setCallMode] = useState<'audio' | 'video' | null>(null);
+
   const isInView = useInView(videoRef, { threshold: 0.6 });
 
   useEffect(() => {
@@ -70,6 +80,50 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
       setIsLiked(true);
     }
   }
+  
+  const handleInitiateCall = (mode: 'audio' | 'video') => {
+    if (!currentUser) {
+      toast({
+        variant: "destructive",
+        title: "Login Required",
+        description: "You must be logged in to make a call.",
+      });
+      router.push('/auth/login');
+      return;
+    }
+    setCallMode(mode);
+    setShowAgentPicker(true);
+  };
+
+  const handleAgentSelect = async (agent: { id: string, type: 'admin' | 'user' }) => {
+    setShowAgentPicker(false);
+    if (!callMode) return;
+
+    try {
+      const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
+      const result = await getAgoraToken({ agentId: agent.id, agentType: agent.type, mode: callMode });
+      const { token, channelName, callId, appId } = result.data as any;
+
+      const query = new URLSearchParams({
+        to: agent.id,
+        callId,
+        channelName,
+        token,
+        appId
+      }).toString();
+      
+      router.push(`/call/${callMode}?${query}`);
+
+    } catch (error: any) {
+      console.error('Error getting Agora token:', error);
+      toast({
+        variant: "destructive",
+        title: "Call Failed",
+        description: error.message || "Could not initiate the call. Please try again.",
+      });
+    }
+  };
+
 
   const shortenedCaption = video.caption.split(' ').slice(0, 3).join(' ');
 
@@ -90,6 +144,13 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
           <Play className="h-20 w-20 text-white/70" />
         </div>
       )}
+
+      {/* Agent Picker Dialog */}
+      <AgentPicker
+        show={showAgentPicker}
+        onSelect={handleAgentSelect}
+        onCancel={() => setShowAgentPicker(false)}
+      />
 
       {/* Content Overlay */}
       <div 
@@ -136,16 +197,14 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
             right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
         }}
       >
-        <Link href={`/call/audio?to=${user.username}`} passHref>
-          <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+          <button onClick={() => handleInitiateCall('audio')} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
             <Phone size={32} />
           </button>
-        </Link>
-         <Link href={`/call/video?to=${user.username}`} passHref>
-          <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+        
+          <button onClick={() => handleInitiateCall('video')} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
             <VideoIcon size={32} />
           </button>
-        </Link>
+       
         <button onClick={handleLike} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
           <Heart size={32} className={cn("transition-colors", isLiked && "fill-red-500 text-red-500")} />
           <span className="text-sm font-bold">{likes.toLocaleString()}</span>

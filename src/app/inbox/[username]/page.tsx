@@ -12,13 +12,17 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/definitions';
 import { format } from 'date-fns';
-import Link from 'next/link';
-
+import { useFirebase } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { httpsCallable } from 'firebase/functions';
+import { AgentPicker } from '@/components/AgentPicker';
 
 export default function ChatPage() {
     const router = useRouter();
     const params = useParams();
     const { username } = params;
+    const { functions, user: currentUserAuth } = useFirebase();
+    const { toast } = useToast();
 
     const currentUser = users.find(u => u.id === 'u1');
     const otherUser = users.find(u => u.username === username);
@@ -32,6 +36,8 @@ export default function ChatPage() {
     const [newMessage, setNewMessage] = useState('');
     const [isClient, setIsClient] = useState(false);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const [showAgentPicker, setShowAgentPicker] = useState(false);
+    const [callMode, setCallMode] = useState<'audio' | 'video' | null>(null);
 
     useEffect(() => {
         setIsClient(true);
@@ -43,10 +49,52 @@ export default function ChatPage() {
       }
     }, [messages]);
 
-
     if (!currentUser || !otherUser) {
         notFound();
     }
+    
+    const handleInitiateCall = (mode: 'audio' | 'video') => {
+        if (!currentUserAuth) {
+            toast({
+                variant: "destructive",
+                title: "Login Required",
+            });
+            router.push('/auth/login');
+            return;
+        }
+        setCallMode(mode);
+        setShowAgentPicker(true);
+    };
+    
+    const handleAgentSelect = async (agent: { id: string, type: 'admin' | 'user' }) => {
+        setShowAgentPicker(false);
+        if (!callMode) return;
+
+        try {
+            const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
+            const result = await getAgoraToken({ agentId: agent.id, agentType: agent.type, mode: callMode });
+            const { token, channelName, callId, appId } = result.data as any;
+
+            const query = new URLSearchParams({
+                to: agent.id,
+                callId,
+                channelName,
+                token,
+                appId
+            }).toString();
+            
+            router.push(`/call/${callMode}?${query}`);
+
+        } catch (error: any) {
+            console.error('Error getting Agora token:', error);
+            toast({
+                variant: "destructive",
+                title: "Call Failed",
+                description: error.message || "Could not initiate the call.",
+            });
+        }
+    };
+
 
     const handleSendMessage = (e: FormEvent) => {
         e.preventDefault();
@@ -75,10 +123,16 @@ export default function ChatPage() {
                     <span className="font-bold text-lg truncate">{otherUser.username}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                    <Button asChild variant="ghost" size="icon"><Link href={`/call/audio?to=${otherUser.username}`}><Phone className="h-6 w-6 text-primary"/></Link></Button>
-                    <Button asChild variant="ghost" size="icon"><Link href={`/call/video?to=${otherUser.username}`}><Video className="h-6 w-6 text-primary"/></Link></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleInitiateCall('audio')}><Phone className="h-6 w-6 text-primary"/></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleInitiateCall('video')}><Video className="h-6 w-6 text-primary"/></Button>
                 </div>
             </header>
+            
+             <AgentPicker
+                show={showAgentPicker}
+                onSelect={handleAgentSelect}
+                onCancel={() => setShowAgentPicker(false)}
+            />
 
             <main ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map(msg => (

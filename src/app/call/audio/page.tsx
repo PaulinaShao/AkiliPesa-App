@@ -6,28 +6,47 @@ import RequireAuthRedirect from "@/components/RequireAuthRedirect";
 import { Suspense, useEffect, useState } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import { PhoneOff } from "lucide-react";
-import { UserAvatar } from "@/components/user-avatar";
 import { Sparkles } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { useFirebase } from "@/firebase";
+import { httpsCallable } from "firebase/functions";
 
 function AudioCallUI() {
     const params = useSearchParams();
+    const { functions } = useFirebase();
     const targetId = params.get("to") || "AkiliPesa AI";
+    const callId = params.get("callId");
+    const channelName = params.get("channelName");
+    const token = params.get("token");
+    const appId = params.get("appId");
     const [callState, setCallState] = useState<"connecting" | "in-call" | "ended">("connecting");
     const [rtcClient, setRtcClient] = useState<any>(null);
 
     useEffect(() => {
         const initAgora = async () => {
-            if (!process.env.NEXT_PUBLIC_AGORA_APP_ID) {
-                console.error("Agora App ID is not set in environment variables.");
-                setCallState("ended");
-                return;
+            if (!appId || !channelName || !token) {
+                 console.error("Agora call details are not set in search params.");
+                 setCallState("ended");
+                 return;
             }
             try {
                 const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
                 setRtcClient(client);
-                // Placeholder join — a real app would fetch a token from a secure backend
-                await client.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, "akilipesa_audio_channel", null, null);
+
+                await client.join(appId, channelName, token, null);
+
+                // Publish local audio
+                const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+                await client.publish([audioTrack]);
+
+                // Listen for remote users
+                client.on("user-published", async (user, mediaType) => {
+                    await client.subscribe(user, mediaType);
+                    if (mediaType === "audio") {
+                        user.audioTrack?.play();
+                    }
+                });
+
                 setCallState("in-call");
             } catch (err) {
                 console.error("Agora init error:", err);
@@ -40,12 +59,21 @@ function AudioCallUI() {
             rtcClient?.leave();
             rtcClient?.removeAllListeners();
         };
-    }, []);
+    }, [appId, channelName, token]);
 
-    const handleEndCall = () => {
+    const handleEndCall = async () => {
         rtcClient?.leave();
         setCallState("ended");
-        // Typically you'd navigate away here, e.g., router.back()
+        if (callId) {
+            try {
+                const endCallFn = httpsCallable(functions, 'endCall');
+                // For simplicity, we'll assume a fixed duration or calculate it client-side.
+                // A more robust solution would calculate this on the backend based on startTime.
+                await endCallFn({ callId, seconds: 30 });
+            } catch(e) {
+                console.error("Error ending call:", e);
+            }
+        }
         window.history.back();
     }
 

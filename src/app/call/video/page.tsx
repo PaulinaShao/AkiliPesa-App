@@ -6,25 +6,34 @@ import RequireAuthRedirect from "@/components/RequireAuthRedirect";
 import { useEffect, useState, Suspense } from "react";
 import AgoraRTC, { ICameraVideoTrack } from "agora-rtc-sdk-ng";
 import { PhoneOff, VideoOff, MicOff } from "lucide-react";
+import { useFirebase } from "@/firebase";
+import { httpsCallable } from "firebase/functions";
 
 function VideoCallUI() {
   const params = useSearchParams();
+  const { functions } = useFirebase();
+
   const targetId = params.get("to") || "AkiliPesa AI";
+  const callId = params.get("callId");
+  const channelName = params.get("channelName");
+  const token = params.get("token");
+  const appId = params.get("appId");
+  
   const [callState, setCallState] = useState<"connecting" | "in-call" | "ended">("connecting");
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
   const [client, setClient] = useState<any>(null);
 
   useEffect(() => {
     const initAgoraVideo = async () => {
-       if (!process.env.NEXT_PUBLIC_AGORA_APP_ID) {
-            console.error("Agora App ID is not set in environment variables.");
+       if (!appId || !channelName || !token) {
+            console.error("Agora call details are not set in search params.");
             setCallState("ended");
             return;
        }
       try {
         const agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
         setClient(agoraClient);
-        await agoraClient.join(process.env.NEXT_PUBLIC_AGORA_APP_ID, "akilipesa_video_channel", null, null);
+        await agoraClient.join(appId, channelName, token, null);
         
         const videoTrack = await AgoraRTC.createCameraVideoTrack();
         videoTrack.play("local-player");
@@ -48,13 +57,22 @@ function VideoCallUI() {
       client?.leave();
       setCallState("ended");
     };
-  }, []);
+  }, [appId, channelName, token]);
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
     localVideoTrack?.stop();
     localVideoTrack?.close();
     client?.leave();
     setCallState("ended");
+    if (callId) {
+        try {
+            const endCallFn = httpsCallable(functions, 'endCall');
+            // A more robust solution would calculate duration based on a start time.
+            await endCallFn({ callId, seconds: 30 }); 
+        } catch(e) {
+            console.error("Error ending call:", e);
+        }
+    }
     window.history.back();
   }
 
