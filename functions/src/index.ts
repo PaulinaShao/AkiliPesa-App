@@ -1,3 +1,4 @@
+
 'use strict';
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
@@ -330,6 +331,8 @@ export const endCall = functions.https.onCall(async (data, context) => {
 
 /** (Optional) scheduler for long-running calls as a safety net */
 export const tickCalls = functions.pubsub.schedule('every 2 minutes').onRun(async () => {
-  // No-op or per-minute charging if you want passive metering.
+  // This function can be used in the future to implement custom session management,
+  // such as checking for user inactivity or enforcing periodic re-authentication.
+  // For now, it performs no operation.
   return null;
 });
