@@ -1,7 +1,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Chrome, Phone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
@@ -17,14 +23,15 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      // The onusercreate function and useUser hook will handle the rest.
-      router.push('/create/ai');
+      // Redirect on successful login
+      router.push('/');
     } catch (err) {
       const error = err as FirebaseError;
+      // Silently ignore if the user closes the popup
       if (error.code === 'auth/popup-closed-by-user') {
         return;
       }
-      console.error("Google Sign-in error:", err);
+      console.error('Google Sign-in error:', err);
     }
   };
 
