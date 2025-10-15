@@ -472,6 +472,10 @@ export const onOrderStatusChange = onDocumentUpdated("orders/{orderId}", async (
             status: after.status,
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
+        // Phase 9: Trigger trust score update on order status change
+        if (after.sellerId) {
+            await updateTrustScore(after.sellerId);
+        }
     }
 });
 
@@ -544,6 +548,9 @@ export const onProductCreatedVerify = onDocumentCreated("products/{productId}", 
     aiVendor: result.aiVendor,
     checkedAt: admin.firestore.FieldValue.serverTimestamp()
   });
+
+  // Phase 9: Trigger trust score update
+  await updateTrustScore(product.ownerId);
 });
 
 // 2. Delivery Proof Verification
@@ -574,6 +581,104 @@ export const onDeliveryProofAdded = onDocumentCreated("deliveryProofs/{id}", asy
     // This status update will be picked up by onOrderStatusChange
     await db.collection("orders").doc(proof.orderId).update({ status: "verification_failed" });
   }
+});
+
+// --- Phase 9 Functions ---
+
+/**
+ * Simulates analyzing sentiment of a given text.
+ * In a real-world scenario, this would call an external NLP API.
+ * @param {string} feedbackText The text to analyze.
+ * @returns {Promise<string>} 'positive', 'negative', or 'neutral'.
+ */
+async function analyzeSentiment(feedbackText: string): Promise<string> {
+    console.log(`Analyzing sentiment for: "${feedbackText}"`);
+    // This is a placeholder for a real API call.
+    const lowerText = feedbackText.toLowerCase();
+    if (lowerText.includes("great") || lowerText.includes("excellent") || lowerText.includes("love")) {
+        return "positive";
+    }
+    if (lowerText.includes("bad") || lowerText.includes("disappointed") || lowerText.includes("poor")) {
+        return "negative";
+    }
+    return "neutral";
+}
+
+
+/**
+ * Recalculates and updates a seller's trust score based on various metrics.
+ * @param {string} sellerId The ID of the seller to update.
+ */
+async function updateTrustScore(sellerId: string) {
+    if (!sellerId) {
+        console.log("updateTrustScore called with no sellerId.");
+        return;
+    }
+
+    const productsSnap = await db.collection("productVerification").where("sellerId", "==", sellerId).get();
+    const verified = productsSnap.docs.filter(d => d.data().status === "verified").length;
+    const flagged = productsSnap.docs.filter(d => d.data().status === "flagged").length;
+
+    const ordersSnap = await db.collection("orders").where("sellerId", "==", sellerId).get();
+    const onTime = ordersSnap.docs.filter(d => d.data().status === "completed").length;
+    const late = ordersSnap.docs.filter(d => d.data().status === "late" || d.data().status === "refund_requested").length;
+
+    const feedbacksSnap = await db.collection("feedback").where("sellerId", "==", sellerId).get();
+    const pos = feedbacksSnap.docs.filter(d => d.data().sentiment === "positive").length;
+    const neg = feedbacksSnap.docs.filter(d => d.data().sentiment === "negative").length;
+    
+    // Weighted score calculation
+    const baseScore = 70;
+    const score = Math.max(0, Math.min(100,
+        baseScore + (verified * 0.2) - (flagged * 5) + (onTime * 0.5) - (late * 2) + (pos * 0.3) - (neg * 3)
+    ));
+
+    const level = score >= 90 ? "Platinum" : score >= 80 ? "Gold" : score >= 60 ? "Silver" : "Bronze";
+
+    const scoreData = {
+        sellerId,
+        trustScore: score,
+        level,
+        metrics: {
+            verifiedListings: verified,
+            flaggedListings: flagged,
+            onTimeDeliveries: onTime,
+            lateDeliveries: late,
+            feedbackPositive: pos,
+            feedbackNegative: neg
+        },
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // Save current score
+    await db.collection("trustScores").doc(sellerId).set(scoreData, { merge: true });
+
+    // Log historical score
+    await db.collection("trustHistory").add({
+        sellerId,
+        trustScore: score,
+        level,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`Updated trust score for seller ${sellerId} to ${score} (${level})`);
+}
+
+
+/**
+ * Triggered when new feedback is created. Analyzes sentiment and updates trust score.
+ */
+export const onFeedbackCreated = onDocumentCreated("feedback/{id}", async (event) => {
+    const feedback = event.data?.data();
+    if (!feedback) return;
+
+    const sentiment = await analyzeSentiment(feedback.text);
+    
+    // Update the feedback doc with the sentiment
+    await db.collection("feedback").doc(event.params.id).update({ sentiment });
+    
+    // Trigger a trust score update for the seller
+    await updateTrustScore(feedback.sellerId);
 });
 
 

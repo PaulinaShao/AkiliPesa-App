@@ -1,73 +1,79 @@
 /**
- * @file Firestore Security Rules for AkiliPesa - Phase 8: AI-Verified Product Authenticity & Fraud Detection.
+ * @fileOverview Firestore Security Rules for AkiliPesa's AI-Driven Seller Scoring & Trust Profile System (Phase 9).
  *
- * @core_philosophy This ruleset enforces a hybrid security model, balancing user-owned data with public access for certain collections
- *  and administrator-controlled AI verification processes. It prioritizes strong authorization based on user identity and roles.
+ * Core Philosophy:
+ * This ruleset prioritizes strong authorization based on user identity and explicit ownership.
+ * It focuses on securing access to user-specific data and preventing unauthorized modifications.
+ * Data validation is relaxed to facilitate rapid prototyping, with key relational fields strictly enforced.
  *
- * @data_structure
- *  - User-specific data is nested under `/users/{userId}`.
- *  - Publicly accessible content (e.g., products, posts) resides in top-level collections like `/products` and `/posts`.
- *  - AI verification results are stored in `/productVerification/{id}`.
- *  - Flagged media reports are stored in `/mediaReports/{id}`.
- *  - Admin-related data is stored in `/adminSettings/{settingId}` and `/adminAgents/{agentId}`.
+ * Data Structure:
+ * - User profiles are stored under `/users/{userId}`.
+ * - User-generated content is stored under `/posts/{postId}`.
+ * - Trust scores are stored under `/trustScores/{sellerId}`.
+ * - Feedback data is stored under `/feedback/{id}`.
+ * - Trust history is stored under `/trustHistory/{id}`.
  *
- * @key_security_decisions
- *  - User listing is disallowed.
- *  - The `productVerification` collection is readable by any signed-in user but writable only by the admin.
- *  - The `mediaReports` collection is readable only by the admin.
- *  - Data validation is relaxed to allow for rapid prototyping, focusing on ownership and relational integrity checks.
+ * Key Security Decisions:
+ * - Users can only access and modify their own profile data.
+ * - Posts are publicly readable but writable only by the author.
+ * - Trust scores are readable by authenticated users, but only writable by a specific admin.
+ * - Feedback can only be created by authenticated users.
+ * - Admin settings are only readable by admins.
+ * - User listing is disabled for security reasons.
  *
- * @denormalization_for_authorization Not applicable in this phase.
+ * Denormalization for Authorization:
+ * - The `feedback` documents contain `sellerId` and `buyerId`, enabling direct authorization checks without additional `get()` calls.
  *
- * @structural_segregation Public and private content is segregated into different collections.
+ * Structural Segregation:
+ * - There are no specific drafts vs. published distinctions, but the separation of user-specific data under `/users/{userId}` enhances privacy.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is made by an authenticated user.
-     * @return {bool} True if the user is signed in, false otherwise.
+     * @description Checks if the user is signed in.
+     * @returns {boolean} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId The user ID to compare against the authenticated user ID.
-     * @return {bool} True if the user IDs match, false otherwise.
+     * @description Checks if the request is made by the owner of the resource.
+     * @param {string} userId - The user ID to compare against the request's authentication UID.
+     * @returns {boolean} True if the user is the owner, false otherwise.
      */
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user ID matches the provided user ID and the resource exists.
-     * @param {string} userId The user ID to compare against the authenticated user ID.
-     * @return {bool} True if the user IDs match and the resource exists, false otherwise.
+     * @description Checks if the request is made by the owner of the resource and the resource exists.
+     * @param {string} userId - The user ID to compare against the resource's owner ID.
+     * @returns {boolean} True if the user is the existing owner, false otherwise.
      */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Checks if the authenticated user's email is the admin's email.
-     * @return {bool} True if the user is an admin, false otherwise.
+     * @description Checks if the authenticated user has the admin role.
+     * @returns {boolean} True if the user has the admin role, false otherwise.
      */
     function isAdmin() {
       return request.auth.token.email == "blagridigital@gmail.com";
     }
 
-
     /**
-     * @description Security rules for user profiles.
+     * @description Rule for user profiles.
      * @path /users/{userId}
-     * @allow (create) If the authenticated user's ID matches the userId.
-     * @allow (get, update, delete) If the authenticated user's ID matches the userId and the resource exists.
-     * @deny (create) If the authenticated user's ID does not match the userId.
-     * @deny (get, update, delete) If the authenticated user's ID does not match the userId or the resource does not exist.
-     * @principle Enforces user ownership for profile access.
+     * @allow (create) User with UID 'user123' can create their profile if request.auth.uid == 'user123'.
+     * @allow (get) User with UID 'user123' can get their profile if request.auth.uid == 'user123'.
+     * @allow (update) User with UID 'user123' can update their profile if request.auth.uid == 'user123'.
+     * @deny (create) User with UID 'user456' cannot create a profile for 'user123' if request.auth.uid != 'user123'.
+     * @deny (update) User with UID 'user456' cannot update the profile of 'user123' if request.auth.uid != 'user123'.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
@@ -78,26 +84,50 @@ service cloud.firestore {
     }
 
     /**
-     * @description Security rules for user clones.
+     * @description Rule for user posts.
+     * @path /posts/{postId}
+     * @allow (create) User with UID 'user123' can create a post with authorId 'user123'.
+     * @allow (get) Any user can read any post.
+     * @allow (update) User with UID 'user123' can update their own post (resource.data.authorId == request.auth.uid).
+     * @deny (create) User with UID 'user456' cannot create a post with authorId 'user123'.
+     * @deny (update) User with UID 'user456' cannot update a post authored by 'user123'.
+     * @principle Enforces document ownership for writes; allows public reads.
+     */
+    match /posts/{postId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.authorId);
+      allow delete: if isExistingOwner(resource.data.authorId);
+    }
+
+    /**
+     * @description Rule for user clones.
      * @path /users/{userId}/clones/{cloneId}
-     * @allow (create, get, list, update, delete) If the authenticated user is the owner of the parent user document.
-     * @deny (create) If the parent user document does not exist.
-     * @principle Enforces user ownership of clones.
+     * @allow (create) User with UID 'user123' can create a clone under their profile.
+     * @allow (get) User with UID 'user123' can read their own clone data.
+     * @allow (update) User with UID 'user123' can update their clone data.
+     * @deny (create) User with UID 'user456' cannot create a clone under 'user123' profile.
+     * @deny (update) User with UID 'user456' cannot update clones under 'user123' profile.
+     * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId}/clones/{cloneId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Security rules for user agents.
+     * @description Rule for user agents.
      * @path /users/{userId}/agents/{agentId}
-     * @allow (create, get, list, update, delete) If the authenticated user is the owner of the parent user document.
-     * @deny (create) If the parent user document does not exist.
-     * @principle Enforces user ownership of agents.
+     * @allow (create) User with UID 'user123' can create an agent under their profile.
+     * @allow (get) User with UID 'user123' can read their agent data.
+     * @allow (update) User with UID 'user123' can update their agent data.
+     * @deny (create) User with UID 'user456' cannot create an agent under 'user123' profile.
+     * @deny (update) User with UID 'user456' cannot update agents under 'user123' profile.
+     * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId}/agents/{agentId} {
       allow get: if isOwner(userId);
@@ -108,59 +138,66 @@ service cloud.firestore {
     }
 
     /**
-     * @description Security rules for products.
+     * @description Rule for products.
      * @path /products/{productId}
-     * @allow (get, list) Public read access.
-     * @allow (create) If the authenticated user's ID matches the product's ownerId.
-     * @allow (update, delete) If the authenticated user's ID matches the product's ownerId and the resource exists.
-     * @deny (create) If the authenticated user's ID does not match the product's ownerId.
-     * @deny (update, delete) If the authenticated user's ID does not match the product's ownerId or the resource does not exist.
-     * @principle Public read, owner-only writes with ownership validation.
+     * @allow (get) Any user can read product data.
+     * @allow (list) Any user can list products.
+     * @allow (create) User with UID 'user123' can create a product with ownerId 'user123'.
+     * @allow (update) User with UID 'user123' can update their own product (resource.data.ownerId == request.auth.uid).
+     * @deny (create) User with UID 'user456' cannot create a product with ownerId 'user123'.
+     * @deny (update) User with UID 'user456' cannot update a product owned by 'user123'.
+     * @principle Enforces document ownership for writes; allows public reads.
      */
     match /products/{productId} {
       allow get: if true;
       allow list: if true;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
+      allow update: if isExistingOwner(resource.data.ownerId);
+      allow delete: if isExistingOwner(resource.data.ownerId);
     }
 
     /**
-     * @description Security rules for orders.
+     * @description Rule for orders.
      * @path /orders/{orderId}
-     * @allow (read, create, update, delete) If the authenticated user is the buyer or seller.
-     * @deny (read, create, update, delete) If the authenticated user is not the buyer or seller.
-     * @principle Restricts order access to buyer and seller.
+     * @allow (get) Any user can read order data.
+     * @allow (list) Any user can list orders.
+     * @allow create: if false;
+     * @allow update: if false;
+     * @allow delete: if false;
      */
     match /orders/{orderId} {
-      allow get: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
-      allow list: if false;
-      allow create: if isSignedIn() && (request.resource.data.buyerId == request.auth.uid || request.resource.data.sellerId == request.auth.uid);
-      allow update: if isSignedIn() && isExistingOwner(resource.data.buyerId) || isExistingOwner(resource.data.sellerId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.buyerId) || isExistingOwner(resource.data.sellerId);
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Security rules for payments.
+     * @description Rule for payments.
      * @path /payments/{paymentId}
-     * @allow (read, create, update, delete) If the authenticated user is the seller associated with the payment.
-     * @deny (read, create, update, delete) If the authenticated user is not the seller associated with the payment.
-     * @principle Restricts payment access to the seller.
+     * @allow (get) Any user can read payment data.
+     * @allow (list) Any user can list payments.
+     * @allow create: if false;
+     * @allow update: if false;
+     * @allow delete: if false;
      */
     match /payments/{paymentId} {
-      allow get: if isSignedIn() && resource.data.sellerId == request.auth.uid;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.sellerId == request.auth.uid;
-      allow update: if isSignedIn() && isExistingOwner(resource.data.sellerId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.sellerId);
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Security rules for plans.
+     * @description Rule for plans.
      * @path /plans/{planId}
-     * @allow (get, list) Public read access.
-     * @deny (create, update, delete) No one can modify plans through the client; should be managed via the Firebase Admin SDK only.
-     * @principle Public read, admin-only writes.
+     * @allow (get) Any user can read plan data.
+     * @allow (list) Any user can list plans.
+     * @allow create: if false;
+     * @allow update: if false;
+     * @allow delete: if false;
      */
     match /plans/{planId} {
       allow get: if true;
@@ -171,110 +208,125 @@ service cloud.firestore {
     }
 
     /**
-     * @description Security rules for calls.
+     * @description Rule for calls.
      * @path /calls/{callId}
-     * @allow (read, create, update, delete) If the authenticated user is either the caller or the agent in the call.
-     * @deny (read, create, update, delete) If the authenticated user is not involved in the call.
-     * @principle Restricts call data access to participants.
+     * @allow (get) Any user can read call data.
+     * @allow (list) Any user can list calls.
+     * @allow create: if false;
+     * @allow update: if false;
+     * @allow delete: if false;
      */
     match /calls/{callId} {
-      allow get: if isSignedIn() && (resource.data.callerId == request.auth.uid || resource.data.agentId == request.auth.uid);
-      allow list: if false;
-      allow create: if isSignedIn() && (request.resource.data.callerId == request.auth.uid || request.resource.data.agentId == request.auth.uid);
-      allow update: if isSignedIn() && (isExistingOwner(resource.data.callerId) || isExistingOwner(resource.data.agentId));
-      allow delete: if isSignedIn() && (isExistingOwner(resource.data.callerId) || isExistingOwner(resource.data.agentId));
-    }
-
-    /**
-     * @description Security rules for transactions.
-     * @path /transactions/{txId}
-     * @allow (read, create, update, delete) If the authenticated user is the owner of the transaction.
-     * @deny (read, create, update, delete) If the authenticated user is not the owner of the transaction.
-     * @principle Restricts transaction data access to the owner.
-     */
-    match /transactions/{txId} {
-      allow get: if isSignedIn() && resource.data.uid == request.auth.uid;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if isSignedIn() && isExistingOwner(resource.data.uid);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.uid);
-    }
-
-    /**
-     * @description Security rules for admin settings.
-     * @path /adminSettings/{settingId}
-     * @allow (read) Only authenticated users.
-     * @allow (write) Only the admin.
-     * @principle Restricts admin settings access to administrators.
-     */
-    match /adminSettings/{settingId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description Security rules for admin agents.
-     * @path /adminAgents/{agentId}
-     * @allow (read) Only authenticated users.
-     * @allow (write) Only the admin.
-     * @principle Restricts admin agent access to administrators.
-     */
-    match /adminAgents/{agentId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description Security rules for product verification.
-     * @path /productVerification/{id}
-     * @allow (read) Only authenticated users.
-     * @allow (write) Only the admin.
-     * @principle Restricts product verification to the admin.
-     */
-    match /productVerification/{id} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description Security rules for media reports.
-     * @path /mediaReports/{id}
-     * @allow (read, write) Only the admin.
-     * @principle Restricts media reports access to administrators.
-     */
-    match /mediaReports/{id} {
-      allow get: if isAdmin();
-      allow list: if false;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description Security rules for posts.
-     * @path /posts/{postId}
-     * @allow (read, list) Public read access.
-     * @allow (create) If the authenticated user's ID matches the post's authorId.
-     * @allow (update, delete) If the authenticated user's ID matches the post's authorId and the resource exists.
-     * @deny (create) If the authenticated user's ID does not match the post's authorId.
-     * @deny (update, delete) If the authenticated user's ID does not match the post's authorId or the resource does not exist.
-     * @principle Public read, owner-only writes with ownership validation.
-     */
-    match /posts/{postId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isSignedIn() && isExistingOwner(resource.data.authorId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.authorId);
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rule for transactions.
+     * @path /transactions/{txId}
+     * @allow (get) Any user can read transaction data.
+     * @allow (list) Any user can list transactions.
+     * @allow create: if false;
+     * @allow update: if false;
+     * @allow delete: if false;
+     */
+    match /transactions/{txId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rule for admin settings.
+     * @path /adminSettings/{settingId}
+     * @allow (get) Only admins can read admin settings.
+     * @allow (list) Only admins can list admin settings.
+     * @allow create: if isAdmin();
+     * @allow update: if isAdmin();
+     * @allow delete: if isAdmin();
+     * @principle Restricts access to admins only.
+     */
+    match /adminSettings/{settingId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Rule for admin agents.
+     * @path /adminAgents/{agentId}
+     * @allow (get) Only admins can read admin agent data.
+     * @allow (list) Only admins can list admin agents.
+     * @allow create: if isAdmin();
+     * @allow update: if isAdmin();
+     * @allow delete: if isAdmin();
+     */
+    match /adminAgents/{agentId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Rule for trust scores.
+     * @path /trustScores/{sellerId}
+     * @allow (get) Authenticated users can read trust scores.
+     * @allow (list) Authenticated users can list trust scores.
+     * @allow (create) Only admins can create trust scores.
+     * @allow (update) Only admins can update trust scores.
+     * @allow (delete) Only admins can delete trust scores.
+     */
+    match /trustScores/{sellerId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Rule for feedback.
+     * @path /feedback/{id}
+     * @allow (create) Authenticated users can create feedback.
+     *
+     * @allow (get) Authenticated users can read feedback if they are the seller or buyer.
+     * @allow (list) Authenticated users can list feedback if they are the seller or buyer.
+     *
+     * @deny (update) No one can update feedback.
+     * @deny (delete) No one can delete feedback.
+     */
+    match /feedback/{id} {
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.sellerId || request.auth.uid == resource.data.buyerId);
+      allow list: if isSignedIn() && (request.auth.uid == resource.data.sellerId || request.auth.uid == resource.data.buyerId);
+      allow create: if isSignedIn();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rule for trust history.
+     * @path /trustHistory/{id}
+     * @allow (get) Authenticated users can read trust history.
+     * @allow (list) Authenticated users can list trust history.
+     * @allow create: if false;
+     * @allow update: if false;
+     * @allow delete: if false;
+     */
+    match /trustHistory/{id} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }

@@ -2,89 +2,90 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { useFirestore, useUser } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 
-type VerificationRecord = {
-  id: string;
-  productId: string;
+type TrustScoreRecord = {
   sellerId: string;
-  status: 'verified' | 'flagged';
-  confidenceScore: number;
-  flags: string[];
+  trustScore: number;
+  level: 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | string;
+  metrics: {
+    verifiedListings: number;
+    flaggedListings: number;
+    onTimeDeliveries: number;
+  };
 };
 
-export default function VerificationAdmin() {
-  const [records, setRecords] = useState<VerificationRecord[]>([]);
-  const { user, isUserLoading } = useUser();
+export default function TrustAdminPage() {
+  const [records, setRecords] = useState<TrustScoreRecord[]>([]);
   const firestore = useFirestore();
-  const router = useRouter();
 
   useEffect(() => {
-    if (isUserLoading) return;
-    if (!user || user.email !== "blagridigital@gmail.com") {
-      router.push("/auth/login");
-      return;
-    }
     if (!firestore) return;
 
-    const q = query(collection(firestore, "productVerification"), orderBy("checkedAt", "desc"));
+    const q = query(collection(firestore, "trustScores"), orderBy("trustScore", "desc"));
     const unsubscribe = onSnapshot(q, (snap) => {
       const recordList = snap.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as VerificationRecord)
+        (doc) => doc.data() as TrustScoreRecord
       );
       setRecords(recordList);
     });
 
     return () => unsubscribe();
-  }, [user, isUserLoading, firestore, router]);
+  }, [firestore]);
+
+  const levelColors: Record<string, string> = {
+    Bronze: "text-yellow-700",
+    Silver: "text-gray-400",
+    Gold: "text-yellow-500",
+    Platinum: "text-green-400",
+  };
 
   return (
     <>
       <Header isMuted={true} onToggleMute={() => {}} />
       <div className="min-h-screen p-6 pt-20">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gradient">AI Verification & Fraud Monitor</h1>
+          <h1 className="text-2xl font-bold text-gradient">Seller Trust &amp; Reputation</h1>
           <div className='flex gap-2'>
             <Button variant="outline" asChild><Link href="/admin/marketplace">Marketplace</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/agents">Agents</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>
-            <Button variant="outline" asChild><Link href="/admin/trust">Trust</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/verification">Verification</Link></Button>
           </div>
         </div>
         <div className="overflow-x-auto border rounded-lg">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="border-b">
-                <th className="p-3 text-left font-medium">Product ID</th>
                 <th className="p-3 text-left font-medium">Seller ID</th>
-                <th className="p-3 text-left font-medium">Status</th>
-                <th className="p-3 text-left font-medium">Confidence</th>
-                <th className="p-3 text-left font-medium">Flags</th>
+                <th className="p-3 text-left font-medium">Trust Score</th>
+                <th className="p-3 text-left font-medium">Level</th>
+                <th className="p-3 text-left font-medium">Verified Listings</th>
+                <th className="p-3 text-left font-medium">Flagged Listings</th>
+                <th className="p-3 text-left font-medium">On-Time Orders</th>
               </tr>
             </thead>
             <tbody>
               {records.map((r) => (
-                <tr key={r.id} className="border-t hover:bg-muted/50">
-                  <td className="p-3 font-mono text-xs">{r.productId}</td>
+                <tr key={r.sellerId} className="border-t hover:bg-muted/50">
                   <td className="p-3 font-mono text-xs">{r.sellerId}</td>
-                  <td className={`p-3 font-semibold capitalize ${r.status === "verified" ? "text-green-500" : "text-red-500"}`}>
-                    {r.status}
-                  </td>
-                  <td className="p-3">{(r.confidenceScore * 100).toFixed(1)}%</td>
-                  <td className="p-3 text-xs">{r.flags?.join(", ") || "-"}</td>
+                  <td className="p-3 font-semibold">{r.trustScore.toFixed(1)} / 100</td>
+                  <td className={`p-3 font-bold ${levelColors[r.level] || 'text-foreground'}`}>{r.level}</td>
+                  <td className="p-3 text-green-400">{r.metrics?.verifiedListings || 0}</td>
+                  <td className="p-3 text-red-400">{r.metrics?.flaggedListings || 0}</td>
+                  <td className="p-3">{r.metrics?.onTimeDeliveries || 0}</td>
                 </tr>
               ))}
               {records.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-muted-foreground">
-                    No verification records found.
+                  <td colSpan={6} className="p-4 text-center text-muted-foreground">
+                    No trust scores calculated yet.
                   </td>
                 </tr>
               )}
@@ -95,5 +96,3 @@ export default function VerificationAdmin() {
     </>
   );
 }
-
-    

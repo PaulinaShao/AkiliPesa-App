@@ -12,6 +12,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/use-memo-firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { TrustScoreBadge } from './components/TrustScoreBadge';
 
 // Example video data, to be replaced with Firestore query later
 const userVideos: any[] = []; 
@@ -66,6 +67,7 @@ export default function ProfilePage() {
             bio: user.bio || '', // Provide default empty string
             stats: user.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 } // Provide default stats
         }} />
+        <TrustScoreBadge sellerId={user.uid} />
         <AkiliPointsBadge userId={user.uid} />
         <ProfileQuickActions />
         <ProfileNav />

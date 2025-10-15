@@ -197,6 +197,7 @@ export default function AdminSettingsPage() {
             <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/verification">Verification</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/trust">Trust</Link></Button>
           </div>
         </div>
 
