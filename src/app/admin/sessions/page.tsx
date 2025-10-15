@@ -39,6 +39,7 @@ export default function AdminSessions() {
       router.push("/auth/login");
       return;
     }
+    if (!firestore) return;
 
     const q = query(collection(firestore, "aiSessions"), orderBy("lastUpdated", "desc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -103,6 +104,7 @@ export default function AdminSessions() {
         <h1 className="text-2xl font-bold text-gradient">AI Session Dashboard</h1>
          <div className='flex gap-2'>
             <Button variant="outline" asChild><Link href="/admin/agents">Agents</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>
           </div>
       </div>

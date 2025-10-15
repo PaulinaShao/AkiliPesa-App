@@ -73,7 +73,7 @@ export default function AdminAgentsPage() {
   }
   
   const handleSaveAgent = async () => {
-    if (!currentAgent) return;
+    if (!currentAgent || !firestore) return;
     
     // Construct the payload, ensuring price is a number
     const payload = {
@@ -87,7 +87,7 @@ export default function AdminAgentsPage() {
       await updateDoc(agentDocRef, payload);
     } else {
       // Create new agent
-      await addDoc(agentsCollectionRef, {
+      await addDoc(collection(firestore, 'adminAgents'), {
           ...payload,
           createdAt: serverTimestamp()
       });
@@ -99,7 +99,7 @@ export default function AdminAgentsPage() {
   }
 
   const handleDeleteAgent = async (agentId: string) => {
-      if (window.confirm("Are you sure you want to delete this agent?")) {
+      if (window.confirm("Are you sure you want to delete this agent?") && firestore) {
         const agentDocRef = doc(firestore, 'adminAgents', agentId);
         await deleteDoc(agentDocRef);
       }
@@ -112,7 +112,9 @@ export default function AdminAgentsPage() {
       <div className="max-w-4xl mx-auto p-4 pt-20">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Admin Agents</h1>
-          <div className='flex gap-2'>
+           <div className='flex gap-2'>
+            <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>
             <Button onClick={openNewAgentDialog}><PlusCircle className="mr-2 h-4 w-4"/>Create Agent</Button>
           </div>

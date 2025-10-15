@@ -2,8 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, updateDoc, getDoc, setDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc, getDoc, setDoc, collection, query, where, Timestamp } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -78,19 +78,21 @@ export default function AdminSettingsPage() {
   const [rates, setRates] = useState<CommissionRates | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const settingsDocRef = doc(firestore, 'adminSettings', 'settings');
-  const ratesDocRef = doc(firestore, 'commissionRates', 'adminConfig');
   
   const withdrawalRequestsQuery = useMemoFirebase(() => 
-    query(collection(firestore, 'withdrawalRequests'), where('status', '==', 'pending')),
+    firestore ? query(collection(firestore, 'withdrawalRequests'), where('status', '==', 'pending')) : null,
     [firestore]
   );
   const { data: withdrawalRequests, isLoading: withdrawalsLoading } = useCollection<WithdrawalRequest>(withdrawalRequestsQuery);
 
   useEffect(() => {
     const fetchAllSettings = async () => {
+      if (!firestore) return;
       setIsLoading(true);
       
+      const settingsDocRef = doc(firestore, 'adminSettings', 'settings');
+      const ratesDocRef = doc(firestore, 'commissionRates', 'adminConfig');
+
       const settingsSnap = await getDoc(settingsDocRef);
       if (settingsSnap.exists()) {
         setSettings(settingsSnap.data() as AdminSettings);
@@ -132,8 +134,10 @@ export default function AdminSettingsPage() {
   };
 
   const handleSave = async () => {
-    if (!settings || !rates) return;
+    if (!settings || !rates || !firestore) return;
     try {
+      const settingsDocRef = doc(firestore, 'adminSettings', 'settings');
+      const ratesDocRef = doc(firestore, 'commissionRates', 'adminConfig');
       await updateDoc(settingsDocRef, settings);
       await updateDoc(ratesDocRef, rates);
       toast({
@@ -151,6 +155,7 @@ export default function AdminSettingsPage() {
   };
 
   const approvePayout = async (id: string) => {
+    if (!firestore) return;
     try {
       const requestRef = doc(firestore, "withdrawalRequests", id);
       await updateDoc(requestRef, {
@@ -185,8 +190,12 @@ export default function AdminSettingsPage() {
        <Header isMuted={true} onToggleMute={() => {}}/>
       <div className="max-w-4xl mx-auto p-4 pt-20">
          <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Admin Settings & Payouts</h1>
-           <Button variant="outline" asChild><Link href="/admin/agents">Agents</Link></Button>
+          <h1 className="text-2xl font-bold">Admin Settings &amp; Payouts</h1>
+           <div className='flex gap-2'>
+            <Button variant="outline" asChild><Link href="/admin/agents">Agents</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

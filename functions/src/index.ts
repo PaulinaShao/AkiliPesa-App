@@ -5,6 +5,7 @@ import * as admin from 'firebase-admin';
 import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
 import fetch from "node-fetch";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -129,6 +130,42 @@ export const onWithdrawalApproved = onDocumentUpdated("withdrawalRequests/{reqId
         });
     }
   }
+});
+
+// Aggregate totals daily for performance
+export const aggregateDailyRevenue = onSchedule("every day 00:00", async () => {
+    const salesSnap = await db.collection("sales").get();
+    const payoutsSnap = await db.collection("withdrawalRequests").get();
+  
+    let totalSales = 0;
+    let totalCommission = 0;
+    let totalPayouts = 0;
+  
+    salesSnap.forEach((doc) => {
+      const s = doc.data();
+      totalSales += s.amount || 0;
+      totalCommission += s.amount * (s.type === "product" ? 0.9 : 0.6); // Consider making rates dynamic from config
+    });
+  
+    payoutsSnap.forEach((p) => {
+      if (p.data().status === "paid") {
+        totalPayouts += p.data().amount;
+      }
+    });
+  
+    const totalPlatformFee = totalSales - totalCommission;
+    const netProfit = totalPlatformFee; // Payouts are fund transfers, not operational costs vs fee
+  
+    await db.collection("revenueReports").doc(new Date().toISOString().split("T")[0]).set({
+      totalSales,
+      totalCommission,
+      totalPlatformFee,
+      totalPayouts,
+      netProfit,
+      generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log("Daily revenue report generated.");
 });
 
 
