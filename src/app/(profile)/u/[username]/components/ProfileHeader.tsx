@@ -1,12 +1,25 @@
+
 'use client';
 
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
-import type { User } from '@/lib/definitions';
 import Link from 'next/link';
 
+// Use a simpler, more direct type that matches what the page will provide
 interface ProfileHeaderProps {
-  user: User;
+  user: {
+    id: string;
+    username: string;
+    name: string;
+    avatar: string;
+    bio: string;
+    stats: {
+        followers: number;
+        following: number;
+        likes: number;
+        postsCount: number;
+    }
+  };
 }
 
 export function ProfileHeader({ user }: ProfileHeaderProps) {
@@ -20,6 +33,7 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
     <header className="flex flex-col items-center text-center">
       <UserAvatar src={user.avatar} username={user.username} className="w-24 h-24 border-4 border-background" />
       <h1 className="text-2xl font-bold mt-4">@{user.username}</h1>
+      <p className="text-muted-foreground">{user.name}</p>
       
       <div className="flex justify-center gap-6 my-4 w-full">
         <div className="text-center">
