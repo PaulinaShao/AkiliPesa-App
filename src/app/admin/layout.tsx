@@ -10,7 +10,7 @@ import { useMemoFirebase } from '@/firebase/use-memo-firebase';
 
 interface UserProfile {
   role?: string;
-  // other fields
+  email?: string;
 }
 
 export default function AdminLayout({
@@ -32,21 +32,23 @@ export default function AdminLayout({
 
   useEffect(() => {
     const isLoading = isUserLoading || isProfileLoading;
-    if (isLoading) return; // Wait until we have all the data
+    if (isLoading) return; 
 
     if (!user) {
-      router.replace(`/auth/login?redirect=${pathname}`); // Not logged in, send to login with redirect
+      router.replace(`/auth/login?redirect=${pathname}`); 
       return;
     }
-
-    if (userProfile?.role !== 'admin') {
-      router.replace('/'); // Not an admin, send to home
+    
+    // Using user.email directly as it's the most reliable source from the auth object itself.
+    if (user.email !== 'blagridigital@gmail.com') {
+      router.replace('/'); 
     }
+
   }, [user, userProfile, isUserLoading, isProfileLoading, router, pathname]);
 
   const isLoading = isUserLoading || isProfileLoading;
 
-  if (isLoading || userProfile?.role !== 'admin') {
+  if (isLoading || user?.email !== 'blagridigital@gmail.com') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background dark">
         <p>Verifying access...</p>
