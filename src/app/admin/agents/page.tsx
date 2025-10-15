@@ -60,6 +60,7 @@ export default function AgentRanking() {
                 <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>
                  <Button variant="outline" asChild><Link href="/admin/verification">Verification</Link></Button>
                  <Button variant="outline" asChild><Link href="/admin/trust">Trust</Link></Button>
+                 <Button variant="outline" asChild><Link href="/admin/community">Community</Link></Button>
             </div>
         </div>
         <div className="overflow-x-auto border rounded-lg">
@@ -97,5 +98,3 @@ export default function AgentRanking() {
     </>
   );
 }
-
-    

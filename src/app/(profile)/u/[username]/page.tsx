@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams, notFound } from 'next/navigation';
@@ -13,6 +14,7 @@ import { useMemoFirebase } from '@/firebase/use-memo-firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { TrustScoreBadge } from './components/TrustScoreBadge';
+import { BuyerTrustBadge } from './components/BuyerTrustBadge';
 
 // Example video data, to be replaced with Firestore query later
 const userVideos: any[] = []; 
@@ -68,6 +70,7 @@ export default function ProfilePage() {
             stats: user.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 } // Provide default stats
         }} />
         <TrustScoreBadge sellerId={user.uid} />
+        <BuyerTrustBadge buyerId={user.uid} />
         <AkiliPointsBadge userId={user.uid} />
         <ProfileQuickActions />
         <ProfileNav />

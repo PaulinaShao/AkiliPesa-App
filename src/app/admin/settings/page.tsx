@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -198,6 +199,7 @@ export default function AdminSettingsPage() {
             <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/verification">Verification</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/trust">Trust</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/community">Community</Link></Button>
           </div>
         </div>
 
@@ -294,5 +296,3 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
-
-    

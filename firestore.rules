@@ -1,203 +1,219 @@
 /**
- * @fileOverview Firestore Security Rules for AkiliPesa's AI-Driven Seller Scoring & Trust Profile System (Phase 9).
+ * @file Firebase Security Rules for AkiliPesa - Phase 10: Buyer Reputation & Community Trust Score.
  *
- * Core Philosophy:
- * This ruleset prioritizes strong authorization based on user identity and explicit ownership.
- * It focuses on securing access to user-specific data and preventing unauthorized modifications.
- * Data validation is relaxed to facilitate rapid prototyping, with key relational fields strictly enforced.
+ * @corePhilosophy This ruleset enforces a combination of user-based ownership for user profiles and their associated data,
+ *                 public read access for certain collections (e.g., products), and admin-restricted access for sensitive settings.
+ *                 It also adds rules for buyer trust scores, allowing users to read their own trust score and admins to manage all trust data.
  *
- * Data Structure:
- * - User profiles are stored under `/users/{userId}`.
- * - User-generated content is stored under `/posts/{postId}`.
- * - Trust scores are stored under `/trustScores/{sellerId}`.
- * - Feedback data is stored under `/feedback/{id}`.
- * - Trust history is stored under `/trustHistory/{id}`.
+ * @dataStructure
+ * - /users/{userId}: User profile data, accessible only to the user and admins.
+ * - /posts/{postId}: Public posts, readable by everyone but writable only by the author.
+ * - /users/{userId}/clones/{cloneId}: User-owned digital clones, accessible only to the user.
+ * - /users/{userId}/agents/{agentId}: User-owned AI agents, accessible only to the user.
+ * - /products/{productId}: Public products, readable by everyone but writable only by the owner.
+ * - /orders/{orderId}: Orders, accessible to the buyer, seller, and admins.
+ * - /payments/{paymentId}: Payments data, accessible to seller and admins.
+ * - /plans/{planId}: Public subscription plans, readable by everyone.
+ * - /calls/{callId}: Call session data, accessible to the participants.
+ * - /transactions/{txId}: Transaction history, accessible only to the user and admins.
+ * - /adminSettings/{settingId}: Admin settings, accessible only to admins.
+ * - /adminAgents/{agentId}: Admin-created AI agents, accessible only to admins.
+ * - /buyerTrust/{buyerId}: Buyer trust score data, readable by the user and writable by admins.
+ * - /behaviorLogs/{id}: Behavior logs, readable by admins and creatable by anyone.
+ * - /buyerHistory/{id}: Buyer history, readable by admins.
  *
- * Key Security Decisions:
- * - Users can only access and modify their own profile data.
- * - Posts are publicly readable but writable only by the author.
- * - Trust scores are readable by authenticated users, but only writable by a specific admin.
- * - Feedback can only be created by authenticated users.
- * - Admin settings are only readable by admins.
- * - User listing is disabled for security reasons.
+ * @keySecurityDecisions
+ * - User data is strictly controlled, with only the user having access to their profile and associated data.
+ * - Public content (posts, products, plans) is readable by everyone, but write access is restricted to owners or admins.
+ * - Admin-only collections (adminSettings, adminAgents) are secured to prevent unauthorized access.
+ * - Listing operations are generally allowed for user-owned subcollections, but not for top-level collections unless explicitly intended to be public.
+ * - The rules use denormalization where needed to avoid costly `get()` calls and simplify authorization logic.
  *
- * Denormalization for Authorization:
- * - The `feedback` documents contain `sellerId` and `buyerId`, enabling direct authorization checks without additional `get()` calls.
+ * @denormalizationForAuthorization
+ * - Buyer trust scores are stored in a separate collection (`/buyerTrust/{buyerId}`), with access controlled based on the `buyerId`.
  *
- * Structural Segregation:
- * - There are no specific drafts vs. published distinctions, but the separation of user-specific data under `/users/{userId}` enhances privacy.
+ * @structuralSegregation Publicly readable data is separated from private user data to simplify rules and improve performance.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
-     * @returns {boolean} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the request is made by the owner of the resource.
-     * @param {string} userId - The user ID to compare against the request's authentication UID.
-     * @returns {boolean} True if the user is the owner, false otherwise.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the request is made by the owner of the resource and the resource exists.
-     * @param {string} userId - The user ID to compare against the resource's owner ID.
-     * @returns {boolean} True if the user is the existing owner, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user has the admin role.
-     * @returns {boolean} True if the user has the admin role, false otherwise.
-     */
-    function isAdmin() {
-      return request.auth.token.email == "blagridigital@gmail.com";
-    }
-
-    /**
-     * @description Rule for user profiles.
+     * @description Allows users to read their own profile data, and allows creating their profile.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user123' can create their profile if request.auth.uid == 'user123'.
-     * @allow (get) User with UID 'user123' can get their profile if request.auth.uid == 'user123'.
-     * @allow (update) User with UID 'user123' can update their profile if request.auth.uid == 'user123'.
-     * @deny (create) User with UID 'user456' cannot create a profile for 'user123' if request.auth.uid != 'user123'.
-     * @deny (update) User with UID 'user456' cannot update the profile of 'user123' if request.auth.uid != 'user123'.
-     * @principle Enforces document ownership for writes.
+     * @allow (get) User with matching {userId} can read.
+     * @allow (create) User can create their own profile if the uid matches the document ID.
+     * @deny (get) User trying to read another user's profile.
+     * @deny (create) User trying to create a profile with a mismatched uid.
+     * @deny (update) User trying to update another user's profile.
+     * @deny (delete) User trying to delete another user's profile.
+     * @principle Enforces user-ownership for user profiles.
      */
     match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Rule for user posts.
+     * @description Allows public read access to posts and enforces owner-only writes based on the authorId field.
      * @path /posts/{postId}
-     * @allow (create) User with UID 'user123' can create a post with authorId 'user123'.
      * @allow (get) Any user can read any post.
-     * @allow (update) User with UID 'user123' can update their own post (resource.data.authorId == request.auth.uid).
-     * @deny (create) User with UID 'user456' cannot create a post with authorId 'user123'.
-     * @deny (update) User with UID 'user456' cannot update a post authored by 'user123'.
-     * @principle Enforces document ownership for writes; allows public reads.
+     * @allow (list) Any user can list posts.
+     * @allow (create) User can create a post if the authorId matches their auth UID.
+     * @deny (create) User trying to create a post with a mismatched authorId.
+     * @deny (update) User trying to update a post they don't own.
+     * @deny (delete) User trying to delete a post they don't own.
+     * @principle Enforces owner-only writes for posts while allowing public reads.
      */
     match /posts/{postId} {
+      function isOwner(authorId) {
+        return request.auth != null && request.auth.uid == authorId;
+      }
+
       allow get: if true;
       allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.authorId);
-      allow delete: if isExistingOwner(resource.data.authorId);
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update: if request.auth != null && isOwner(resource.data.authorId) && resource != null;
+      allow delete: if request.auth != null && isOwner(resource.data.authorId) && resource != null;
     }
 
     /**
-     * @description Rule for user clones.
+     * @description Allows a user to manage their own clones.
      * @path /users/{userId}/clones/{cloneId}
-     * @allow (create) User with UID 'user123' can create a clone under their profile.
-     * @allow (get) User with UID 'user123' can read their own clone data.
-     * @allow (update) User with UID 'user123' can update their clone data.
-     * @deny (create) User with UID 'user456' cannot create a clone under 'user123' profile.
-     * @deny (update) User with UID 'user456' cannot update clones under 'user123' profile.
-     * @principle Restricts access to a user's own data tree.
+     * @allow (get) User with matching {userId} can read their clone.
+     * @allow (list) User with matching {userId} can list their clones.
+     * @allow (create) User can create a clone under their own user ID.
+     * @deny (get) User trying to read another user's clone.
+     * @deny (create) User trying to create a clone under another user's ID.
+     * @deny (update) User trying to update another user's clone.
+     * @deny (delete) User trying to delete another user's clone.
+     * @principle Enforces user-ownership for digital clones.
      */
     match /users/{userId}/clones/{cloneId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && resource.data.userId == userId;
-      allow delete: if isExistingOwner(userId);
-    }
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
 
-    /**
-     * @description Rule for user agents.
-     * @path /users/{userId}/agents/{agentId}
-     * @allow (create) User with UID 'user123' can create an agent under their profile.
-     * @allow (get) User with UID 'user123' can read their agent data.
-     * @allow (update) User with UID 'user123' can update their agent data.
-     * @deny (create) User with UID 'user456' cannot create an agent under 'user123' profile.
-     * @deny (update) User with UID 'user456' cannot update agents under 'user123' profile.
-     * @principle Restricts access to a user's own data tree.
-     */
-    match /users/{userId}/agents/{agentId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Rule for products.
+     * @description Allows a user to manage their own agents.
+     * @path /users/{userId}/agents/{agentId}
+     * @allow (get) User with matching {userId} can read their agent.
+     * @allow (list) User with matching {userId} can list their agents.
+     * @allow (create) User can create an agent under their own user ID.
+     * @deny (get) User trying to read another user's agent.
+     * @deny (create) User trying to create an agent under another user's ID.
+     * @deny (update) User trying to update another user's agent.
+     * @deny (delete) User trying to delete another user's agent.
+     * @principle Enforces user-ownership for AI agents.
+     */
+    match /users/{userId}/agents/{agentId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Allows public read access to products and enforces owner-only writes based on the ownerId field.
      * @path /products/{productId}
-     * @allow (get) Any user can read product data.
+     * @allow (get) Any user can read any product.
      * @allow (list) Any user can list products.
-     * @allow (create) User with UID 'user123' can create a product with ownerId 'user123'.
-     * @allow (update) User with UID 'user123' can update their own product (resource.data.ownerId == request.auth.uid).
-     * @deny (create) User with UID 'user456' cannot create a product with ownerId 'user123'.
-     * @deny (update) User with UID 'user456' cannot update a product owned by 'user123'.
-     * @principle Enforces document ownership for writes; allows public reads.
+     * @allow (create) User can create a product if the ownerId matches their auth UID.
+     * @deny (create) User trying to create a product with a mismatched ownerId.
+     * @deny (update) User trying to update a product they don't own.
+     * @deny (delete) User trying to delete a product they don't own.
+     * @principle Enforces owner-only writes for products while allowing public reads.
      */
     match /products/{productId} {
+      function isOwner(ownerId) {
+        return request.auth != null && request.auth.uid == ownerId;
+      }
+
       allow get: if true;
       allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow update: if request.auth != null && isOwner(resource.data.ownerId) && resource != null;
+      allow delete: if request.auth != null && isOwner(resource.data.ownerId) && resource != null;
     }
 
     /**
-     * @description Rule for orders.
+     * @description Allows access to orders based on buyerId, sellerId or admin role.
      * @path /orders/{orderId}
-     * @allow (get) Any user can read order data.
-     * @allow (list) Any user can list orders.
-     * @allow create: if false;
-     * @allow update: if false;
-     * @allow delete: if false;
+     * @allow (get) Buyer, seller, or admin can read an order.
+     * @allow (list) Buyer, seller, or admin can list orders.
+     * @deny (create) User trying to create an order for another user.
+     * @deny (update) User trying to update an order they are not associated with.
+     * @deny (delete) User trying to delete an order they are not associated with.
+     * @principle Allows order access to buyer, seller and admin.
      */
     match /orders/{orderId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      }
+      function isBuyerOrSeller(buyerId, sellerId) {
+        return request.auth != null && (request.auth.uid == buyerId || request.auth.uid == sellerId);
+      }
+
+      allow get: if isBuyerOrSeller(resource.data.buyerId, resource.data.sellerId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if request.auth != null && request.resource.data.buyerId == request.auth.uid;
+      allow update: if (isBuyerOrSeller(resource.data.buyerId, resource.data.sellerId) || isAdmin()) && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Rule for payments.
+     * @description Allows access to payments data based on sellerId or admin role.
      * @path /payments/{paymentId}
-     * @allow (get) Any user can read payment data.
-     * @allow (list) Any user can list payments.
-     * @allow create: if false;
-     * @allow update: if false;
-     * @allow delete: if false;
+     * @allow (get) Seller or admin can read a payment.
+     * @allow (list) Admin can list payments.
+     * @deny (create) User trying to create a payment for another user.
+     * @deny (update) User trying to update a payment they are not associated with.
+     * @deny (delete) User trying to delete a payment they are not associated with.
+     * @principle Allows payment access to seller and admin.
      */
     match /payments/{paymentId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      }
+      function isSeller(sellerId) {
+        return request.auth != null && request.auth.uid == sellerId;
+      }
+
+      allow get: if isSeller(resource.data.sellerId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if request.auth != null && request.resource.data.sellerId == request.auth.uid;
+      allow update: if (isSeller(resource.data.sellerId) || isAdmin()) && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Rule for plans.
+     * @description Allows public read access to plans.
      * @path /plans/{planId}
-     * @allow (get) Any user can read plan data.
+     * @allow (get) Any user can read any plan.
      * @allow (list) Any user can list plans.
-     * @allow create: if false;
-     * @allow update: if false;
-     * @allow delete: if false;
+     * @deny (create) No user can create a plan. Only admins can create plans.
+     * @deny (update) No user can update a plan. Only admins can update plans.
+     * @deny (delete) No user can delete a plan. Only admins can delete plans.
+     * @principle Allows public reads of subscription plans.
      */
     match /plans/{planId} {
       allow get: if true;
@@ -208,122 +224,165 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rule for calls.
+     * @description Allows access to calls data based on callerId, agentId, or admin role.
      * @path /calls/{callId}
-     * @allow (get) Any user can read call data.
-     * @allow (list) Any user can list calls.
-     * @allow create: if false;
-     * @allow update: if false;
-     * @allow delete: if false;
+     * @allow (get) Caller, agent or admin can read a call.
+     * @allow (list) Admin can list calls.
+     * @deny (create) User trying to create a call for another user.
+     * @deny (update) User trying to update a call they are not associated with.
+     * @deny (delete) User trying to delete a call they are not associated with.
+     * @principle Allows call access to caller, agent and admin.
      */
     match /calls/{callId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      }
+      function isParticipant(callerId, agentId) {
+        return request.auth != null && (request.auth.uid == callerId || request.auth.uid == agentId);
+      }
+
+      allow get: if isParticipant(resource.data.callerId, resource.data.agentId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if request.auth != null && (request.resource.data.callerId == request.auth.uid || request.resource.data.agentId == request.auth.uid);
+      allow update: if (isParticipant(resource.data.callerId, resource.data.agentId) || isAdmin()) && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Rule for transactions.
+     * @description Allows a user to read their own transactions.
      * @path /transactions/{txId}
-     * @allow (get) Any user can read transaction data.
-     * @allow (list) Any user can list transactions.
-     * @allow create: if false;
-     * @allow update: if false;
-     * @allow delete: if false;
+     * @allow (get) User with matching uid can read their transactions.
+     * @allow (list) User with matching uid can list their transactions.
+     * @deny (create) User trying to create a transaction for another user.
+     * @deny (update) User trying to update another user's transaction.
+     * @deny (delete) User trying to delete another user's transaction.
+     * @principle Enforces user-ownership for transactions.
      */
     match /transactions/{txId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      function isOwner(uid) {
+        return request.auth != null && request.auth.uid == uid;
+      }
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      }
+
+      allow get: if isOwner(resource.data.uid) || isAdmin();
+      allow list: if isOwner(resource.data.uid) || isAdmin();
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update: if (isOwner(resource.data.uid) || isAdmin()) && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Rule for admin settings.
+     * @description Restricts access to admin settings to only admins.
      * @path /adminSettings/{settingId}
-     * @allow (get) Only admins can read admin settings.
-     * @allow (list) Only admins can list admin settings.
-     * @allow create: if isAdmin();
-     * @allow update: if isAdmin();
-     * @allow delete: if isAdmin();
-     * @principle Restricts access to admins only.
+     * @allow (get) Admin can read settings.
+     * @allow (list) No one can list admin settings.
+     * @deny (create) No user can create admin settings.
+     * @deny (update) No user can update admin settings.
+     * @deny (delete) No user can delete admin settings.
+     * @principle Restricts access to admin settings.
      */
     match /adminSettings/{settingId} {
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      }
+
       allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow list: if false;
+      allow create: if false;
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Rule for admin agents.
+     * @description Restricts access to admin agents to only admins.
      * @path /adminAgents/{agentId}
-     * @allow (get) Only admins can read admin agent data.
-     * @allow (list) Only admins can list admin agents.
-     * @allow create: if isAdmin();
-     * @allow update: if isAdmin();
-     * @allow delete: if isAdmin();
+     * @allow (get) Admin can read agents.
+     * @allow (list) Admin can list admin agents.
+     * @deny (create) No user can create admin agents.
+     * @deny (update) No user can update admin agents.
+     * @deny (delete) No user can delete admin agents.
+     * @principle Restricts access to admin agents.
      */
     match /adminAgents/{agentId} {
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      }
+
       allow get: if isAdmin();
       allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow create: if false;
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Rule for trust scores.
-     * @path /trustScores/{sellerId}
-     * @allow (get) Authenticated users can read trust scores.
-     * @allow (list) Authenticated users can list trust scores.
-     * @allow (create) Only admins can create trust scores.
-     * @allow (update) Only admins can update trust scores.
-     * @allow (delete) Only admins can delete trust scores.
+     * @description Allows users to read their own buyer trust score and admins to manage all trust data.
+     * @path /buyerTrust/{buyerId}
+     * @allow (get) User can read their own trust score, and admin can read all trust scores.
+     * @allow (list) Admin can list all trust scores.
+     * @allow (create) Admin can create trust scores.
+     * @deny (create) Users cannot create trust scores.
+     * @deny (update) Users cannot update trust scores.
+     * @deny (delete) Users cannot delete trust scores.
+     * @principle Enforces user-ownership for read access and admin-only write access to buyer trust scores.
      */
-    match /trustScores/{sellerId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+    match /buyerTrust/{buyerId} {
+      function isOwner(buyerId) {
+        return request.auth != null && request.auth.uid == buyerId;
+      }
+
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      }
+
+      allow get: if isOwner(buyerId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Rule for feedback.
-     * @path /feedback/{id}
-     * @allow (create) Authenticated users can create feedback.
-     *
-     * @allow (get) Authenticated users can read feedback if they are the seller or buyer.
-     * @allow (list) Authenticated users can list feedback if they are the seller or buyer.
-     *
-     * @deny (update) No one can update feedback.
-     * @deny (delete) No one can delete feedback.
+     * @description Allows anyone to create behavior logs, but only admins can read them.
+     * @path /behaviorLogs/{id}
+     * @allow (create) Any authenticated user can create a behavior log.
+     * @allow (get) Only admin can read behavior logs.
+     * @allow (list) Only admin can list behavior logs.
+     * @deny (update) No one can update behavior logs.
+     * @deny (delete) No one can delete behavior logs.
+     * @principle Allows public creation and admin-only read access to behavior logs.
      */
-    match /feedback/{id} {
-      allow get: if isSignedIn() && (request.auth.uid == resource.data.sellerId || request.auth.uid == resource.data.buyerId);
-      allow list: if isSignedIn() && (request.auth.uid == resource.data.sellerId || request.auth.uid == resource.data.buyerId);
-      allow create: if isSignedIn();
+    match /behaviorLogs/{id} {
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      }
+
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if request.auth != null;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Rule for trust history.
-     * @path /trustHistory/{id}
-     * @allow (get) Authenticated users can read trust history.
-     * @allow (list) Authenticated users can list trust history.
-     * @allow create: if false;
-     * @allow update: if false;
-     * @allow delete: if false;
+     * @description Allows only admins to read buyer history data.
+     * @path /buyerHistory/{id}
+     * @allow (get) Only admin can read buyer history.
+     * @allow (list) Only admin can list buyer history.
+     * @deny (create) No one can create buyer history through rules (only backend).
+     * @deny (update) No one can update buyer history.
+     * @deny (delete) No one can delete buyer history.
+     * @principle Restricts access to buyer history to admins.
      */
-    match /trustHistory/{id} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+    match /buyerHistory/{id} {
+      function isAdmin() {
+        return request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      }
+
+      allow get: if isAdmin();
+      allow list: if isAdmin();
       allow create: if false;
       allow update: if false;
       allow delete: if false;

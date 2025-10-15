@@ -460,7 +460,7 @@ export const verifyAndReleaseEscrow = onDocumentUpdated("deliveryProofs/{id}", a
     }
 });
 
-// 3. Order Tracking Logic
+// 3. Order Tracking Logic & Trust Score Trigger
 export const onOrderStatusChange = onDocumentUpdated("orders/{orderId}", async (event) => {
     if (!event.data) return;
     const before = event.data.before.data();
@@ -472,9 +472,13 @@ export const onOrderStatusChange = onDocumentUpdated("orders/{orderId}", async (
             status: after.status,
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
-        // Phase 9: Trigger trust score update on order status change
+
+        // Phase 9 & 10: Trigger trust score update on order status change
         if (after.sellerId) {
             await updateTrustScore(after.sellerId);
+        }
+        if (after.buyerId) {
+            await analyzeBehavior(after.buyerId);
         }
     }
 });
@@ -550,7 +554,9 @@ export const onProductCreatedVerify = onDocumentCreated("products/{productId}", 
   });
 
   // Phase 9: Trigger trust score update
-  await updateTrustScore(product.ownerId);
+  if(product.ownerId) {
+    await updateTrustScore(product.ownerId);
+  }
 });
 
 // 2. Delivery Proof Verification
@@ -582,6 +588,7 @@ export const onDeliveryProofAdded = onDocumentCreated("deliveryProofs/{id}", asy
     await db.collection("orders").doc(proof.orderId).update({ status: "verification_failed" });
   }
 });
+
 
 // --- Phase 9 Functions ---
 
@@ -678,8 +685,62 @@ export const onFeedbackCreated = onDocumentCreated("feedback/{id}", async (event
     await db.collection("feedback").doc(event.params.id).update({ sentiment });
     
     // Trigger a trust score update for the seller
-    await updateTrustScore(feedback.sellerId);
+    if(feedback.sellerId) {
+        await updateTrustScore(feedback.sellerId);
+    }
 });
+
+
+// --- Phase 10 Functions ---
+
+async function analyzeBehavior(buyerId: string) {
+    if (!buyerId) {
+        console.log("analyzeBehavior called with no buyerId.");
+        return;
+    }
+
+    const ordersSnap = await db.collection("orders").where("buyerId", "==", buyerId).get();
+    const onTime = ordersSnap.docs.filter(d => d.data().status === "completed").length;
+    const late = ordersSnap.docs.filter(d => d.data().status === "late").length;
+    const refunds = ordersSnap.docs.filter(d => d.data().status === "refund_requested" || d.data().status === "refunded").length;
+
+    const feedbacksSnap = await db.collection("feedback").where("buyerId", "==", buyerId).get();
+    const pos = feedbacksSnap.docs.filter(d => d.data().sentiment === "positive").length;
+    const neg = feedbacksSnap.docs.filter(d => d.data().sentiment === "negative").length;
+
+    // Weighted score calculation
+    const baseScore = 70;
+    const score = Math.max(0, Math.min(100,
+        baseScore + (onTime * 0.3) - (late * 3) - (refunds * 5) + (pos * 0.5) - (neg * 3)
+    ));
+
+    const level = score >= 90 ? "Platinum" : score >= 80 ? "Gold" : score >= 60 ? "Silver" : "Bronze";
+
+    const scoreData = {
+        buyerId,
+        trustScore: score,
+        level,
+        metrics: {
+            onTimePayments: onTime,
+            latePayments: late,
+            refundsRequested: refunds,
+            positiveFeedback: pos,
+            negativeFeedback: neg
+        },
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection("buyerTrust").doc(buyerId).set(scoreData, { merge: true });
+
+    await db.collection("buyerHistory").add({
+        buyerId,
+        trustScore: score,
+        level,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`Updated buyer trust score for ${buyerId} to ${score} (${level})`);
+}
 
 
 // --- V1 Functions ---
@@ -1014,5 +1075,3 @@ export const tickCalls = functions.pubsub.schedule('every 2 minutes').onRun(asyn
   // For now, it performs no operation.
   return null;
 });
-
-    
