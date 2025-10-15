@@ -7,6 +7,7 @@ import { Header } from '@/components/header';
 import { ProfileHeader } from './components/ProfileHeader';
 import { ProfileQuickActions } from './components/ProfileQuickActions';
 import { ProfileNav } from './components/ProfileNav';
+import { AkiliPointsBadge } from './components/AkiliPointsBadge';
 import { useFirestore, useUser } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/use-memo-firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
@@ -65,6 +66,7 @@ export default function ProfilePage() {
             bio: user.bio || '', // Provide default empty string
             stats: user.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 } // Provide default stats
         }} />
+        <AkiliPointsBadge userId={user.uid} />
         <ProfileQuickActions />
         <ProfileNav />
         

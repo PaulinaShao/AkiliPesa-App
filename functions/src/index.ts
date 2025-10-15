@@ -6,6 +6,7 @@ import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/fire
 import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
 import fetch from "node-fetch";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall } from 'firebase-functions/v2/https';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -293,6 +294,115 @@ export const updateAgentRanks = onSchedule("every day 02:00", async () => {
 });
 
 
+// Helper function to award points
+async function awardPoints(userId: string, points: number, reason: string) {
+  if (!userId || !points || points <= 0) {
+    console.log(`Invalid attempt to award points: userId=${userId}, points=${points}`);
+    return;
+  }
+  const ref = db.collection("akiliPoints").doc(userId);
+  await ref.set({
+    userId,
+    totalPoints: admin.firestore.FieldValue.increment(points),
+    lifetimePoints: admin.firestore.FieldValue.increment(points),
+    lastEarnedAt: admin.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  return db.collection("rewardHistory").add({
+    userId,
+    points,
+    reason,
+    type: "earned",
+    timestamp: admin.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+// Product/service sale -> seller reward
+export const onProductSaleReward = onDocumentCreated("sales/{saleId}", async (event) => {
+  const sale = event.data?.data();
+  if (!sale) return;
+  const points = Math.floor(sale.amount * 0.01); // 1 point per 100 TZS
+  if (points > 0) {
+    await awardPoints(sale.agentId, points, "Product sale reward");
+  }
+});
+
+// Referral conversion -> referrer reward
+export const onReferralReward = onDocumentCreated("referrals/{refId}", async (event) => {
+  const ref = event.data?.data();
+  if (ref && ref.status === "converted") {
+    await awardPoints(ref.sharedBy, 50, "Referral conversion reward");
+  }
+});
+
+// AI engagement -> AkiliPesa AI agent reward
+export const onAIInteractionReward = onDocumentUpdated("aiSessions/{id}", async (event) => {
+  const before = event.data?.before.data();
+  const after = event.data?.after.data();
+
+  // Trigger when session ends
+  if (before?.isActive === true && after?.isActive === false && after.duration > 60) {
+    const points = Math.floor(after.duration / 60) * 10;
+    await awardPoints(after.userId, points, "AI session engagement");
+  }
+});
+
+// Redeem points for a reward
+export const redeemReward = onCall(async (req) => {
+  if (!req.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to redeem rewards.');
+  }
+  const userId = req.auth.uid;
+  const { rewardId } = req.data;
+  if (!rewardId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing rewardId.');
+  }
+  
+  const rewardRef = db.collection("rewardCatalog").doc(rewardId);
+  const userPointsRef = db.collection("akiliPoints").doc(userId);
+
+  return db.runTransaction(async (t) => {
+    const rewardDoc = await t.get(rewardRef);
+    const userPointsDoc = await t.get(userPointsRef);
+
+    if (!rewardDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Reward not found.');
+    }
+    const reward = rewardDoc.data()!;
+    const userPoints = userPointsDoc.data() || { totalPoints: 0 };
+
+    if (userPoints.totalPoints < reward.costPoints) {
+      throw new functions.https.HttpsError('failed-precondition', 'Insufficient points.');
+    }
+
+    t.update(userPointsRef, {
+      totalPoints: admin.firestore.FieldValue.increment(-reward.costPoints),
+      redeemedPoints: admin.firestore.FieldValue.increment(reward.costPoints)
+    });
+
+    const historyRef = db.collection("rewardHistory").doc();
+    t.set(historyRef, {
+      userId,
+      rewardId,
+      points: reward.costPoints,
+      type: "redeem",
+      description: `Redeemed: ${reward.title}`,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (reward.type === "walletCredit" && reward.value > 0) {
+      const walletRef = db.collection("wallets").doc(userId);
+      t.set(walletRef, {
+        balanceTZS: admin.firestore.FieldValue.increment(reward.value),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+    
+    return { success: true, message: `${reward.title} redeemed successfully!` };
+  });
+});
+
+
 // --- V1 Functions ---
 
 // User signup → create profile
@@ -318,6 +428,19 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
+  
+  // Also create initial AkiliPoints document
+  const pointsRef = db.collection('akiliPoints').doc(user.uid);
+  const initialPoints = {
+      userId: user.uid,
+      totalPoints: 0,
+      lifetimePoints: 0,
+      redeemedPoints: 0,
+      level: 'Bronze',
+      lastEarnedAt: null,
+  };
+
+  await pointsRef.set(initialPoints);
   return db.collection('users').doc(user.uid).set(profile);
 });
 
@@ -327,6 +450,9 @@ export const onpostcreate = functions.firestore
   .onCreate(async (snap) => {
     const post = snap.data();
     if (!post) return null;
+
+    // Award points for creating a post
+    await awardPoints(post.authorId, 10, "Created a new post");
 
     return db
       .collection('users')
