@@ -58,7 +58,7 @@ export default function ProfilePage() {
       <Header isMuted={true} onToggleMute={() => {}} />
       <div className="max-w-xl mx-auto p-4 pt-20 supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(env(safe-area-inset-bottom)+80px)]">
         <ProfileHeader user={{
-            id: user.id,
+            id: user.uid,
             username: user.handle,
             name: user.displayName,
             avatar: user.photoURL,
