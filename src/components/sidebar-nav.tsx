@@ -70,7 +70,7 @@ export function SidebarNav() {
         </ul>
       </nav>
 
-      {currentUserProfile && (
+      {currentUserProfile ? (
         <div className="mt-auto">
           <Link href={profileHref}>
             <Button variant="outline" className="w-full justify-start h-14">
@@ -82,7 +82,15 @@ export function SidebarNav() {
             </Button>
           </Link>
         </div>
-      )}
+      ) : authUser ? (
+         <div className="mt-auto">
+            <Button variant="outline" className="w-full justify-start h-14">
+                <div className='text-left'>
+                  <p className='text-muted-foreground text-sm'>Loading profile...</p>
+              </div>
+            </Button>
+        </div>
+      ) : null}
     </aside>
   );
 }

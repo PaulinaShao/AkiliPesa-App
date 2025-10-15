@@ -31,8 +31,11 @@ export default function ProfilePage() {
   }, [firestore, username]);
 
   const { data: userData, isLoading: isProfileLoading } = useCollection(userQuery);
-  const user = userData?.[0];
+  
   const isLoading = isAuthLoading || isProfileLoading;
+  
+  // userData is an array, get the first element for the user profile.
+  const user = userData?.[0];
 
   if (isLoading) {
     return (
@@ -45,13 +48,9 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user && !isLoading) {
-    notFound();
-  }
-  
+  // After loading is complete, if no user was found, show 404.
   if (!user) {
-    // This case handles the moment between loading and notFound, preventing errors
-    return null;
+    notFound();
   }
 
   return (
@@ -63,8 +62,8 @@ export default function ProfilePage() {
             username: user.handle,
             name: user.displayName,
             avatar: user.photoURL,
-            bio: user.bio || '',
-            stats: user.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 }
+            bio: user.bio || '', // Provide default empty string
+            stats: user.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 } // Provide default stats
         }} />
         <ProfileQuickActions />
         <ProfileNav />
