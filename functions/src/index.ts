@@ -2,12 +2,78 @@
 'use strict';
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
 
 admin.initializeApp();
 const db = admin.firestore();
 
-// --- Existing Functions ---
+
+// --- V2 Functions ---
+
+// 🔹 Trigger when a sale record is created
+export const onSaleCreated = onDocumentCreated("sales/{saleId}", async (event) => {
+  const saleData = event.data?.data();
+  if (!saleData) {
+    console.log("No data associated with the event.");
+    return;
+  }
+  
+  const { agentId, type, amount } = saleData;
+  if (!agentId || !type || !amount) {
+    console.log(`Missing required fields in sale doc: ${event.params.saleId}`);
+    return;
+  }
+
+  // Fetch commission rates from a single admin config document
+  const configDoc = await db.doc("commissionRates/adminConfig").get();
+  const config = configDoc.data();
+  const productRate = config?.productCommission || 0.9; // Default 90%
+  const serviceRate = config?.serviceCommission || 0.6; // Default 60%
+  const callRate = config?.callCommission || 0; // Default 0%
+
+  let commission = 0;
+  if (type === "product") commission = amount * productRate;
+  if (type === "service") commission = amount * serviceRate;
+  if (type === "call") commission = amount * callRate;
+
+  // Skip if no commission is earned
+  if (commission <= 0) {
+    console.log(`No commission for sale type '${type}' on sale ${event.params.saleId}`);
+    return;
+  }
+
+  // Use a transaction to ensure atomicity
+  const walletRef = db.collection("wallets").doc(agentId);
+  const transactionRef = db.collection("walletTransactions").doc();
+  
+  await db.runTransaction(async (t) => {
+    // 1. Record the transaction
+    t.set(transactionRef, {
+      agentId,
+      saleId: event.params.saleId,
+      amount: commission,
+      type: "credit",
+      source: type,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      description: `Commission from ${type} sale`
+    });
+
+    // 2. Update wallet, creating it if it doesn't exist
+    t.set(walletRef, {
+      agentId,
+      balanceTZS: admin.firestore.FieldValue.increment(commission),
+      earnedToday: admin.firestore.FieldValue.increment(commission),
+      totalEarnings: admin.firestore.FieldValue.increment(commission),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
+
+  console.log(`Processed commission of ${commission} for agent ${agentId} from sale ${event.params.saleId}`);
+});
+
+
+// --- V1 Functions ---
 
 // User signup → create profile
 export const onusercreate = functions.auth.user().onCreate(async (user) => {
@@ -210,27 +276,18 @@ export const resetTrialCredits = functions.pubsub
     return null;
   });
 
-// --- New Functions ---
-
-/** Helper: read adminSettings once (w/ safe defaults) */
-async function getSettings() {
-  const snap = await db.collection('adminSettings').doc('pricing').get();
-  const tzsPerCredit = snap.exists ? (snap.data() as any).tzsPerCredit : 100;
-  return { tzsPerCredit };
-}
-
 /** getAgoraToken — validates wallet, reads agent pricing, logs call, returns token */
 export const getAgoraToken = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
   const uid = context.auth.uid;
-  const { agentId, agentType, mode } = data as { agentId: string; agentType: 'admin'|'user'; mode: 'audio'|'video' };
+  const { agentId, agentType, mode, channelName: requestedChannelName } = data as { agentId: string; agentType: 'admin'|'user'; mode: 'audio'|'video', channelName?: string };
   if (!agentId || !agentType || !mode) throw new functions.https.HttpsError('invalid-argument', 'Missing fields');
 
   // Fetch caller wallet
   const userRef = db.collection('users').doc(uid);
   const userDoc = await userRef.get();
   if (!userDoc.exists) throw new functions.https.HttpsError('not-found', 'User not found');
-  const wallet = (userDoc.data() as any).wallet || { balance: 0 };
+  const wallet = (userDoc.data() as any).wallet || { balance: 0, credits: 0 };
 
   // Resolve agent + price
   let pricePerSecondCredits = 0.1;
@@ -240,9 +297,6 @@ export const getAgoraToken = functions.https.onCall(async (data, context) => {
     if ((a.data() as any).status !== 'active') throw new functions.https.HttpsError('failed-precondition', 'Agent inactive');
     pricePerSecondCredits = (a.data() as any).pricePerSecondCredits ?? 0.1;
   } else {
-    // This is a simplification and assumes the agent belongs to another user. A real implementation might need the owner's UID.
-    // For this implementation, we can't reliably get a user agent without its owner's ID.
-    // Let's throw an error for now if a user agent is requested, as the UI doesn't support calling other users' agents yet.
      throw new functions.https.HttpsError('unimplemented', 'Calling user-created agents is not yet supported.');
   }
 
@@ -252,7 +306,7 @@ export const getAgoraToken = functions.https.onCall(async (data, context) => {
   }
 
   // Create channel + token
-  const channelName = `akili_${Date.now()}_${Math.floor(Math.random()*9999)}`;
+  const channelName = requestedChannelName || `akili_${Date.now()}_${Math.floor(Math.random()*9999)}`;
   const appId = functions.config().agora?.appid;
   const appCert = functions.config().agora?.certificate;
 
@@ -296,11 +350,10 @@ export const endCall = functions.https.onCall(async (data, context) => {
 
   await db.runTransaction(async (t) => {
     const u = await t.get(userRef);
+    if (!u.exists) throw new functions.https.HttpsError('not-found', 'User profile not found for billing.');
     const wallet = (u.data() as any).wallet || { credits: 0 };
     const creditsToCharge = Math.ceil(seconds) * (call.pricePerSecondCredits ?? 0.1);
     
-    const finalCredits = (wallet.credits ?? 0) - creditsToCharge;
-
     t.update(userRef, {
         'wallet.credits': admin.firestore.FieldValue.increment(-creditsToCharge),
         'wallet.lastDeduction': admin.firestore.FieldValue.serverTimestamp(),

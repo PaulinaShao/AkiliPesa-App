@@ -1,16 +1,17 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { transactions as allTransactions } from '@/lib/data';
 import type { Transaction } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { ArrowDownLeft, ArrowUpRight, Plus, Send, ShieldCheck, Hourglass, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 
 
 const transactionIcons: Record<string, JSX.Element> = {
@@ -31,19 +32,20 @@ const transactionIcons: Record<string, JSX.Element> = {
 
 const isCredit = (type: Transaction['type']) => !['Sent', 'Withdraw', 'deduction', 'purchase', 'Purchase', 'Escrow Hold'].includes(type);
 
-// Mock data until Firestore is connected
-const mockUserWallet = {
-    balance: 20000,
-    escrow: 3500,
-    plan: {
-        id: 'basic',
-        credits: 100,
-        expiry: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000) // 15 days from now
-    }
-}
 
 export default function WalletPage() {
-  const [wallet] = useState(mockUserWallet);
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
+  
+  const transactionsQuery = useMemoFirebase(() => (
+    user ? query(collection(firestore, 'transactions'), where('uid', '==', user.uid), orderBy('createdAt', 'desc')) : null
+  ), [user, firestore]);
+  const { data: transactions, isLoading: isTransactionsLoading } = useCollection<any>(transactionsQuery);
+
+  const wallet = userProfile?.wallet;
 
   return (
     <div className="dark">
@@ -57,7 +59,11 @@ export default function WalletPage() {
               <CardTitle className="text-sm font-light text-primary-foreground/80">Available Balance</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <p className="text-4xl font-bold">TZS {wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              {isProfileLoading ? (
+                 <p className="text-4xl font-bold">Loading...</p>
+              ) : (
+                <p className="text-4xl font-bold">TZS {wallet?.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</p>
+              )}
             </CardContent>
           </div>
         </Card>
@@ -67,7 +73,7 @@ export default function WalletPage() {
                 <CardHeader className="flex-row items-center justify-between p-4">
                 <div>
                     <CardTitle className="text-sm font-light text-muted-foreground">Escrow</CardTitle>
-                    <CardDescription className="text-xl font-bold text-foreground">TZS {wallet.escrow.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</CardDescription>
+                    <CardDescription className="text-xl font-bold text-foreground">TZS {wallet?.escrow?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</CardDescription>
                 </div>
                 <Hourglass className="h-8 w-8 text-yellow-400"/>
                 </CardHeader>
@@ -76,7 +82,7 @@ export default function WalletPage() {
                 <CardHeader className="flex-row items-center justify-between p-4">
                 <div>
                     <CardTitle className="text-sm font-light text-muted-foreground">Plan Credits</CardTitle>
-                    <CardDescription className="text-xl font-bold text-foreground">{wallet.plan.credits}</CardDescription>
+                    <CardDescription className="text-xl font-bold text-foreground">{wallet?.plan?.credits ?? '0'}</CardDescription>
                 </div>
                 <CreditCard className="h-8 w-8 text-green-400"/>
                 </CardHeader>
@@ -107,7 +113,8 @@ export default function WalletPage() {
                 <Card className="bg-card/50 border-border/50 mt-4">
                     <CardContent className="p-0">
                     <ul className="divide-y divide-border/50">
-                        {allTransactions.map(transaction => (
+                        {isTransactionsLoading && <li className="p-4 text-center">Loading transactions...</li>}
+                        {transactions?.map(transaction => (
                         <li key={transaction.id} className="flex items-center justify-between p-4">
                             <div className="flex items-center gap-4">
                             <div className="p-3 bg-muted rounded-full">
@@ -115,17 +122,18 @@ export default function WalletPage() {
                             </div>
                             <div>
                                 <p className="font-semibold">{transaction.description}</p>
-                                <p className="text-sm text-muted-foreground">{format(new Date(transaction.date), 'MMM d, yyyy')}</p>
+                                <p className="text-sm text-muted-foreground">{transaction.createdAt ? format(transaction.createdAt.toDate(), 'MMM d, yyyy') : 'Date unavailable'}</p>
                             </div>
                             </div>
                             <div className={cn(
                                 "font-semibold text-base",
-                                isCredit(transaction.type) ? 'text-green-400' : 'text-foreground'
+                                transaction.amount > 0 ? 'text-green-400' : 'text-foreground'
                             )}>
-                                {isCredit(transaction.type) ? '+' : '-'} {transaction.amount.toLocaleString('en-US')}
+                                {transaction.amount > 0 ? '+' : ''} {transaction.amount.toLocaleString('en-US')} {transaction.currency}
                             </div>
                         </li>
                         ))}
+                         {!isTransactionsLoading && transactions?.length === 0 && <li className="p-4 text-center text-muted-foreground">No transactions yet.</li>}
                     </ul>
                     </CardContent>
                 </Card>
@@ -133,22 +141,28 @@ export default function WalletPage() {
             <TabsContent value="plan">
                  <Card className="bg-card/50 border-border/50 mt-4">
                     <CardHeader>
-                        <CardTitle>Current Plan: {wallet.plan.id}</CardTitle>
+                        <CardTitle>Current Plan: {wallet?.plan?.id ?? 'N/A'}</CardTitle>
                         <CardDescription>Your plan is active and gives you access to premium features.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div>
-                             <div className="flex justify-between mb-1 text-sm">
-                                <span className="font-medium">Credits Remaining</span>
-                                <span className="font-bold">{wallet.plan.credits}</span>
+                        {wallet?.plan ? (
+                            <>
+                            <div>
+                                <div className="flex justify-between mb-1 text-sm">
+                                    <span className="font-medium">Credits Remaining</span>
+                                    <span className="font-bold">{wallet.plan.credits}</span>
+                                </div>
+                                <div className="w-full bg-muted rounded-full h-2.5">
+                                    <div className="bg-green-500 h-2.5 rounded-full" style={{width: `${(wallet.plan.credits / 200) * 100}%`}}></div>
+                                </div>
                             </div>
-                            <div className="w-full bg-muted rounded-full h-2.5">
-                                <div className="bg-green-500 h-2.5 rounded-full" style={{width: `${(wallet.plan.credits / 200) * 100}%`}}></div>
+                            <div>
+                                <p className="text-sm font-medium">Expires on: <span className="font-bold">{wallet.plan.expiry ? format(wallet.plan.expiry.toDate(), 'MMMM d, yyyy') : 'N/A'}</span></p>
                             </div>
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium">Expires on: <span className="font-bold">{format(wallet.plan.expiry, 'MMMM d, yyyy')}</span></p>
-                        </div>
+                            </>
+                        ) : (
+                           <p className="text-muted-foreground text-center">You are on the trial plan.</p>
+                        )}
                         <Button className="w-full">Upgrade Plan</Button>
                     </CardContent>
                  </Card>

@@ -29,6 +29,12 @@ type AdminSettings = {
     }
 }
 
+type CommissionRates = {
+    productCommission: number;
+    serviceCommission: number;
+    callCommission: number;
+}
+
 const defaultSettings: AdminSettings = {
     pricing: {
         tzsPerCredit: 100,
@@ -47,53 +53,77 @@ const defaultSettings: AdminSettings = {
     }
 };
 
+const defaultCommissionRates: CommissionRates = {
+    productCommission: 0.9,
+    serviceCommission: 0.6,
+    callCommission: 0.0
+};
+
+
 export default function AdminSettingsPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [settings, setSettings] = useState<AdminSettings | null>(null);
+  const [rates, setRates] = useState<CommissionRates | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const settingsDocRef = doc(firestore, 'adminSettings', 'settings');
+  const ratesDocRef = doc(firestore, 'commissionRates', 'adminConfig');
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchAllSettings = async () => {
       setIsLoading(true);
-      const docSnap = await getDoc(settingsDocRef);
-      if (docSnap.exists()) {
-        setSettings(docSnap.data() as AdminSettings);
+      
+      // Fetch pricing settings
+      const settingsSnap = await getDoc(settingsDocRef);
+      if (settingsSnap.exists()) {
+        setSettings(settingsSnap.data() as AdminSettings);
       } else {
-        // If doc doesn't exist, create it with default values
         await setDoc(settingsDocRef, defaultSettings);
         setSettings(defaultSettings);
-        console.log("No settings document found, created one with default values.");
       }
+      
+      // Fetch commission rates
+      const ratesSnap = await getDoc(ratesDocRef);
+      if (ratesSnap.exists()) {
+        setRates(ratesSnap.data() as CommissionRates);
+      } else {
+        await setDoc(ratesDocRef, defaultCommissionRates);
+        setRates(defaultCommissionRates);
+      }
+
       setIsLoading(false);
     };
 
-    fetchSettings();
+    fetchAllSettings();
   }, [firestore]);
 
-  const handleInputChange = (path: string, value: string) => {
-    if (!settings) return;
-    const keys = path.split('.');
-    setSettings(prev => {
-        const newSettings = JSON.parse(JSON.stringify(prev)); // Deep copy
-        let current: any = newSettings;
-        for(let i = 0; i < keys.length - 1; i++) {
-            current = current[keys[i]];
-        }
-        current[keys[keys.length - 1]] = Number(value);
-        return newSettings;
-    });
+  const handleInputChange = (path: string, value: string, target: 'settings' | 'rates') => {
+    const numValue = Number(value);
+    if (target === 'settings' && settings) {
+      const keys = path.split('.');
+      setSettings(prev => {
+          const newSettings = JSON.parse(JSON.stringify(prev)); // Deep copy
+          let current: any = newSettings;
+          for(let i = 0; i < keys.length - 1; i++) {
+              current = current[keys[i]];
+          }
+          current[keys[keys.length - 1]] = numValue;
+          return newSettings;
+      });
+    } else if (target === 'rates' && rates) {
+       setRates(prev => ({...prev!, [path]: numValue}));
+    }
   };
 
   const handleSave = async () => {
-    if (!settings) return;
+    if (!settings || !rates) return;
     try {
       await updateDoc(settingsDocRef, settings);
+      await updateDoc(ratesDocRef, rates);
       toast({
         title: "Settings Saved",
-        description: "Your changes have been successfully saved.",
+        description: "All configurations have been successfully saved.",
       });
     } catch (error) {
       console.error("Error updating settings:", error);
@@ -123,60 +153,42 @@ export default function AdminSettingsPage() {
            <Button variant="outline" asChild><Link href="/admin/agents">Agents</Link></Button>
         </div>
 
-        {settings && (
+        {(settings && rates) && (
             <div className="space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Pricing</CardTitle>
+                        <CardTitle>Core Pricing</CardTitle>
                         <CardDescription>Configure credit pricing and default agent costs.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="tzsPerCredit">TZS per Credit</Label>
-                            <Input id="tzsPerCredit" type="number" value={settings.pricing.tzsPerCredit} onChange={e => handleInputChange('pricing.tzsPerCredit', e.target.value)} />
+                            <Input id="tzsPerCredit" type="number" value={settings.pricing.tzsPerCredit} onChange={e => handleInputChange('pricing.tzsPerCredit', e.target.value, 'settings')} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="defaultAdminPrice">Default Admin Agent Price/sec (Credits)</Label>
-                            <Input id="defaultAdminPrice" type="number" step="0.01" value={settings.pricing.defaultAdminPricePerSecondCredits} onChange={e => handleInputChange('pricing.defaultAdminPricePerSecondCredits', e.target.value)} />
+                            <Input id="defaultAdminPrice" type="number" step="0.01" value={settings.pricing.defaultAdminPricePerSecondCredits} onChange={e => handleInputChange('pricing.defaultAdminPricePerSecondCredits', e.target.value, 'settings')} />
                         </div>
                     </CardContent>
                 </Card>
 
                  <Card>
                     <CardHeader>
-                        <CardTitle>Commission Models</CardTitle>
-                        <CardDescription>Set revenue splits for products and services. Values should sum to 1.</CardDescription>
+                        <CardTitle>Agent Commission Rates</CardTitle>
+                        <CardDescription>Set the percentage of sales that goes to the agent. E.g., 0.9 = 90%.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div>
-                            <h3 className="font-semibold mb-2">Product Sales</h3>
-                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="prodPlatform">Platform Share</Label>
-                                    <Input id="prodPlatform" type="number" step="0.01" max="1" value={settings.commissionModels.product.platform} onChange={e => handleInputChange('commissionModels.product.platform', e.target.value)} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="prodCreator">Creator Share</Label>
-                                    <Input id="prodCreator" type="number" step="0.01" max="1" value={settings.commissionModels.product.creator} onChange={e => handleInputChange('commissionModels.product.creator', e.target.value)} />
-                                </div>
-                            </div>
+                    <CardContent className="space-y-4">
+                         <div className="space-y-2">
+                            <Label htmlFor="productCommission">Product Sale Commission Rate</Label>
+                            <Input id="productCommission" type="number" step="0.01" max="1" min="0" value={rates.productCommission} onChange={e => handleInputChange('productCommission', e.target.value, 'rates')} />
                         </div>
-                         <div>
-                            <h3 className="font-semibold mb-2">Service Access (Calls)</h3>
-                             <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="servPlatform">Platform Share</Label>
-                                    <Input id="servPlatform" type="number" step="0.01" max="1" value={settings.commissionModels.serviceAccess.platform} onChange={e => handleInputChange('commissionModels.serviceAccess.platform', e.target.value)} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="servCommission">Affiliate Share</Label>
-                                    <Input id="servCommission" type="number" step="0.01" max="1" value={settings.commissionModels.serviceAccess.commission} onChange={e => handleInputChange('commissionModels.serviceAccess.commission', e.target.value)} />
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="servCreator">Creator Share</Label>
-                                    <Input id="servCreator" type="number" step="0.01" max="1" value={settings.commissionModels.serviceAccess.creator} onChange={e => handleInputChange('commissionModels.serviceAccess.creator', e.target.value)} />
-                                </div>
-                            </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="serviceCommission">Service Access Commission Rate</Label>
+                            <Input id="serviceCommission" type="number" step="0.01" max="1" min="0" value={rates.serviceCommission} onChange={e => handleInputChange('serviceCommission', e.target.value, 'rates')} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="callCommission">Real-time Call Commission Rate</Label>
+                            <Input id="callCommission" type="number" step="0.01" max="1" min="0" value={rates.callCommission} onChange={e => handleInputChange('callCommission', e.target.value, 'rates')} />
                         </div>
                     </CardContent>
                 </Card>

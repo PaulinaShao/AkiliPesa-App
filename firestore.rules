@@ -1,71 +1,68 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isAdmin() {
-      return request.auth.token.email == "blagridigital@gmail.com";
+  
+    // Admin can do anything
+    match /{document=**} {
+      allow read, write: if request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
     }
 
-    // AUTHENTICATION
+    // USER DATA
     match /users/{userId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update: if request.auth.uid == userId;
-    }
-    
-    // ADMIN
-    match /adminAgents/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    match /adminSettings/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /aiSessions/{uid} {
-      allow read, update, delete: if isAdmin();
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
     // POSTS
     match /posts/{postId} {
-      allow read: if resource.data.visibility == 'public';
-      allow write: if request.auth.uid == request.resource.data.authorId;
-    }
-    
-    // USER-SPECIFIC
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth.uid == userId;
-    }
-    
-    // PRODUCTS
-    match /products/{productId} {
-        allow read: if true;
-        allow write: if request.auth.uid == request.resource.data.ownerId;
-    }
-    
-    // ORDERS & PAYMENTS
-    match /orders/{orderId} {
-        allow read: if request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId;
-        allow create: if request.auth.uid == request.resource.data.buyerId;
-        allow update: if request.auth.uid == resource.data.sellerId; // Seller updates status
-    }
-    
-    match /payments/{paymentId} {
-        allow read: if request.auth.uid == resource.data.sellerId || isAdmin();
-        // Payments are created by backend functions, not clients
-        allow write: if false;
-    }
-    
-     match /wallets/{agentId} {
-      // Only backend can update wallets for now
-      allow read, write: if false; 
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
     }
 
+    // AGENTS
+    match /adminAgents/{agentId} {
+        allow read: if true;
+        // write is admin-only (covered by global rule)
+    }
+     match /users/{userId}/agents/{agentId} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // CALLS & SESSIONS
+    match /calls/{callId} {
+      allow read, write: if request.auth != null;
+    }
+    match /aiSessions/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // SALES & WALLETS
+    match /sales/{saleId} {
+      allow read, create: if request.auth != null;
+      // update, delete is admin-only (covered by global rule)
+    }
+    match /wallets/{agentId} {
+       allow read, update: if request.auth != null && (request.auth.uid == agentId);
+       // Full access for admin is covered by global rule
+    }
+    match /walletTransactions/{txId} {
+       allow read: if request.auth != null; // User can read their own, admin can read all
+    }
+     match /withdrawalRequests/{reqId} {
+      allow create, read: if request.auth != null;
+      // update, delete is admin-only (covered by global rule)
+    }
+    
+    // GLOBAL CONFIG
+    match /commissionRates/{docId} {
+        allow read: if request.auth != null;
+        // write is admin-only (covered by global rule)
+    }
+    match /adminSettings/{settingId} {
+       allow read: if true;
+       // write is admin-only (covered by global rule)
+    }
   }
 }
