@@ -38,11 +38,6 @@ const nextConfig: NextConfig = {
     workerThreads: false,
     manualClientBasePath: true,
   },
-  webpack: (config, { isServer }) => {
-    // Cast config to any to modify infrastructureLogging
-    (config as any).infrastructureLogging = { level: 'error' };
-    return config;
-  },
 };
 
 export default nextConfig;
