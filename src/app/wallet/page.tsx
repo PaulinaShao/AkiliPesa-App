@@ -34,18 +34,28 @@ const isCredit = (type: Transaction['type']) => !['Sent', 'Withdraw', 'deduction
 
 
 export default function WalletPage() {
-  const { user } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
   
-  const transactionsQuery = useMemoFirebase(() => (
-    user ? query(collection(firestore, 'transactions'), where('uid', '==', user.uid), orderBy('createdAt', 'desc')) : null
-  ), [user, firestore]);
+  const transactionsQuery = useMemoFirebase(() => {
+    // IMPORTANT: Wait for user to be authenticated before building the query
+    if (!firestore || !user?.uid) return null;
+    
+    // Query must include the where clause to match security rules
+    return query(
+        collection(firestore, 'transactions'), 
+        where('uid', '==', user.uid), 
+        orderBy('createdAt', 'desc')
+    );
+  }, [user, firestore]);
+
   const { data: transactions, isLoading: isTransactionsLoading } = useCollection<any>(transactionsQuery);
 
   const wallet = userProfile?.wallet;
+  const isLoading = isAuthLoading || isProfileLoading;
 
   return (
     <div className="dark">
@@ -59,7 +69,7 @@ export default function WalletPage() {
               <CardTitle className="text-sm font-light text-primary-foreground/80">Available Balance</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {isProfileLoading ? (
+              {isLoading ? (
                  <p className="text-4xl font-bold">Loading...</p>
               ) : (
                 <p className="text-4xl font-bold">TZS {wallet?.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</p>
