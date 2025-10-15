@@ -433,15 +433,24 @@ export const verifyAndReleaseEscrow = onDocumentUpdated("deliveryProofs/{id}", a
     // Check if already verified to prevent re-triggering
     if (before.verified === true || after.verified !== true) return;
 
-    // In a real scenario, this would involve calling a RunPod/OpenAI endpoint
-    // For this implementation, we assume verification is successful if 'verified' is set to true
+    const orderDoc = await db.collection("orders").doc(after.orderId).get();
+    if (!orderDoc.exists) return;
+    const order = orderDoc.data()!;
+
+    // Phase 8 Enhancement: Check product verification status
+    const verificationDoc = await db.collection("productVerification").doc(order.productId).get();
+    const verification = verificationDoc.data();
+    if (verification && verification.status !== "verified") {
+        console.log(`⚠️ Product ${order.productId} not verified, skipping escrow release for order ${after.orderId}`);
+        await db.collection("escrow").doc(order.escrowId).update({
+            status: "hold_for_review"
+        });
+        return;
+    }
+    
     const aiVerified = after.verified === true;
     
     if (aiVerified) {
-        const orderDoc = await db.collection("orders").doc(after.orderId).get();
-        if (!orderDoc.exists) return;
-        const order = orderDoc.data()!;
-
         await db.collection("escrow").doc(order.escrowId).update({
             status: "released",
             releasedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -479,6 +488,92 @@ export const onRefundRequest = onDocumentCreated("refunds/{id}", async (event) =
     await escrowRef.update({ status: "refund_pending" });
     await db.collection("orders").doc(escrow.orderId).update({ status: "refund_requested" });
     // Optional: notify admin channel via email/webhook here
+});
+
+
+// --- Phase 8 Functions ---
+
+// Helper function to simulate calling an external AI for verification
+async function verifyMediaWithAI(imageUrl: string, type: string) {
+  try {
+    // This is a placeholder for a real API call to a service like OpenAI Vision
+    // In a real implementation, you would use `fetch` to call the AI endpoint.
+    console.log(`Verifying ${type} media: ${imageUrl}`);
+
+    // Simulate AI response logic
+    const isSuspicious = imageUrl.includes("suspicious") || Math.random() < 0.1; // 10% chance of being flagged
+    
+    if (isSuspicious) {
+      return {
+        verified: false,
+        flags: ["ai_flag_suspicious_content"],
+        confidence: 0.45,
+        aiVendor: "Simulated_AI_Vision"
+      };
+    }
+
+    return {
+      verified: true,
+      flags: [],
+      confidence: 0.97,
+      aiVendor: "Simulated_AI_Vision"
+    };
+
+  } catch (err) {
+    console.error("AI verification error:", err);
+    return { verified: false, flags: ["ai_check_failed"], confidence: 0.1, aiVendor: "Simulated_AI_Vision" };
+  }
+}
+
+// 1. Product Listing Verification
+export const onProductCreatedVerify = onDocumentCreated("products/{productId}", async (event) => {
+  const product = event.data?.data();
+  if (!product || !product.media) {
+    console.log(`Product ${event.params.productId} has no media to verify.`);
+    return;
+  }
+
+  const result = await verifyMediaWithAI(product.media, "product");
+  
+  await db.collection("productVerification").doc(event.params.productId).set({
+    productId: event.params.productId,
+    sellerId: product.ownerId,
+    status: result.verified ? "verified" : "flagged",
+    confidenceScore: result.confidence,
+    flags: result.flags,
+    aiVendor: result.aiVendor,
+    checkedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+});
+
+// 2. Delivery Proof Verification
+export const onDeliveryProofAdded = onDocumentCreated("deliveryProofs/{id}", async (event) => {
+  const proof = event.data?.data();
+  if (!proof || !proof.url) {
+      console.log(`Delivery proof ${event.params.id} has no URL to verify.`);
+      return;
+  }
+
+  const result = await verifyMediaWithAI(proof.url, "delivery");
+
+  // Update the proof itself with verification status
+  await db.collection("deliveryProofs").doc(event.params.id).update({
+      verified: result.verified,
+      verificationFlags: result.flags
+  });
+  
+  if (!result.verified) {
+    await db.collection("mediaReports").add({
+      fileId: event.params.id,
+      orderId: proof.orderId,
+      detectedIssue: result.flags[0] || "ai_flagged",
+      severity: "high",
+      sourceUrl: proof.url,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+    // This status update will be picked up by onOrderStatusChange
+    await db.collection("orders").doc(proof.orderId).update({ status: "verification_failed" });
+  }
 });
 
 
@@ -814,3 +909,5 @@ export const tickCalls = functions.pubsub.schedule('every 2 minutes').onRun(asyn
   // For now, it performs no operation.
   return null;
 });
+
+    

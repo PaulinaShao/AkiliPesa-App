@@ -107,6 +107,7 @@ export default function AdminSessions() {
             <Button variant="outline" asChild><Link href="/admin/agents">Agents</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/verification">Verification</Link></Button>
           </div>
       </div>
 
@@ -246,3 +247,5 @@ export default function AdminSessions() {
     </>
   );
 }
+
+    
