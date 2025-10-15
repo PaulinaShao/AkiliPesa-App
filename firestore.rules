@@ -1,264 +1,288 @@
 /**
- * @file Firebase Security Rules for AkiliPesa
+ * @fileOverview Firestore Security Rules for AkiliPesa application.
  *
- * @core_philosophy This ruleset enforces a strict user-ownership model for user-specific data
- *  (profiles, clones, agents) and a public-read, owner-write model for posts and products.
- *  Administrative settings are restricted to authenticated users.
- *  Transaction list access has been removed as there is no clear ownership defined in the entity
- *  definition.
+ * Core Philosophy:
+ * This ruleset enforces a user-ownership model for user-specific data,
+ * combined with some public read access for certain collections like 'posts' and 'products'.
+ * Administrative access is granted via email verification.
  *
- * @data_structure
- * - /users/{userId}: User profile data, owned by the user.
- * - /users/{userId}/clones/{cloneId}: Digital clones belonging to the user.
- * - /users/{userId}/agents/{agentId}: AI agents belonging to the user.
- * - /posts/{postId}: Publicly readable posts, owned by the author.
- * - /products/{productId}: Publicly readable products, owned by the seller.
- * - /orders/{orderId}: Order data, access controlled through ownership.
- * - /payments/{paymentId}: Payment data, access controlled through ownership.
+ * Data Structure:
+ * - /users/{userId}: User profile information, accessible only to the user.
+ * - /users/{userId}/clones/{cloneId}: User-specific clones, accessible only to the user.
+ * - /users/{userId}/agents/{agentId}: User-specific agents, accessible only to the user.
+ * - /posts/{postId}: Publicly readable posts, writable only by the owner.
+ * - /products/{productId}: Publicly readable products, writable only by the owner.
+ * - /orders/{orderId}: Orders, accessible to buyer and seller.
+ * - /payments/{paymentId}: Payments, accessible to seller.
  * - /plans/{planId}: Publicly readable subscription plans.
- * - /calls/{callId}: Call session data, access controlled through participant IDs.
- * - /transactions/{txId}: Transaction history.
- * - /adminSettings/{settingId}: Administrative settings, restricted to authenticated users.
- * - /adminAgents/{agentId}: Admin-created AI agents.
+ * - /calls/{callId}: Call session data, access controlled by caller and agent.
+ * - /transactions/{txId}: Transaction history, accessible only to the user.
+ * - /adminSettings/{settingId}: Admin settings, only accessible by admin.
+ * - /adminAgents/{agentId}: Admin agents, only accessible by admin.
+ * - /referrals/{refId}: Referrals, read access to the sharer and admin, create access to signed in users.
+ * - /agentStats/{agentId}: Agent statistics, read access to all signed in users, write/update access to admin only.
+ * - /escrow/{escrowId}: Escrow transaction funds release status, no specific access control enforced.
  *
- * @key_security_decisions
- * - User listing is disabled to prevent data scraping.
- * - Public read access is granted to the /posts and /products collections, with owner-only writes.
- * - Ambiguous relationships default to strict owner-only access for write operations.
- * - Transaction listing has been disabled since the owner could not be determined from the data.
+ * Key Security Decisions:
+ * - User listing is generally disallowed for privacy.
+ * - Data validation is relaxed in this prototype phase, focusing on authorization.
+ * - All potentially sensitive write operations require user authentication.
+ * - Public read access is granted to 'posts', 'products', and 'plans' collections.
  *
- * @denormalization_for_authorization
- * - The rules rely on the `authorId` field in `/posts/{postId}` and the `ownerId` field in `/products/{productId}`
- *  to enforce ownership for write operations.
- * - Orders and payments are readable by both buyer and seller, whose IDs are stored directly in the document.
- *
- * @structural_segregation
- * - User-specific data (clones, agents) is stored in subcollections under the /users/{userId} path to enforce
- *  ownership.
+ * Denormalization for Authorization:
+ * - The ruleset relies on denormalized 'ownerId' (or similar) fields in 'posts' and 'products' to enforce owner-only writes.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is made by a signed-in user.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the request is made by the owner of the resource.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the request is made by the existing owner of the resource.
-     *  Ensures that the resource exists before checking ownership.
-     *  This is used for update and delete operations to prevent acting on non-existent documents.
-     */
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rules for user profiles.
+     * @description Enforces access control for user profiles. Only the authenticated user can read/write their own profile.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user123' can create their profile with matching userId.
-     * @allow (get) User with UID 'user123' can read their own profile.
-     * @allow (update) User with UID 'user123' can update their own profile.
-     * @deny (create) User with UID 'user456' cannot create a profile with userId 'user123'.
-     * @deny (update) User with UID 'user456' cannot update the profile of user 'user123'.
-     * @principle Enforces document ownership for writes.
+     * @allow (get, list, create, update, delete) User with ID 'user123' can read, create, update or delete their own profile.
+     * @deny (get, list, create, update, delete) User with ID 'user456' cannot read, create, update or delete profile of user 'user123'.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isExistingOwner(userId);
+      allow list: if false; // User listing is not permitted.
+      allow create: if isOwner(userId) && request.auth.uid == userId;
+      allow update: if isExistingOwner(userId) && request.auth.uid == userId;
+      allow delete: if isExistingOwner(userId) && request.auth.uid == userId;
     }
 
     /**
-     * @description Rules for user posts.
+     * @description Enforces access control for posts. Any authenticated user can read posts. Only the owner can write.
      * @path /posts/{postId}
-     * @allow (get) Any user can read any post.
-     * @allow (list) Any user can list posts.
-     * @allow (create) User with UID 'user123' can create a post with authorId 'user123'.
-     * @allow (update) User with UID 'user123' can update a post where they are the author.
-     * @deny (create) User with UID 'user456' cannot create a post with authorId 'user123'.
-     * @deny (update) User with UID 'user456' cannot update a post where user 'user123' is the author.
-     * @principle Public read, owner-only write access.
+     * @allow (get, list) Any authenticated user can read all posts.
+     * @allow (create, update, delete) User with ID 'user123' can create, update, delete a post where post.authorId == 'user123'.
+     * @deny (create, update, delete) User with ID 'user456' cannot create, update, delete a post where post.authorId == 'user123'.
+     * @principle Allows public read access with owner-only writes.
      */
     match /posts/{postId} {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update: if isSignedIn() && resource != null && resource.data.authorId == request.auth.uid;
       allow delete: if isSignedIn() && resource != null && resource.data.authorId == request.auth.uid;
     }
 
     /**
-     * @description Rules for user clones.
+     * @description Enforces access control for user-specific clones. Only the authenticated user can read/write their own clones.
      * @path /users/{userId}/clones/{cloneId}
-     * @allow (create) User with UID 'user123' can create a clone under their profile.
-     * @allow (get) User with UID 'user123' can read their own clone data.
-     * @allow (update) User with UID 'user123' can update their own clone data.
-     * @deny (create) User with UID 'user456' cannot create a clone under user 'user123'.
-     * @deny (update) User with UID 'user456' cannot update the clone data of user 'user123'.
-     * @principle Enforces document ownership for writes.
+     * @allow (get, list, create, update, delete) User with ID 'user123' can read, create, update or delete their own clones.
+     * @deny (get, list, create, update, delete) User with ID 'user456' cannot read, create, update or delete clones of user 'user123'.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/clones/{cloneId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwner(userId);
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == userId;
+      allow delete: if isExistingOwner(userId) && request.resource.data.userId == userId;
     }
 
     /**
-     * @description Rules for user agents.
+     * @description Enforces access control for user-specific agents. Only the authenticated user can read/write their own agents.
      * @path /users/{userId}/agents/{agentId}
-     * @allow (create) User with UID 'user123' can create an agent under their profile.
-     * @allow (get) User with UID 'user123' can read their own agent data.
-     * @allow (update) User with UID 'user123' can update their own agent data.
-     * @deny (create) User with UID 'user456' cannot create an agent under user 'user123'.
-     * @deny (update) User with UID 'user456' cannot update the agent data of user 'user123'.
-     * @principle Enforces document ownership for writes.
+     * @allow (get, list, create, update, delete) User with ID 'user123' can read, create, update or delete their own agents.
+     * @deny (get, list, create, update, delete) User with ID 'user456' cannot read, create, update or delete agents of user 'user123'.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/agents/{agentId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == agentId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
     }
 
     /**
-     * @description Rules for products.
+     * @description Enforces access control for products. Any authenticated user can read products. Only the owner can write.
      * @path /products/{productId}
-     * @allow (get) Any user can read any product.
-     * @allow (list) Any user can list products.
-     * @allow (create) User with UID 'user123' can create a product with ownerId 'user123'.
-     * @allow (update) User with UID 'user123' can update a product where they are the owner.
-     * @deny (create) User with UID 'user456' cannot create a product with ownerId 'user123'.
-     * @deny (update) User with UID 'user456' cannot update a product where user 'user123' is the owner.
-     * @principle Public read, owner-only write access.
+     * @allow (get, list) Any authenticated user can read all products.
+     * @allow (create, update, delete) User with ID 'user123' can create, update, delete a product where product.ownerId == 'user123'.
+     * @deny (create, update, delete) User with ID 'user456' cannot create, update, delete a product where product.ownerId == 'user123'.
+     * @principle Allows public read access with owner-only writes.
      */
     match /products/{productId} {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update: if isSignedIn() && resource != null && resource.data.ownerId == request.auth.uid;
       allow delete: if isSignedIn() && resource != null && resource.data.ownerId == request.auth.uid;
     }
 
     /**
-     * @description Rules for orders.
+     * @description Enforces access control for orders.
      * @path /orders/{orderId}
-     * @allow (get) Buyer or seller can read the order.
-     * @allow (create) Any authenticated user can create an order.
-     * @allow (update) Buyer or seller can update the order.
-     * @deny (update) User who is neither buyer nor seller cannot update the order.
-     * @principle Shared access between buyer and seller.
+     * @allow (get) The buyer or the seller can read the order.
+     * @allow (create) Only signed in users can create orders.
+     * @allow (update) Only the buyer or seller can update the order.
+     * @allow (delete) Only the buyer or seller can delete the order.
+     * @deny (get) A user who is neither the buyer nor the seller cannot read the order.
+     * @principle Shared access (closed collaborators) pattern.
      */
     match /orders/{orderId} {
-      allow get: if isSignedIn() && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
-      allow delete: if isSignedIn() && resource != null && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
+        allow get: if isSignedIn() && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
+        allow list: if false; // Listing orders is not permitted.
+        allow create: if isSignedIn();
+        allow update: if isSignedIn() && resource != null && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
+        allow delete: if isSignedIn() && resource != null && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
     }
 
     /**
-     * @description Rules for payments.
+     * @description Enforces access control for payments.
      * @path /payments/{paymentId}
-     * @allow (get) Seller can read their payments.
-     * @allow (create) Any authenticated user can create a payment.
+     * @allow (get) The seller can read the payment.
+     * @allow (list) Listing payments is not permitted.
+     * @allow (create) Only signed in users can create payments.
      * @allow (update) Only the seller can update the payment.
-     * @deny (update) User who is not the seller cannot update the payment.
-     * @principle Owner-only access for seller.
+     * @allow (delete) Only the seller can delete the payment.
+     * @deny (get) A user who is not the seller cannot read the payment.
+     * @principle Shared access (closed collaborators) pattern, focusing on the seller.
      */
     match /payments/{paymentId} {
-      allow get: if isSignedIn() && request.auth.uid == resource.data.sellerId;
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null && request.auth.uid == resource.data.sellerId;
-      allow delete: if isSignedIn() && resource != null && request.auth.uid == resource.data.sellerId;
+        allow get: if isSignedIn() && request.auth.uid == resource.data.sellerId;
+        allow list: if false; // Listing payments is not permitted.
+        allow create: if isSignedIn();
+        allow update: if isSignedIn() && resource != null && request.auth.uid == resource.data.sellerId;
+        allow delete: if isSignedIn() && resource != null && request.auth.uid == resource.data.sellerId;
     }
 
     /**
-     * @description Rules for plans.
+     * @description Enforces access control for subscription plans. Any authenticated user can read plans.
      * @path /plans/{planId}
-     * @allow (get) Any user can read any plan.
-     * @allow (list) Any user can list plans.
-     * @principle Public read access.
+     * @allow (get, list) Any authenticated user can read all plans.
+     * @principle Allows public read access.
      */
     match /plans/{planId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false; // Plans are not created/updated/deleted via client.
     }
 
     /**
-     * @description Rules for calls.
+     * @description Enforces access control for calls.
      * @path /calls/{callId}
-     * @allow (get) Any user can read call data.
-     * @allow (create) Any authenticated user can create a call record.
-     * @allow (update) Any authenticated user can update the call record.
-     * @principle Owner-only access.
+     * @allow (get) The caller or the agent can read the call.
+     * @allow (create) Only signed in users can create calls.
+     * @allow (update) Only the caller or agent can update the call.
+     * @allow (delete) Calls cannot be deleted by client.
+     * @deny (get) A user who is neither the caller nor the agent cannot read the call.
+     * @principle Shared access (closed collaborators) pattern.
      */
     match /calls/{callId} {
-      allow get: if isSignedIn() && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.agentId);
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.agentId);
-      allow delete: if isSignedIn() && resource != null && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.agentId);
+        allow get: if isSignedIn() && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.agentId);
+        allow list: if false; // Listing calls is not permitted.
+        allow create: if isSignedIn();
+        allow update: if isSignedIn() && resource != null && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.agentId);
+        allow delete: if false; // Calls cannot be deleted by the client.
     }
 
     /**
-     * @description Rules for transactions.
+     * @description Enforces access control for transactions. Only the authenticated user can read their own transactions.
      * @path /transactions/{txId}
-     * @deny (list) Listing transactions should never be allowed.
-     * @allow (get) Only the owner can read the transaction
-     * @principle Owner-only access.
+     * @allow (get) User with ID 'user123' can read their own transaction.
+     * @deny (get) User with ID 'user456' cannot read transaction of user 'user123'.
+     * @principle Enforces document ownership for all operations.
      */
     match /transactions/{txId} {
-      allow get: if isSignedIn() && request.auth.uid == resource.data.uid;
-      allow list: if false;
+      allow get: if isOwner(resource.data.uid);
+      allow list: if false; // Transaction listing is not permitted.
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if isSignedIn() && resource != null && request.auth.uid == resource.data.uid;
-      allow delete: if isSignedIn() && resource != null && request.auth.uid == resource.data.uid;
+      allow update, delete: if false; // Transactions are not updated or deleted by the client.
     }
 
     /**
-     * @description Rules for admin settings.
+     * @description Enforces access control for admin settings. Only admin users can read/write.
      * @path /adminSettings/{settingId}
-     * @allow (get) Any authenticated user can read admin settings.
-     * @principle Authenticated read access.
+     * @allow (get, create, update, delete) Only admin users can read/write admin settings.
+     * @deny (get, create, update, delete) Regular users cannot read/write admin settings.
+     * @principle Enforces admin-only access.
      */
     match /adminSettings/{settingId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Rules for admin agents.
+     * @description Enforces access control for admin agents. Only admin users can read/write.
      * @path /adminAgents/{agentId}
+     * @allow (get, create, update, delete) Only admin users can read/write admin agents.
+     * @deny (get, create, update, delete) Regular users cannot read/write admin agents.
+     * @principle Enforces admin-only access.
      */
     match /adminAgents/{agentId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Enforces access control for referrals. Only the user who shared and admin can read. Only authenticated users can create.
+     * @path /referrals/{refId}
+     * @allow (get) The user who shared the referral or admin can read the referral.
+     * @allow (create) Authenticated users can create referrals.
+     * @deny (get) A user who did not share the referral and is not admin cannot read the referral.
+     * @principle Shared access (closed collaborators) pattern.
+     */
+    match /referrals/{refId} {
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.sharedBy || isAdmin());
+      allow list: if false; // Listing referrals is not permitted.
+      allow create: if isSignedIn();
+      allow update, delete: if false; //Referrals are not updated or deleted by the client.
+    }
+
+    /**
+     * @description Enforces access control for agent statistics. All signed in users can read, only admin can write/update.
+     * @path /agentStats/{agentId}
+     * @allow (read) All signed-in users can read agent stats.
+     * @allow (write, update) Admin users can write and update agent stats.
+     * @principle Allows public read access with admin-only writes.
+     */
+    match /agentStats/{agentId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isAdmin();
+      allow delete: if false; // Agent stats are not deleted by the client.
+    }
+
+    /**
+     * @description Enforces access control for escrow. No specific access control enforced.
+     * @path /escrow/{escrowId}
+     */
+    match /escrow/{escrowId} {
+        allow get, list, create, update, delete: if false; // No specific access control enforced.
+    }
+
+    /**
+     * @description Checks if the request is from an authenticated user.
+     * @returns {boolean} True if the user is authenticated, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the user ID matches the authenticated user's ID.
+     * @param {string} userId The user ID to compare against the authenticated user's ID.
+     * @returns {boolean} True if the user IDs match, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the user ID matches the authenticated user's ID and the resource exists.
+     * @param {string} userId The user ID to compare against the authenticated user's ID.
+     * @returns {boolean} True if the user IDs match and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user is an admin based on email verification.
+     * @returns {boolean} True if the user is an admin, false otherwise.
+     */
+    function isAdmin() {
+        return isSignedIn() && request.auth.token.email == "blagridigital@gmail.com";
     }
   }
 }

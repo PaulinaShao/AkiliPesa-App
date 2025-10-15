@@ -1,197 +1,95 @@
+
 'use client';
 
-import { useState } from 'react';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useMemoFirebase } from '@/firebase/use-memo-firebase';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose
-} from "@/components/ui/dialog";
-import { Header } from '@/components/header';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import { useFirestore, useUser } from "@/firebase";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Header } from "@/components/header";
+import { Button } from "@/components/ui/button";
 
-// This corresponds to the AdminAgent entity in backend.json, without server-generated fields
-type AdminAgentForm = {
-  name: string;
-  avatarUrl: string;
-  pricePerSecondCredits: number;
-  status: 'active' | 'paused' | 'archived';
-  visibility: 'admin-only' | 'public';
-};
+type AgentStat = {
+    agentId: string;
+    totalSales: number;
+    totalRevenue: number;
+    referralsConverted?: number;
+    rank: 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | string;
+}
 
-const initialAgentState: AdminAgentForm = {
-    name: '',
-    avatarUrl: '',
-    pricePerSecondCredits: 0.10,
-    status: 'active',
-    visibility: 'admin-only',
-};
-
-
-export default function AdminAgentsPage() {
+export default function AgentRanking() {
+  const [agents, setAgents] = useState<AgentStat[]>([]);
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentAgent, setCurrentAgent] = useState<AdminAgentForm | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const router = useRouter();
 
-  const agentsCollectionRef = useMemoFirebase(
-    () => collection(firestore, 'adminAgents'),
-    [firestore]
-  );
-  const { data: agents, isLoading } = useCollection<any>(agentsCollectionRef);
-
-  const openNewAgentDialog = () => {
-    setCurrentAgent(initialAgentState);
-    setEditingId(null);
-    setIsDialogOpen(true);
-  }
-
-  const openEditAgentDialog = (agent: any) => {
-    const agentDataForForm = {
-        name: agent.name,
-        avatarUrl: agent.avatarUrl,
-        pricePerSecondCredits: agent.pricePerSecondCredits,
-        status: agent.status,
-        visibility: agent.visibility
-    };
-    setCurrentAgent(agentDataForForm);
-    setEditingId(agent.id);
-    setIsDialogOpen(true);
-  }
-  
-  const handleSaveAgent = async () => {
-    if (!currentAgent || !firestore) return;
-    
-    // Construct the payload, ensuring price is a number
-    const payload = {
-        ...currentAgent,
-        pricePerSecondCredits: Number(currentAgent.pricePerSecondCredits) || 0,
-    };
-
-    if (editingId) {
-      // Update existing agent
-      const agentDocRef = doc(firestore, 'adminAgents', editingId);
-      await updateDoc(agentDocRef, payload);
-    } else {
-      // Create new agent
-      await addDoc(collection(firestore, 'adminAgents'), {
-          ...payload,
-          createdAt: serverTimestamp()
-      });
+  useEffect(() => {
+    if (isUserLoading) return;
+    if (!user || user.email !== "blagridigital@gmail.com") {
+      router.push("/auth/login");
+      return;
     }
-    
-    setIsDialogOpen(false);
-    setCurrentAgent(null);
-    setEditingId(null);
-  }
+    if (!firestore) return;
 
-  const handleDeleteAgent = async (agentId: string) => {
-      if (window.confirm("Are you sure you want to delete this agent?") && firestore) {
-        const agentDocRef = doc(firestore, 'adminAgents', agentId);
-        await deleteDoc(agentDocRef);
-      }
-  }
+    const q = query(collection(firestore, "agentStats"), orderBy("totalRevenue", "desc"));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const agentList: AgentStat[] = snap.docs.map((doc) => doc.data() as AgentStat);
+      setAgents(agentList);
+    });
+    return () => unsubscribe();
+  }, [user, isUserLoading, firestore, router]);
 
+  const rankColors: Record<string, string> = {
+    Bronze: "text-yellow-700",
+    Silver: "text-gray-400",
+    Gold: "text-yellow-500",
+    Platinum: "text-primary"
+  };
 
   return (
     <>
-      <Header isMuted={true} onToggleMute={()=>{}} />
-      <div className="max-w-4xl mx-auto p-4 pt-20">
+      <Header isMuted={true} onToggleMute={() => {}} />
+      <div className="min-h-screen p-6 pt-20">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Admin Agents</h1>
-           <div className='flex gap-2'>
-            <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
-            <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
-            <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>
-            <Button onClick={openNewAgentDialog}><PlusCircle className="mr-2 h-4 w-4"/>Create Agent</Button>
-          </div>
+            <h1 className="text-2xl font-bold text-gradient">Agent Performance Leaderboard</h1>
+             <div className='flex gap-2'>
+                <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
+                <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
+                <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>
+            </div>
         </div>
-
-        {isLoading && <p>Loading agents...</p>}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {agents?.map(agent => (
-                <Card key={agent.id}>
-                    <CardHeader>
-                        <CardTitle className="flex justify-between items-start">
-                           <span>{agent.name}</span>
-                           <span className={`text-xs px-2 py-1 rounded-full ${agent.status === 'active' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'}`}>{agent.status}</span>
-                        </CardTitle>
-                        <CardDescription>ID: {agent.id}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm">Price/sec: {agent.pricePerSecondCredits} credits</p>
-                        <p className="text-sm">Visibility: {agent.visibility}</p>
-                    </CardContent>
-                    <CardFooter className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => openEditAgentDialog(agent)}><Edit className="h-4 w-4"/></Button>
-                        <Button variant="destructive" size="icon" onClick={() => handleDeleteAgent(agent.id)}><Trash2 className="h-4 w-4"/></Button>
-                    </CardFooter>
-                </Card>
-            ))}
+        <div className="overflow-x-auto border rounded-lg">
+            <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                <tr className="border-b">
+                    <th className="p-3 text-left font-medium">Agent ID</th>
+                    <th className="p-3 text-left font-medium">Sales</th>
+                    <th className="p-3 text-left font-medium">Revenue (TZS)</th>
+                    <th className="p-3 text-left font-medium">Referrals</th>
+                    <th className="p-3 text-left font-medium">Rank</th>
+                </tr>
+                </thead>
+                <tbody>
+                {agents.map((a) => (
+                    <tr key={a.agentId} className="border-t hover:bg-muted/50">
+                    <td className="p-3 font-mono text-xs">{a.agentId}</td>
+                    <td className="p-3">{a.totalSales}</td>
+                    <td className="p-3">{a.totalRevenue.toLocaleString()}</td>
+                    <td className="p-3">{a.referralsConverted || 0}</td>
+                    <td className={`p-3 font-bold ${rankColors[a.rank] || 'text-foreground'}`}>{a.rank}</td>
+                    </tr>
+                ))}
+                {agents.length === 0 && (
+                    <tr>
+                        <td colSpan={5} className="p-4 text-center text-muted-foreground">
+                            No agent stats available yet.
+                        </td>
+                    </tr>
+                )}
+                </tbody>
+            </table>
         </div>
       </div>
-      
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{editingId ? 'Edit Agent' : 'Create New Agent'}</DialogTitle>
-                    <DialogDescription>
-                        Fill out the details for the AI agent.
-                    </DialogDescription>
-                </DialogHeader>
-                {currentAgent && (
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name" className="text-right">Name</Label>
-                            <Input id="name" value={currentAgent.name} onChange={(e) => setCurrentAgent({...currentAgent, name: e.target.value})} className="col-span-3" />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="avatarUrl" className="text-right">Avatar URL</Label>
-                            <Input id="avatarUrl" value={currentAgent.avatarUrl} onChange={(e) => setCurrentAgent({...currentAgent, avatarUrl: e.target.value})} className="col-span-3" />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="price" className="text-right">Price/sec (Credits)</Label>
-                            <Input id="price" type="number" step="0.01" value={currentAgent.pricePerSecondCredits} onChange={(e) => setCurrentAgent({...currentAgent, pricePerSecondCredits: parseFloat(e.target.value)})} className="col-span-3" />
-                        </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="status" className="text-right">Status</Label>
-                            <select id="status" value={currentAgent.status} onChange={(e) => setCurrentAgent({...currentAgent, status: e.target.value as AdminAgentForm['status']})} className="col-span-3 bg-background border border-input rounded-md px-3 py-2 text-sm">
-                                <option value="active">Active</option>
-                                <option value="paused">Paused</option>
-                                <option value="archived">Archived</option>
-                            </select>
-                        </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="visibility" className="text-right">Visibility</Label>
-                             <select id="visibility" value={currentAgent.visibility} onChange={(e) => setCurrentAgent({...currentAgent, visibility: e.target.value as AdminAgentForm['visibility']})} className="col-span-3 bg-background border border-input rounded-md px-3 py-2 text-sm">
-                                <option value="admin-only">Admin Only</option>
-                                <option value="public">Public</option>
-                            </select>
-                        </div>
-                    </div>
-                )}
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button type="button" variant="secondary">Cancel</Button>
-                    </DialogClose>
-                    <Button type="submit" onClick={handleSaveAgent}>Save</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     </>
   );
 }
