@@ -6,8 +6,9 @@ import { Home, Search, PlusSquare, User, Users, Wallet, Inbox } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
 import { UserAvatar } from '@/components/user-avatar';
-import { users } from '@/lib/data';
 import { Button } from '@/components/ui/button';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 const mainNavLinks = [
   { href: '/', icon: Home, label: 'Home' },
@@ -15,13 +16,21 @@ const mainNavLinks = [
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/create/ai', icon: PlusSquare, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
-  { href: '/u/financeWizard', icon: User, label: 'Profile' },
+  { href: '/u/placeholder', icon: User, label: 'Profile' }, // Placeholder href
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const currentUser = users.find(u => u.username === 'financeWizard');
+  const { user: authUser } = useUser();
+  const firestore = useFirestore();
 
+  const userDocRef = useMemoFirebase(
+    () => (authUser ? doc(firestore, 'users', authUser.uid) : null),
+    [authUser, firestore]
+  );
+  const { data: currentUserProfile } = useDoc(userDocRef);
+
+  const profileHref = currentUserProfile?.handle ? `/u/${currentUserProfile.handle}` : (authUser ? `/u/${authUser.uid}` : '/auth/login');
 
   return (
     <aside className="hidden md:flex flex-col w-64 border-r bg-background fixed h-full p-4 space-y-6">
@@ -33,7 +42,7 @@ export function SidebarNav() {
       <nav className="flex-1">
         <ul className="space-y-2">
           {mainNavLinks.map(({ href, icon: Icon, label }) => {
-            const finalHref = label === 'Profile' ? `/u/financeWizard` : href;
+            const finalHref = label === 'Profile' ? profileHref : href;
             let isActive = false;
             if (href === '/') {
               isActive = pathname === '/';
@@ -46,11 +55,11 @@ export function SidebarNav() {
             }
 
             return (
-            <li key={href}>
+            <li key={label}>
               <Link href={finalHref}>
                 <Button
                   variant={isActive ? 'secondary' : 'ghost'}
-                  className="w-full justify-start text-lg h-12"
+                  className="w-full justify-start text-lg h-12 text-foreground"
                 >
                   <Icon className="mr-3 h-6 w-6" />
                   {label}
@@ -61,30 +70,14 @@ export function SidebarNav() {
         </ul>
       </nav>
 
-      <div className="space-y-4">
-        <h2 className="px-2 text-sm font-semibold text-muted-foreground tracking-wider uppercase">Following</h2>
-        <ul className="space-y-2">
-            {users.slice(1, 5).map(user => (
-                <li key={user.id}>
-                     <Link href={`/u/${user.username}`}>
-                        <Button variant="ghost" className="w-full justify-start h-11">
-                            <UserAvatar src={user.avatar} username={user.username} className="h-8 w-8 mr-3" />
-                            <span className='truncate'>{user.name}</span>
-                        </Button>
-                    </Link>
-                </li>
-            ))}
-        </ul>
-      </div>
-
-      {currentUser && (
+      {currentUserProfile && (
         <div className="mt-auto">
-          <Link href={`/u/${currentUser.username}`}>
+          <Link href={profileHref}>
             <Button variant="outline" className="w-full justify-start h-14">
-              <UserAvatar src={currentUser.avatar} username={currentUser.username} className="h-10 w-10 mr-3" />
+              <UserAvatar src={currentUserProfile.photoURL} username={currentUserProfile.handle} className="h-10 w-10 mr-3" />
               <div className='text-left'>
-                  <p className='font-bold'>{currentUser.name}</p>
-                  <p className='text-muted-foreground text-sm'>@{currentUser.username}</p>
+                  <p className='font-bold'>{currentUserProfile.displayName}</p>
+                  <p className='text-muted-foreground text-sm'>@{currentUserProfile.handle}</p>
               </div>
             </Button>
           </Link>

@@ -4,17 +4,29 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Wallet, Plus, Inbox, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 const navLinks = [
   { href: '/', icon: Home, label: 'Home' },
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/create/ai', icon: Plus, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
-  { href: '/u/financeWizard', icon: User, label: 'Profile' },
+  { href: '/u/placeholder', icon: User, label: 'Profile' }, // Placeholder href
 ];
 
 export function BottomNavWrapper() {
   const pathname = usePathname();
+  const { user: authUser } = useUser();
+  const firestore = useFirestore();
+  
+  const userDocRef = useMemoFirebase(
+    () => (authUser ? doc(firestore, 'users', authUser.uid) : null),
+    [authUser, firestore]
+  );
+  const { data: currentUserProfile } = useDoc(userDocRef);
+
+  const profileHref = currentUserProfile?.handle ? `/u/${currentUserProfile.handle}` : (authUser ? `/u/${authUser.uid}` : '/auth/login');
   
   // Hide nav on any deep inbox (chat) pages.
   const isChatPage = /^\/inbox\/(?!akilipesa-ai)[^/]+$/.test(pathname);
@@ -42,7 +54,7 @@ export function BottomNavWrapper() {
             isActive = pathname.startsWith(href);
           }
           
-          const finalHref = label === 'Profile' ? `/u/financeWizard` : href;
+          const finalHref = label === 'Profile' ? profileHref : href;
 
           if (label === 'Create') {
             return (
