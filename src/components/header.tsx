@@ -6,6 +6,9 @@ import { Logo } from './logo';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
+import { useDoc, useFirestore, useUser } from '@/firebase';
+import { useMemoFirebase } from '@/firebase/use-memo-firebase';
+import { doc } from 'firebase/firestore';
 
 interface HeaderProps {
   transparent?: boolean;
@@ -14,6 +17,14 @@ interface HeaderProps {
 }
 
 export function Header({ transparent, isMuted, onToggleMute }: HeaderProps) {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
+
+  const walletBalance = userProfile?.wallet?.balance ?? 0;
+
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-40 flex h-16 items-center justify-between border-b px-4 md:px-6",
@@ -28,9 +39,13 @@ export function Header({ transparent, isMuted, onToggleMute }: HeaderProps) {
       <div className="flex flex-nowrap shrink items-center gap-2 md:gap-4 overflow-hidden">
         <div className="flex items-center gap-2 shrink-0">
             <Wallet className="h-6 w-6 text-muted-foreground"/>
-            <span className="font-semibold text-sm whitespace-nowrap truncate">TZS 20,000</span>
+            {user && !isProfileLoading ? (
+              <span className="font-semibold text-sm whitespace-nowrap truncate">TZS {walletBalance.toLocaleString('en-US')}</span>
+            ) : user ? (
+              <span className="font-semibold text-sm whitespace-nowrap truncate text-muted-foreground">...</span>
+            ) : null}
         </div>
-        <Badge variant="secondary" className="shrink-0">Premium</Badge>
+        {userProfile?.wallet?.plan?.id !== 'trial' && <Badge variant="secondary" className="shrink-0">Premium</Badge>}
         <Button variant="ghost" size="icon" onClick={onToggleMute}>
           {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
           <span className="sr-only">Toggle Sound</span>
