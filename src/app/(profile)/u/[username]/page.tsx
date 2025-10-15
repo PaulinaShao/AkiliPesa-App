@@ -11,13 +11,15 @@ import { useFirestore, useUser } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/use-memo-firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { videos as allVideos } from '@/lib/data'; // Keep for video data for now
+
+// Example video data, to be replaced with Firestore query later
+const userVideos: any[] = []; 
 
 export default function ProfilePage() {
   const params = useParams();
   const username = typeof params.username === 'string' ? params.username : '';
   const firestore = useFirestore();
-  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
+  const { isUserLoading: isAuthLoading } = useUser();
 
   const userQuery = useMemoFirebase(() => {
     if (!firestore || !username) return null;
@@ -46,9 +48,11 @@ export default function ProfilePage() {
   if (!user && !isLoading) {
     notFound();
   }
-
-  // This part still uses mock data, can be updated later to fetch user-specific videos from Firestore
-  const userVideos = allVideos.filter(v => v.userId === user.id);
+  
+  if (!user) {
+    // This case handles the moment between loading and notFound, preventing errors
+    return null;
+  }
 
   return (
     <div className="dark overflow-x-hidden w-full max-w-full">
