@@ -2,8 +2,9 @@
 'use strict';
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
+import fetch from "node-fetch";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -28,9 +29,9 @@ export const onSaleCreated = onDocumentCreated("sales/{saleId}", async (event) =
   // Fetch commission rates from a single admin config document
   const configDoc = await db.doc("commissionRates/adminConfig").get();
   const config = configDoc.data();
-  const productRate = config?.productCommission || 0.9; // Default 90%
-  const serviceRate = config?.serviceCommission || 0.6; // Default 60%
-  const callRate = config?.callCommission || 0; // Default 0%
+  const productRate = config?.productCommission ?? 0.9; // Default 90%
+  const serviceRate = config?.serviceCommission ?? 0.6; // Default 60%
+  const callRate = config?.callCommission ?? 0; // Default 0%
 
   let commission = 0;
   if (type === "product") commission = amount * productRate;
@@ -70,6 +71,64 @@ export const onSaleCreated = onDocumentCreated("sales/{saleId}", async (event) =
   });
 
   console.log(`Processed commission of ${commission} for agent ${agentId} from sale ${event.params.saleId}`);
+});
+
+const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/your-webhook-id"; // IMPORTANT: Replace with your real Make.com webhook URL
+
+export const onWithdrawalApproved = onDocumentUpdated("withdrawalRequests/{reqId}", async (event) => {
+  if (!event.data) {
+      return;
+  }
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+
+  // Only trigger when status changes from something else to "approved"
+  if (before.status !== "approved" && after.status === "approved") {
+    const payload = {
+      requestId: event.params.reqId,
+      agentId: after.agentId,
+      amount: after.amount,
+      paymentMethod: after.paymentMethod,
+      walletNumber: after.walletNumber
+    };
+
+    console.log(`Triggering payout for requestId: ${payload.requestId}`);
+
+    // Send payout trigger to Make.com
+    try {
+        const res = await fetch(MAKE_WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            await db.collection("walletTransactions").add({
+                agentId: after.agentId,
+                amount: -after.amount, // Record as a debit
+                type: "debit",
+                source: "withdrawal",
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                description: `Payout approved for ${after.paymentMethod.toUpperCase()}`
+            });
+            console.log(`✅ Payout triggered successfully for ${payload.requestId}`);
+        } else {
+            // If Make.com returns an error, log it and potentially set status to 'failed'
+            const errorText = await res.text();
+            console.error(`❌ Make webhook error for ${payload.requestId}: ${res.statusText}`, errorText);
+            await db.collection("withdrawalRequests").doc(event.params.reqId).update({
+                status: 'failed',
+                error: `Make.com webhook failed: ${res.statusText}`
+            });
+        }
+    } catch (error) {
+        console.error(`❌ Error calling Make webhook for ${payload.requestId}:`, error);
+        await db.collection("withdrawalRequests").doc(event.params.reqId).update({
+            status: 'failed',
+            error: (error as Error).message
+        });
+    }
+  }
 });
 
 

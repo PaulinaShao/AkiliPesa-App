@@ -1,68 +1,317 @@
+/**
+ * @fileoverview Firestore Security Rules for AkiliPesa Mobile-Money Integration (Automated Payout Engine)
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes a secure authorization model based on user ownership and admin roles.
+ * It provides flexible data shapes, allowing for rapid iteration without strict schema enforcement,
+ * except for critical fields required for authorization and relational integrity.
+ *
+ * Data Structure:
+ * - User-specific data (profiles, clones, agents) is nested under /users/{userId}.
+ * - Public or shared data (posts, products, orders, payments, calls, transactions, admin settings, admin agents)
+ *   is stored in top-level collections.
+ *
+ * Key Security Decisions:
+ * - User listing is generally disallowed to protect privacy.
+ * - Admin access is granted based on email verification using request.auth.token.email,
+ *   specifically checking for "blagridigital@gmail.com".
+ * - Public read access is granted only to collections explicitly intended for public consumption.
+ * - Write permissions always require authentication and are restricted based on ownership or admin roles.
+ *
+ * Denormalization for Authorization:
+ * To avoid costly `get()` calls, critical data such as ownership (e.g., authorId, ownerId, agentId) is
+ * denormalized directly into documents.  This enables fast, simple rules without extra database reads.
+ *
+ * Structural Segregation:
+ * Private user data is stored under /users/{userId}, while public data resides in top-level collections.
+ * This approach provides better security and performance for list operations compared to using a single
+ * collection with a boolean flag for visibility.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Admin can do anything
-    match /{document=**} {
-      allow read, write: if request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+
+    /**
+     * @description Checks if the user is signed in.
+     * @return {bool} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // USER DATA
-    match /users/{userId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
+    /**
+     * @description Checks if the user ID matches the requested user ID.
+     * @param {string} userId The user ID to compare against.
+     * @return {bool} True if the user ID matches, false otherwise.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
-    // POSTS
-    match /posts/{postId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
-    }
-
-    // AGENTS
-    match /adminAgents/{agentId} {
-        allow read: if true;
-        // write is admin-only (covered by global rule)
-    }
-     match /users/{userId}/agents/{agentId} {
-        allow read: if true;
-        allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // CALLS & SESSIONS
-    match /calls/{callId} {
-      allow read, write: if request.auth != null;
-    }
-    match /aiSessions/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-
-    // SALES & WALLETS
-    match /sales/{saleId} {
-      allow read, create: if request.auth != null;
-      // update, delete is admin-only (covered by global rule)
-    }
-    match /wallets/{agentId} {
-       allow read, update: if request.auth != null && (request.auth.uid == agentId);
-       // Full access for admin is covered by global rule
-    }
-    match /walletTransactions/{txId} {
-       allow read: if request.auth != null; // User can read their own, admin can read all
-    }
-     match /withdrawalRequests/{reqId} {
-      allow create, read: if request.auth != null;
-      // update, delete is admin-only (covered by global rule)
+    /**
+     * @description Checks if the user is an existing owner of the document.
+     * @param {string} userId The user ID to compare against.
+     * @return {bool} True if the user is the owner and the document exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
     
-    // GLOBAL CONFIG
-    match /commissionRates/{docId} {
-        allow read: if request.auth != null;
-        // write is admin-only (covered by global rule)
+    /**
+     * @description Checks if the request is made by the admin.
+     * @return {bool} True if the user's email is blagridigital@gmail.com, false otherwise.
+     */
+    function isAdmin() {
+        return request.auth.token.email == "blagridigital@gmail.com";
     }
+
+    /**
+     * @description Rules for user profiles.
+     * @path /users/{userId}
+     * @allow (create) Signed-in user can create their own profile if the userId matches their auth.uid.
+     * @allow (get, update, delete) Owner can read, update, and delete their own profile.
+     * @deny (create) User cannot create a profile with a mismatched userId.
+     * @deny (list) Listing all users is disallowed.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     */
+    match /users/{userId} {
+      // Read rules
+      allow get: if isOwner(userId);
+      allow list: if false;
+
+      // Write rules
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for user posts.
+     * @path /posts/{postId}
+     * @allow (get, list) Public read access to all posts.
+     * @allow (create) Signed-in user can create a post and must set authorId to their uid.
+     * @allow (update, delete) Owner can update and delete their own posts.
+     * @deny (create) User cannot create a post with a mismatched authorId.
+     * @principle Public read with owner-only writes.
+     */
+    match /posts/{postId} {
+      // Read rules
+      allow get, list: if true;
+
+      // Write rules
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.authorId == request.auth.uid && resource != null;
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid && resource != null;
+    }
+
+    /**
+     * @description Rules for user clones.
+     * @path /users/{userId}/clones/{cloneId}
+     * @allow (create) Signed-in user can create a clone in their own user path if the userId matches their auth.uid.
+     * @allow (get, update, delete, list) Owner can read, update, and delete their own clones.
+     * @deny (create) User cannot create a clone with a mismatched userId.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     */
+    match /users/{userId}/clones/{cloneId} {
+      // Read rules
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      // Write rules
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == userId;
+      allow delete: if isExistingOwner(userId) && request.resource.data.userId == userId;
+    }
+
+    /**
+     * @description Rules for user agents.
+     * @path /users/{userId}/agents/{agentId}
+     * @allow (create) Signed-in user can create an agent in their own user path if the userId matches their auth.uid.
+     * @allow (get, update, delete, list) Owner can read, update, and delete their own agents.
+     * @deny (create) User cannot create an agent with a mismatched userId.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     */
+    match /users/{userId}/agents/{agentId} {
+      // Read rules
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      // Write rules
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for products.
+     * @path /products/{productId}
+     * @allow (get, list) Public read access to all products.
+     * @allow (create) Signed-in user can create a product and must set ownerId to their uid.
+     * @allow (update, delete) Owner can update and delete their own products.
+     * @deny (create) User cannot create a product with a mismatched ownerId.
+     * @principle Public read with owner-only writes.
+     */
+    match /products/{productId} {
+      // Read rules
+      allow get, list: if true;
+
+      // Write rules
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid && resource != null;
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid && resource != null;
+    }
+
+    /**
+     * @description Rules for orders.
+     * @path /orders/{orderId}
+     * @allow (get) Any signed-in user can get an order.
+     * @allow (create) Any signed-in user can create an order.
+     * @allow (update) Only the seller can update the order status and the resource must exist
+     * @allow (list) Listing all orders is disallowed.
+     * @deny (delete) No one can delete an order.
+     * @principle Signed-in users can create and read orders, while sellers can update their status.
+     */
+    match /orders/{orderId} {
+      // Read rules
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      // Write rules
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.sellerId == request.auth.uid && resource != null;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for payments.
+     * @path /payments/{paymentId}
+     * @allow (get) Any signed-in user can get a payment.
+     * @allow (create) Any signed-in user can create a payment.
+     * @allow (update) Only the seller can update the payment status and the resource must exist
+     * @allow (list) Listing all payments is disallowed.
+     * @deny (delete) No one can delete a payment.
+     * @principle Signed-in users can create and read payments, while sellers can update their status.
+     */
+    match /payments/{paymentId} {
+      // Read rules
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      // Write rules
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.sellerId == request.auth.uid && resource != null;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for plans.
+     * @path /plans/{planId}
+     * @allow (get, list) Public read access to all plans.
+     * @deny (create, update, delete) No one can create, update, or delete a plan via client.
+     * @principle Public read with no client writes.
+     */
+    match /plans/{planId} {
+      // Read rules
+      allow get, list: if true;
+
+      // Write rules
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for calls.
+     * @path /calls/{callId}
+     * @allow (get) Any signed-in user can get a call.
+     * @allow (create) Any signed-in user can create a call.
+     * @allow (update) Any signed-in user can update the call and the resource must exist
+     * @allow (list) Listing all calls is disallowed.
+     * @deny (delete) No one can delete a call.
+     * @principle Signed-in users can create and read calls.
+     */
+    match /calls/{callId} {
+      // Read rules
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      // Write rules
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for transactions.
+     * @path /transactions/{txId}
+     * @allow (get) Any signed-in user can get a transaction.
+     * @allow (create) Any signed-in user can create a transaction.
+     * @allow (update) No one can update a transaction.
+     * @allow (list) Listing all transactions is disallowed.
+     * @deny (delete) No one can delete a transaction.
+     * @principle Signed-in users can create and read transactions.
+     */
+    match /transactions/{txId} {
+      // Read rules
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      // Write rules
+      allow create: if isSignedIn();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for admin settings.
+     * @path /adminSettings/{settingId}
+     * @allow (get) Any signed-in user can get admin settings.
+     * @deny (create, update, delete, list) No one can create, update, delete, or list admin settings.
+     * @principle Public read with no client writes.
+     */
     match /adminSettings/{settingId} {
-       allow read: if true;
-       // write is admin-only (covered by global rule)
+      // Read rules
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      // Write rules
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for admin agents.
+     * @path /adminAgents/{agentId}
+     * @allow (get, list) Public read access to all admin agents.
+     * @deny (create, update, delete) No client write access.
+     * @principle Public read, admin-only writes.
+     */
+    match /adminAgents/{agentId} {
+      // Read rules
+      allow get, list: if true;
+
+      // Write rules
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    /**
+     * @description Rules for withdrawal requests.
+     * @path /withdrawalRequests/{reqId}
+     * @allow (create) Any signed-in user can create a withdrawal request.
+     * @allow (update) Only the admin can update a withdrawal request.
+     * @allow (read) Owner or Admin can read the document.
+     * @deny (delete) No one can delete a withdrawal request.
+     * @principle Owner-create, Admin-update, owner or admin read.
+     */
+    match /withdrawalRequests/{reqId} {
+      allow create: if isSignedIn();
+      allow update: if isAdmin() && resource != null;
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.agentId || isAdmin());
+      allow list: if false;
+      allow delete: if false;
     }
   }
 }
