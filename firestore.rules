@@ -1,304 +1,255 @@
 /**
- * @fileoverview Firestore Security Rules for AkiliPesa application.
+ * @fileoverview Firestore Security Rules for AkiliPesa Application
  *
  * Core Philosophy:
- * This ruleset prioritizes user data protection, enforcing strict ownership for user-specific data and balancing public accessibility with controlled writes for shared content. It defaults to secure configurations where ambiguities exist.
+ * This ruleset prioritizes user data protection by enforcing strict ownership-based access control for user-specific data.
+ * Publicly accessible data is carefully managed, and administrative settings are highly protected.
  *
  * Data Structure:
- * - User profiles are stored under `/users/{userId}`.
- * - User-generated content (clones, agents) is nested under their respective user IDs: `/users/{userId}/clones/{cloneId}` and `/users/{userId}/agents/{agentId}`.
- * - Public content (posts, products) is stored in top-level collections: `/posts/{postId}` and `/products/{productId}`.
- * - Transactional and operational data is stored in top-level collections: `/orders/{orderId}`, `/payments/{paymentId}`, `/calls/{callId}`, `/transactions/{txId}`, `/plans/{planId}`.
- * - Administrative data is stored in top-level collections: `/adminSettings/{settingId}` and `/adminAgents/{agentId}`.
+ * - User profiles and associated data (clones, agents) are nested under `/users/{userId}`.
+ * - Public content (posts, products) resides in top-level collections like `/posts` and `/products`.
+ * - Orders, Payments, Transactions, Plans and Calls reside in top-level collections.
+ * - Admin settings and agents are stored under `/adminSettings` and `/adminAgents`, respectively.
  *
  * Key Security Decisions:
- * - User listing is generally disallowed for privacy.
- * - Publicly readable collections require explicit ownership fields to control writes.
+ * - User listing is disallowed to protect user privacy.
+ * - Strict ownership is enforced for all user-specific resources, using the `isOwner()` helper function.
+ * - Public read access is granted for `/posts` and `/products`, but writes are restricted to the owner. The `posts` and `products` documents
+ *   MUST contain `authorId` and `ownerId` to enforce owner-only writes.
+ * - Admin settings are only accessible by authenticated users to prevent unauthorized modifications. This can be expanded later.
  *
  * Denormalization for Authorization:
- *  To create simpler, more performant rules, denormalize (copy) data required for an authorization decision directly onto the documents being secured. This avoids slow, costly, or impossible security checks.
+ *  - To simplify rules and avoid costly `get()` operations, the `Post` entity requires an `authorId` field that must match the authenticated user's UID for write operations.
+ *  - The `Product` entity requires an `ownerId` field that must match the authenticated user's UID for write operations.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile data.
+     * @description Secure user profiles. Only the authenticated user can read and write their own profile.
      * @path /users/{userId}
-     * @allow (create) Authenticated user can create their own profile.
-     * @allow (get, list, update, delete) Authenticated user can access their own profile.
-     * @deny (create) An unauthenticated user cannot create a profile.
-     * @deny (update, delete) A non-owner user cannot update or delete another user's profile.
-     * @principle Enforces document ownership for writes.
+     * @allow (get, update, delete) User 'testuser' with uid 'testuid' can get, update, and delete their own profile at /users/testuid.
+     * @allow (create) User 'testuser' with uid 'testuid' can create their own profile at /users/testuid.
+     * @deny (get, update, delete) User 'otheruser' with uid 'otheruid' cannot get, update, or delete the profile at /users/testuid.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
+      // Function to check if the authenticated user is the owner of the document
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
 
+      // Function to check if the authenticated user is the existing owner of the document
       function isExistingOwner(userId) {
-          return isOwner(userId) && resource.data != null;
+        return isOwner(userId) && resource != null;
       }
-
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+        allow get: if isOwner(userId);
+        allow list: if false;
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to posts.
+     * @description Secure user posts. Allows public reads but restricts writes to the post author.
      * @path /posts/{postId}
      * @allow (get, list) Any user can read any post.
-     * @allow (create) Authenticated user can create a post with their ID as the authorId.
-     * @allow (update, delete) Only the author can update or delete their post.
-     * @deny (create) An unauthenticated user cannot create a post.
-     * @deny (update, delete) A non-owner user cannot update or delete another user's post.
-     * @principle Public read with owner-only writes.
+     * @allow (create) User 'testuser' with uid 'testuid' can create a post at /posts/testpost if request.resource.data.authorId == 'testuid'.
+     * @allow (update, delete) User 'testuser' with uid 'testuid' can update/delete a post at /posts/testpost if resource.data.authorId == 'testuid'.
+     * @deny (create) User 'otheruser' with uid 'otheruid' cannot create a post at /posts/testpost with authorId == 'testuid'.
+     * @deny (update, delete) User 'otheruser' with uid 'otheruid' cannot update/delete a post at /posts/testpost even if resource.data.authorId == 'testuid'.
+     * @principle Allows public reads with owner-only writes.
      */
     match /posts/{postId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(authorId) {
-        return request.auth.uid == authorId;
+        return request.auth != null && request.auth.uid == authorId;
       }
 
       function isExistingOwner(authorId) {
-          return isOwner(authorId) && resource.data != null;
+          return isOwner(authorId) && resource != null;
       }
 
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isSignedIn() && isExistingOwner(resource.data.authorId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.authorId);
+        allow get: if true;
+        allow list: if true;
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.authorId);
+      allow delete: if isExistingOwner(resource.data.authorId);
     }
 
     /**
-     * @description Controls access to user-specific clones.
+     * @description Secure user clones. Only the authenticated user can manage their own clones.
      * @path /users/{userId}/clones/{cloneId}
-     * @allow (create) Authenticated user can create a clone under their ID.
-     * @allow (get, list, update, delete) Authenticated user can access and manage their own clones.
-     * @deny (create) An unauthenticated user cannot create a clone.
-     * @deny (update, delete) A non-owner user cannot update or delete another user's clone.
-     * @principle Enforces document ownership for writes.
+     * @allow (get, list, create, update, delete) User 'testuser' with uid 'testuid' can manage their clones under /users/testuid/clones/.
+     * @deny (get, list, create, update, delete) User 'otheruser' with uid 'otheruid' cannot manage clones under /users/testuid/clones/.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/clones/{cloneId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
 
       function isExistingOwner(userId) {
-          return isOwner(userId) && resource.data != null;
+        return isOwner(userId) && resource != null;
       }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == userId;
-      allow delete: if isSignedIn() && isExistingOwner(userId) && resource.data.userId == userId;
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to user-specific agents.
+     * @description Secure user agents. Only the authenticated user can manage their own agents.
      * @path /users/{userId}/agents/{agentId}
-     * @allow (create) Authenticated user can create an agent under their ID.
-     * @allow (get, list, update, delete) Authenticated user can access and manage their own agents.
-     * @deny (create) An unauthenticated user cannot create an agent.
-     * @deny (update, delete) A non-owner user cannot update or delete another user's agent.
-     * @principle Enforces document ownership for writes.
+     * @allow (get, list, create, update, delete) User 'testuser' with uid 'testuid' can manage their agents under /users/testuid/agents/.
+     * @deny (get, list, create, update, delete) User 'otheruser' with uid 'otheruid' cannot manage agents under /users/testuid/agents/.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/agents/{agentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
 
       function isExistingOwner(userId) {
-          return isOwner(userId) && resource.data != null;
+        return isOwner(userId) && resource != null;
       }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to products.
+     * @description Secure products. Allows public reads but restricts writes to the product owner.
      * @path /products/{productId}
      * @allow (get, list) Any user can read any product.
-     * @allow (create) Authenticated user can create a product with their ID as the ownerId.
-     * @allow (update, delete) Only the owner can update or delete their product.
-     * @deny (create) An unauthenticated user cannot create a product.
-     * @deny (update, delete) A non-owner user cannot update or delete another user's product.
-     * @principle Public read with owner-only writes.
+     * @allow (create) User 'testuser' with uid 'testuid' can create a product at /products/testproduct if request.resource.data.ownerId == 'testuid'.
+     * @allow (update, delete) User 'testuser' with uid 'testuid' can update/delete a product at /products/testproduct if resource.data.ownerId == 'testuid'.
+     * @deny (create) User 'otheruser' with uid 'otheruid' cannot create a product at /products/testproduct with ownerId == 'testuid'.
+     * @deny (update, delete) User 'otheruser' with uid 'otheruid' cannot update/delete a product at /products/testproduct even if resource.data.ownerId == 'testuid'.
+     * @principle Allows public reads with owner-only writes.
      */
     match /products/{productId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(ownerId) {
-        return request.auth.uid == ownerId;
+        return request.auth != null && request.auth.uid == ownerId;
       }
 
       function isExistingOwner(ownerId) {
-          return isOwner(ownerId) && resource.data != null;
+          return isOwner(ownerId) && resource != null;
       }
 
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
+        allow get: if true;
+        allow list: if true;
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.ownerId);
+      allow delete: if isExistingOwner(resource.data.ownerId);
     }
 
     /**
-     * @description Controls access to orders.
+     * @description Secure orders.  Write operations are denied to prevent unauthorized modifications.
      * @path /orders/{orderId}
-     * @allow (get) Any user can read any order.
-     * @deny (list) Listing orders is not allowed.
-     * @allow (create) Authenticated user can create an order.
-     * @allow (update) Any authenticated user can update an order.
-     * @allow (delete) Any authenticated user can delete an order.
+     * @allow (get, list) Any authenticated user can read any order.
+     * @deny (create, update, delete) No user can create, update, or delete any order.
+     * @principle  Restricts access to order data.
      */
     match /orders/{orderId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+        allow get: if request.auth != null;
+        allow list: if request.auth != null;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
 
     /**
-     * @description Controls access to payments.
+     * @description Secure payments. Write operations are denied to prevent unauthorized modifications.
      * @path /payments/{paymentId}
-     * @allow (get) Any user can read any payment.
-     * @deny (list) Listing payments is not allowed.
-     * @allow (create) Authenticated user can create a payment.
-     * @allow (update) Any authenticated user can update a payment.
-     * @allow (delete) Any authenticated user can delete a payment.
+     * @allow (get, list) Any authenticated user can read any payment.
+     * @deny (create, update, delete) No user can create, update, or delete any payment.
+     * @principle Restricts access to payment data.
      */
     match /payments/{paymentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+        allow get: if request.auth != null;
+        allow list: if request.auth != null;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
 
     /**
-     * @description Controls access to plans.
+     * @description Secure plans. Allows public reads and prevents writes.
      * @path /plans/{planId}
      * @allow (get, list) Any user can read any plan.
-     * @allow (create) Authenticated user can create a plan.
-     * @allow (update) Any authenticated user can update a plan.
-     * @allow (delete) Any authenticated user can delete a plan.
+     * @deny (create, update, delete) No user can create, update, or delete any plan.
+     * @principle Public read-only access for plans.
      */
     match /plans/{planId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+        allow get: if true;
+        allow list: if true;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
 
     /**
-     * @description Controls access to calls.
+     * @description Secure calls. Write operations are denied to prevent unauthorized modifications.
      * @path /calls/{callId}
-     * @allow (get) Any user can read any call.
-     * @deny (list) Listing calls is not allowed.
-     * @allow (create) Authenticated user can create a call.
-     * @allow (update) Any authenticated user can update a call.
-     * @allow (delete) Any authenticated user can delete a call.
+     * @allow (get, list) Any authenticated user can read any call record.
+     * @deny (create, update, delete) No user can create, update, or delete any call record.
+     * @principle Restricts access to call data.
      */
     match /calls/{callId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+        allow get: if request.auth != null;
+        allow list: if request.auth != null;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
 
     /**
-     * @description Controls access to transactions.
+     * @description Secure transactions.  Write operations are denied to prevent unauthorized modifications.
      * @path /transactions/{txId}
-     * @allow (get) Any user can read any transaction.
-     * @allow (list) Authenticated user can list transactions.
-     * @allow (create) Authenticated user can create a transaction.
-     * @allow (update) Any authenticated user can update a transaction.
-     * @allow (delete) Any authenticated user can delete a transaction.
+     * @allow (get, list) Any authenticated user can read any transaction.
+     * @deny (create, update, delete) No user can create, update, or delete any transaction.
+     * @principle Restricts access to transaction data.
      */
     match /transactions/{txId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get: if true;
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+        allow get: if request.auth != null;
+        allow list: if request.auth != null;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
 
     /**
-     * @description Controls access to admin settings.
+     * @description Secure admin settings. Only authenticated users can read admin settings. Write operations are denied to prevent unauthorized modifications.
      * @path /adminSettings/{settingId}
-     * @allow (get, list) Any user can read any admin setting.
-     * @allow (create) Authenticated user can create an admin setting.
-     * @allow (update) Any authenticated user can update an admin setting.
-     * @allow (delete) Any authenticated user can delete an admin setting.
+     * @allow (get, list) Any authenticated user can read admin settings.
+     * @deny (create, update, delete) No user can create, update, or delete any admin setting.
+     * @principle Restricts access to admin settings.
      */
     match /adminSettings/{settingId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+        allow get: if request.auth != null;
+        allow list: if request.auth != null;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
 
     /**
-     * @description Controls access to admin agents.
+     * @description Secure admin agents. Write operations are denied to prevent unauthorized modifications.
      * @path /adminAgents/{agentId}
-     * @allow (get, list) Any user can read any admin agent.
-     * @allow (create) Authenticated user can create an admin agent.
-     * @allow (update) Any authenticated user can update an admin agent.
-     * @allow (delete) Any authenticated user can delete an admin agent.
+     * @allow (get, list) Any authenticated user can read any admin agent.
+     * @deny (create, update, delete) No user can create, update, or delete any admin agent.
+     * @principle Restricts access to admin agent data.
      */
     match /adminAgents/{agentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+        allow get: if request.auth != null;
+        allow list: if request.auth != null;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
   }
 }
