@@ -53,6 +53,7 @@ export default function AgentRanking() {
         <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gradient">Agent Performance Leaderboard</h1>
              <div className='flex gap-2'>
+                <Button variant="outline" asChild><Link href="/admin/marketplace">Marketplace</Link></Button>
                 <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
                 <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
                 <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>

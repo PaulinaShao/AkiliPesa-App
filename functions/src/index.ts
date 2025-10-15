@@ -402,6 +402,85 @@ export const redeemReward = onCall(async (req) => {
   });
 });
 
+// --- Phase 7 Functions ---
+
+// 1. Create escrow on new order
+export const createEscrowOnOrder = onDocumentCreated("orders/{orderId}", async (event) => {
+    const order = event.data?.data();
+    if (!order) return;
+    const escrowRef = db.collection("escrow").doc();
+    await escrowRef.set({
+        orderId: event.params.orderId,
+        buyerId: order.buyerId,
+        sellerId: order.sellerId,
+        amount: order.amount,
+        status: "held",
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    // Update order with escrow ID and new status
+    await db.collection("orders").doc(event.params.orderId).update({ 
+        escrowId: escrowRef.id, 
+        status: "paid" 
+    });
+});
+
+// 2. AI delivery verification -> auto-release
+export const verifyAndReleaseEscrow = onDocumentUpdated("deliveryProofs/{id}", async (event) => {
+    if (!event.data) return;
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    
+    // Check if already verified to prevent re-triggering
+    if (before.verified === true || after.verified !== true) return;
+
+    // In a real scenario, this would involve calling a RunPod/OpenAI endpoint
+    // For this implementation, we assume verification is successful if 'verified' is set to true
+    const aiVerified = after.verified === true;
+    
+    if (aiVerified) {
+        const orderDoc = await db.collection("orders").doc(after.orderId).get();
+        if (!orderDoc.exists) return;
+        const order = orderDoc.data()!;
+
+        await db.collection("escrow").doc(order.escrowId).update({
+            status: "released",
+            releasedAt: admin.firestore.FieldValue.serverTimestamp(),
+            verified: true
+        });
+        await db.collection("orders").doc(after.orderId).update({ status: "completed" });
+    }
+});
+
+// 3. Order Tracking Logic
+export const onOrderStatusChange = onDocumentUpdated("orders/{orderId}", async (event) => {
+    if (!event.data) return;
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+
+    if (before.status !== after.status) {
+        await db.collection("orderTracking").add({
+            orderId: event.params.orderId,
+            status: after.status,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+    }
+});
+
+// 4. Refund Handling
+export const onRefundRequest = onDocumentCreated("refunds/{id}", async (event) => {
+    const r = event.data?.data();
+    if (!r) return;
+    
+    const escrowRef = db.collection("escrow").doc(r.escrowId);
+    const escrowDoc = await escrowRef.get();
+    if (!escrowDoc.exists) return;
+
+    const escrow = escrowDoc.data()!;
+    await escrowRef.update({ status: "refund_pending" });
+    await db.collection("orders").doc(escrow.orderId).update({ status: "refund_requested" });
+    // Optional: notify admin channel via email/webhook here
+});
+
 
 // --- V1 Functions ---
 
