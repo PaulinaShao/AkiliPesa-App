@@ -1,58 +1,46 @@
 
-
-'use client';
-
-import { useParams, notFound } from 'next/navigation';
-import { VideoCard } from '@/components/video-card';
+import { notFound } from 'next/navigation';
 import { Header } from '@/components/header';
 import { ProfileHeader } from './components/ProfileHeader';
 import { ProfileQuickActions } from './components/ProfileQuickActions';
 import { ProfileNav } from './components/ProfileNav';
 import { AkiliPointsBadge } from './components/AkiliPointsBadge';
-import { useFirestore, useUser } from '@/firebase';
-import { useMemoFirebase } from '@/firebase/use-memo-firebase';
-import { collection, query, where, limit } from 'firebase/firestore';
-import { useCollection } from '@/firebase/firestore/use-collection';
 import { TrustScoreBadge } from './components/TrustScoreBadge';
 import { BuyerTrustBadge } from './components/BuyerTrustBadge';
+import { VideoCard } from '@/components/video-card';
+import { getFirestore, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase'; // Using admin-like initialization for server components
+
+// This is now a Server Component
+
+async function getProfileByHandle(handle: string) {
+  // We need a way to talk to Firestore on the server.
+  // The client-side `initializeFirebase` gives us what we need,
+  // but in a real server environment, you'd use the Admin SDK.
+  // For this context, we can re-use the client initialization logic.
+  const { firestore } = initializeFirebase();
+  const usersRef = collection(firestore, 'users');
+  const q = query(usersRef, where('handle', '==', handle), limit(1));
+  
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) {
+    return null;
+  }
+  
+  const userDoc = querySnapshot.docs[0];
+  return { ...userDoc.data(), id: userDoc.id };
+}
+
 
 // Example video data, to be replaced with Firestore query later
 const userVideos: any[] = []; 
 
-export default function ProfilePage() {
-  const params = useParams();
-  const username = typeof params.username === 'string' ? params.username : '';
-  const firestore = useFirestore();
-  const { isUserLoading: isAuthLoading } = useUser();
+export default async function ProfilePage({ params }: { params: { username: string } }) {
+  const username = params.username;
+  const user = await getProfileByHandle(username);
 
-  const userQuery = useMemoFirebase(() => {
-    if (!firestore || !username) return null;
-    return query(
-      collection(firestore, 'users'),
-      where('handle', '==', username),
-      limit(1)
-    );
-  }, [firestore, username]);
-
-  const { data: userData, isLoading: isProfileLoading } = useCollection(userQuery);
-  
-  const isLoading = isAuthLoading || isProfileLoading;
-  
-  // userData is an array, get the first element for the user profile.
-  const user = userData?.[0];
-
-  if (isLoading) {
-    return (
-      <div className="dark">
-        <Header isMuted={true} onToggleMute={() => {}} />
-        <div className="flex h-screen w-full items-center justify-center">
-            <p>Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // After loading is complete, if no user was found, show 404.
+  // If no user is found, render the 404 page.
   if (!user) {
     notFound();
   }
