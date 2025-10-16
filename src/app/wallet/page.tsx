@@ -41,16 +41,15 @@ export default function WalletPage() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
   
   const transactionsQuery = useMemoFirebase(() => {
-    // IMPORTANT: Wait for user to be authenticated before building the query
-    if (!firestore || !user?.uid) return null;
-    
-    // Query must include the where clause to match security rules
+    if (!firestore || !user?.uid) {
+      return null;
+    }
     return query(
-        collection(firestore, 'transactions'), 
-        where('uid', '==', user.uid), 
-        orderBy('createdAt', 'desc')
+        collection(firestore, "transactions"),
+        where("uid", "==", user.uid),
+        orderBy("createdAt", "desc")
     );
-  }, [user, firestore]);
+  }, [firestore, user?.uid]);
 
   const { data: transactions, isLoading: isTransactionsLoading } = useCollection<any>(transactionsQuery);
 
@@ -182,3 +181,5 @@ export default function WalletPage() {
     </div>
   );
 }
+
+    
