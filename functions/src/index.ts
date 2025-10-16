@@ -7,12 +7,15 @@ import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
 import fetch from "node-fetch";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall } from 'firebase-functions/v2/https';
+import { enforceTransactionUid } from "./enforceTransactionUid";
 
 admin.initializeApp();
 const db = admin.firestore();
 
 
 // --- V2 Functions ---
+
+export { enforceTransactionUid };
 
 // 🔹 Trigger when a sale record is created
 export const onSaleCreated = onDocumentCreated("sales/{saleId}", async (event) => {
