@@ -8,7 +8,6 @@ import {
   getDoc, 
   setDoc, 
   collection, 
-  FieldValue, 
   serverTimestamp
 } from "firebase/firestore";
 
@@ -39,23 +38,24 @@ export const initUserSession = (auth: Auth, db: Firestore) => {
         uid: user.uid,
         displayName: user.displayName || 'New User',
         email: user.email,
-        phone: user.phoneNumber || "",
+        phone: user.phoneNumber || null,
         photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`,
         handle: user.email?.split('@')[0] || `user_${user.uid.substring(0, 5)}`,
         bio: '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        plan: {
-            id: 'trial',
-            credits: 10,
-        },
-        wallet: {
-            balance: 10,
-            escrow: 0,
-        },
         stats: { followers: 0, following: 0, likes: 0, postsCount: 0 },
-        totalReferrals: 0,
-        totalCommissions: 0,
+        wallet: {
+            balance: 10, // Starting trial balance
+            escrow: 0,
+            plan: {
+                id: 'trial',
+                credits: 10, // Starting trial credits
+                expiry: null,
+            },
+            lastDeduction: null,
+            lastTrialReset: serverTimestamp(),
+        },
       };
 
       const walletRef = doc(collection(db, "wallets"), user.uid);
@@ -65,12 +65,17 @@ export const initUserSession = (auth: Auth, db: Firestore) => {
       try {
         await setDoc(userRef, newUserProfile);
         
+        // These are now handled by the user document, but can be kept for more granular data
+        // or removed for simplification. For now, we'll keep them as they might be used
+        // by other parts of a larger system.
         await Promise.all([
           setDoc(walletRef, {
-            balance: 0,
-            escrow: 0,
+            agentId: user.uid,
+            balanceTZS: 0,
+            earnedToday: 0,
+            totalEarnings: 0,
             updatedAt: serverTimestamp(),
-          }),
+          }, { merge: true }),
           setDoc(referralRef, {
             referredBy: null,
             referredUsers: [],
