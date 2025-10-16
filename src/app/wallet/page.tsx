@@ -41,9 +41,11 @@ export default function WalletPage() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
   
   const transactionsQuery = useMemoFirebase(() => {
+    // This query now explicitly waits for the user's UID before being constructed.
     if (!firestore || !user?.uid) {
       return null;
     }
+    // The where clause is the critical piece that makes this query compliant with security rules.
     return query(
         collection(firestore, "transactions"),
         where("uid", "==", user.uid),
