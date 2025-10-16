@@ -9,7 +9,7 @@ import { TrustScoreBadge } from './components/TrustScoreBadge';
 import { BuyerTrustBadge } from './components/BuyerTrustBadge';
 import { VideoCard } from '@/components/video-card';
 import { getFirestore, collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase'; // Using admin-like initialization for server components
+import { initializeFirebase } from '@/firebase/server-init';
 
 // This is now a Server Component
 
