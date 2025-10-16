@@ -748,43 +748,83 @@ async function analyzeBehavior(buyerId: string) {
 
 // --- V1 Functions ---
 
-// User signup → create profile
+/**
+ * Smart user bootstrap function.
+ * Triggered once when a user is created.
+ * Ensures all necessary user-related documents are created atomically.
+ */
 export const onusercreate = functions.auth.user().onCreate(async (user) => {
-  const profile = {
-    uid: user.uid,
-    phone: user.phoneNumber || null,
-    email: user.email || null,
-    handle: user.email?.split('@')[0] || `user_${user.uid.substring(0, 5)}`,
-    displayName: user.displayName || 'New User',
-    photoURL: user.photoURL || '',
-    wallet: {
-        balance: 10,
-        escrow: 0,
-        plan: {
-            id: 'trial',
-            credits: 10,
-        },
-        lastDeduction: null,
-        lastTrialReset: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    stats: { following: 0, followers: 0, likes: 0, postsCount: 0 },
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  };
-  
-  // Also create initial AkiliPoints document
-  const pointsRef = db.collection('akiliPoints').doc(user.uid);
-  const initialPoints = {
-      userId: user.uid,
-      totalPoints: 0,
-      lifetimePoints: 0,
-      redeemedPoints: 0,
-      level: 'Bronze',
-      lastEarnedAt: null,
-  };
+    const { uid, email, displayName, photoURL, phoneNumber } = user;
+    const batch = db.batch();
 
-  await pointsRef.set(initialPoints);
-  return db.collection('users').doc(user.uid).set(profile);
+    // 1. User Profile
+    const userRef = db.collection("users").doc(uid);
+    batch.set(userRef, {
+        uid,
+        handle: email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
+        displayName: displayName || 'New User',
+        email: email || null,
+        phone: phoneNumber || null,
+        photoURL: photoURL || '',
+        bio: '',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        wallet: {
+            balance: 10,
+            escrow: 0,
+            plan: {
+                id: 'trial',
+                credits: 10,
+            },
+            lastDeduction: null,
+            lastTrialReset: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        stats: { followers: 0, following: 0, likes: 0, postsCount: 0 },
+    });
+
+    // 2. AkiliPoints Record
+    const pointsRef = db.collection("akiliPoints").doc(uid);
+    batch.set(pointsRef, {
+        userId: uid,
+        totalPoints: 0,
+        lifetimePoints: 0,
+        redeemedPoints: 0,
+        level: 'Bronze',
+        lastEarnedAt: null,
+    });
+
+    // 3. Wallet Record
+    const walletRef = db.collection("wallets").doc(uid);
+    batch.set(walletRef, {
+        agentId: uid,
+        balanceTZS: 0,
+        earnedToday: 0,
+        totalEarnings: 0,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    // 4. Referral Record
+    const referralRef = db.collection("referrals").doc(uid);
+    batch.set(referralRef, {
+        uid,
+        refCode: uid.slice(0, 6).toUpperCase(),
+        referredBy: null,
+        totalReferrals: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    
+    // 5. Commission Record
+    const commissionRef = db.collection("commissions").doc(uid);
+    batch.set(commissionRef, {
+        uid,
+        totalEarnings: 0,
+        pending: 0,
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+
+    await batch.commit();
+    console.log(`✅ Smart bootstrap complete for ${email || uid}`);
 });
 
 // Post created → increment user post count
