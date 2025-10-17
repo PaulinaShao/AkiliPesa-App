@@ -1,349 +1,124 @@
-/**
- * @fileoverview Firestore Security Rules for AkiliPesa.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user-specific data,
- * while allowing public read access to certain collections like 'posts' and 'products'.
- * Administrative access to 'adminSettings' and 'adminAgents' is not implemented in this prototype.
- *
- * Data Structure:
- * - User-specific data (profile, clones, agents) is nested under /users/{userId}.
- * - Publicly readable data (posts, products) resides in top-level collections.
- * - Other data (orders, payments, calls, transactions) are stored in top-level collections
- *   and linked to users via explicit ownerId or similar fields.
- *
- * Key Security Decisions:
- * - User listing is disallowed to prevent unauthorized enumeration.
- * - Public read collections require a validated ownerId on create to prevent abuse.
- * - Data validation is minimal, focusing on ownership and relational integrity checks for this prototype.
- *
- * Denormalization for Authorization:
- *   To avoid costly `get()` calls in security rules, important authorization data is denormalized
- *   onto documents. For example, the `Post` and `Product` entities should have an `authorId` or `ownerId` field
- *   that matches the user's UID. This allows the rules to quickly verify ownership without additional reads.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of the resource.
-     * @param {string} userId The user ID to check against the request's auth UID.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of the resource and the resource exists.
-     * @param {string} userId The user ID to check against the resource's owner ID.
-     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rule for /users/{userId} collection.
-     * @path /users/{userId}
-     * @allow (create) User with UID 'user123' creates their profile.
-     *   - Request: { auth: { uid: 'user123' } }
-     *   - Resource Data: { uid: 'user123', handle: 'test', displayName: 'Test User' }
-     * @allow (get, update) User with UID 'user123' reads/updates their profile.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create) User with UID 'user456' tries to create a profile for 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     *   - Resource Data: { uid: 'user123', handle: 'test', displayName: 'Test User' }
-     * @deny (list, delete) Any user tries to list or delete user profiles.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Enforces document ownership for writes.
-     */
+    // --- User Profiles ---
     match /users/{userId} {
-      allow get, update: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow list, delete: if false;
+      allow get: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == "blagridigital@gmail.com");
+      allow list: if request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+      allow create: if request.auth != null && request.resource.data.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId && request.resource.data.uid == resource.data.uid;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    /**
-     * @description Rule for /posts/{postId} collection.
-     * @path /posts/{postId}
-     * @allow (get, list) Any user can read all posts.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (create) User with UID 'user123' creates a post with authorId 'user123'.
-     *   - Request: { auth: { uid: 'user123' } }
-     *   - Resource Data: { postId: 'post789', authorId: 'user123', media: {url: '...', type: 'image'}, createdAt: timestamp.now() }
-     * @allow (update, delete) User with UID 'user123' updates/deletes their post with authorId 'user123'.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create) User with UID 'user456' tries to create a post with authorId 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     *   - Resource Data: { postId: 'post789', authorId: 'user123', media: {url: '...', type: 'image'}, createdAt: timestamp.now() }
-     * @deny (update, delete) User with UID 'user456' tries to update/delete a post with authorId 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     * @principle Allows public read access, but enforces document ownership for writes.
-     */
-    match /posts/{postId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isExistingOwner(resource.data.authorId);
-    }
-
-    /**
-     * @description Rule for /users/{userId}/clones/{cloneId} collection.
-     * @path /users/{userId}/clones/{cloneId}
-     * @allow (create) User with UID 'user123' creates a clone under their profile.
-     *   - Request: { auth: { uid: 'user123' } }
-     *   - Resource Data: { cloneId: 'clone456', userId: 'user123', type: 'face', createdAt: timestamp.now() }
-     * @allow (get, list, update) User with UID 'user123' reads/lists/updates their clones.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create) User with UID 'user456' tries to create a clone for 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     *   - Resource Data: { cloneId: 'clone456', userId: 'user123', type: 'face', createdAt: timestamp.now() }
-     * @deny (delete) Any user tries to delete a clone that doesn't belong to them
-     *   - Request: { auth: { uid: 'user456' } }
-     * @principle Restricts access to a user's own data tree.
-     */
-    match /users/{userId}/clones/{cloneId} {
-      allow get, list, update: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow delete: if isExistingOwner(userId) && resource.data.userId == userId;
-    }
-
-    /**
-     * @description Rule for /users/{userId}/agents/{agentId} collection.
-     * @path /users/{userId}/agents/{agentId}
-     * @allow (create) User with UID 'user123' creates an agent under their profile.
-     *   - Request: { auth: { uid: 'user123' } }
-     *   - Resource Data: { id: 'agent456', name: 'Agent 1', specialty: 'AI', pricePerSecondCredits: 1, status: 'active', createdAt: timestamp.now() }
-     * @allow (get, list, update) User with UID 'user123' reads/lists/updates their agents.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create) User with UID 'user456' tries to create an agent for 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     *   - Resource Data: { id: 'agent456', name: 'Agent 1', specialty: 'AI', pricePerSecondCredits: 1, status: 'active',  createdAt: timestamp.now() }
-     * @deny (delete) Any user tries to delete an agent that doesn't belong to them
-     *   - Request: { auth: { uid: 'user456' } }
-     * @principle Restricts access to a user's own data tree.
-     */
-    match /users/{userId}/agents/{agentId} {
-      allow get, list, update: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Rule for /products/{productId} collection.
-     * @path /products/{productId}
-     * @allow (get, list) Any user can read all products.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (create) User with UID 'user123' creates a product with ownerId 'user123'.
-     *   - Request: { auth: { uid: 'user123' } }
-     *   - Resource Data: { id: 'product789', ownerId: 'user123', title: 'Product 1', price: 10, currency: 'TZS', type: 'digital', createdAt: timestamp.now() }
-     * @allow (update, delete) User with UID 'user123' updates/deletes their product with ownerId 'user123'.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create) User with UID 'user456' tries to create a product with ownerId 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     *   - Resource Data: { id: 'product789', ownerId: 'user123', title: 'Product 1', price: 10, currency: 'TZS', type: 'digital', createdAt: timestamp.now() }
-     * @deny (update, delete) User with UID 'user456' tries to update/delete a product with ownerId 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     * @principle Allows public read access, but enforces document ownership for writes.
-     */
-    match /products/{productId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isExistingOwner(resource.data.ownerId);
-    }
-
-    /**
-     * @description Rule for /orders/{orderId} collection.
-     * @path /orders/{orderId}
-     * @allow (get) Any authenticated user can read order details
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (create) Any authenticated user can create a new order
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (update) Only the seller can update order status
-     *   - Request: { auth: { uid: 'seller456' } }
-     * @deny (list, delete) Any user tries to list or delete orders.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Allows any authenticated user to create and read orders, but restricts listing and deletion.
-     */
-    match /orders/{orderId} {
-      allow get: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource.data.sellerId == request.auth.uid; // Assuming seller updates status
-      allow list, delete: if false;
-    }
-
-    /**
-     * @description Rule for /payments/{paymentId} collection.
-     * @path /payments/{paymentId}
-     * @allow (get) Any authenticated user can read payment details.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (create) Any authenticated user can create a new payment record.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (update) The seller (sellerId) can update payment status
-     *   - Request: { auth: { uid: 'seller456' } }
-     * @deny (list, delete) Any user tries to list or delete payments.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Allows any authenticated user to create and read payment records, but restricts listing and deletion.
-     */
-    match /payments/{paymentId} {
-      allow get: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource.data.sellerId == request.auth.uid; // Assuming seller updates status
-      allow list, delete: if false;
-    }
-
-    /**
-     * @description Rule for /plans/{planId} collection.
-     * @path /plans/{planId}
-     * @allow (get, list) Any user can read all available plans.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create, update, delete) No user can create, update, or delete plans.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Public read, admin-only write (not implemented in this prototype).
-     */
-    match /plans/{planId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Rule for /calls/{callId} collection.
-     * @path /calls/{callId}
-     * @allow (get) Any authenticated user can read call details
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (create) Any authenticated user can create a new call record
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (update) Only the agent or caller can update call status
-     *   - Request: { auth: { uid: 'agent789' } }
-     * @deny (list, delete) Any user tries to list or delete calls.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Allows any authenticated user to create and read calls, but restricts listing and deletion.
-     */
-    match /calls/{callId} {
-      allow get: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (resource.data.agentId == request.auth.uid || resource.data.callerId == request.auth.uid);
-      allow list, delete: if false;
-    }
-
-    /**
-     * @description Rule for /transactions/{txId} collection.
-     * @path /transactions/{txId}
-     * @allow (get) Any authenticated user can read transaction details
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (create) Any authenticated user can create a new transaction record
-     *   - Request: { auth: { uid: 'user123' } }
-     * @allow (update) Only the user can update transaction details
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (list, delete) Any user tries to list or delete transactions.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Allows any authenticated user to create and read transactions, but restricts listing and deletion.
-     */
-    match /transactions/{txId} {
-      allow get: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource.data.uid == request.auth.uid; // Only the user can update
-      allow list, delete: if false;
-    }
-
-    /**
-     * @description Rule for /adminSettings/{settingId} collection.
-     * @path /adminSettings/{settingId}
-     * @allow (get) Any user can read admin settings.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create, update, delete) No user can create, update, or delete admin settings.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Public read, admin-only write (not implemented in this prototype).
-     */
-    match /adminSettings/{settingId} {
-      allow get: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Rule for /adminAgents/{agentId} collection.
-     * @path /adminAgents/{agentId}
-     * @allow (get, list) Any user can read all available admin agents.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create, update, delete) No user can create, update, or delete admin agents.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Public read, admin-only write (not implemented in this prototype).
-     */
-    match /adminAgents/{agentId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Rule for /wallets/{userId} collection.
-     * @path /wallets/{userId}
-     * @allow (create) User with UID 'user123' creates their wallet.
-     *   - Request: { auth: { uid: 'user123' } }
-     *   - Resource Data: { uid: 'user123', balance: 0, escrow: 0 }
-     * @allow (get, update) User with UID 'user123' reads/updates their wallet.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create) User with UID 'user456' tries to create a wallet for 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     *   - Resource Data: { uid: 'user123', balance: 0, escrow: 0 }
-     * @deny (list, delete) Any user tries to list or delete user wallets.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Enforces document ownership for writes.
-     */
+    // --- Wallets ---
     match /wallets/{userId} {
-      allow get, update: if isOwner(userId);
-      allow create: if isOwner(userId);
+      allow get: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == "blagridigital@gmail.com");
+      allow create, update: if request.auth != null && request.auth.uid == userId;
       allow list, delete: if false;
     }
-
-    /**
-     * @description Rule for /referrals/{userId} collection.
-     * @path /referrals/{userId}
-     * @allow (create) User with UID 'user123' creates their referral record.
-     *   - Request: { auth: { uid: 'user123' } }
-     *   - Resource Data: { uid: 'user123', refCode: 'ABCDEF', referredBy: null, totalReferrals: 0 }
-     * @allow (get, update) User with UID 'user123' reads/updates their referral record.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create) User with UID 'user456' tries to create a referral record for 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     *   - Resource Data: { uid: 'user123', refCode: 'ABCDEF', referredBy: null, totalReferrals: 0 }
-     * @deny (list, delete) Any user tries to list or delete user referrals.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Enforces document ownership for writes.
-     */
-    match /referrals/{userId} {
-      allow get, update: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow list, delete: if false;
+    
+    // --- AkiliPoints & RewardHistory ---
+    match /akiliPoints/{userId} {
+       allow get: if request.auth != null; // Public to see levels
+       allow update, create: if request.auth != null && request.auth.uid == userId;
+       allow list, delete: if false;
+    }
+    match /rewardHistory/{historyId} {
+       allow get, list: if request.auth != null && request.auth.uid == resource.data.userId;
+       allow create, update, delete: if false; // Server-only
+    }
+    match /rewardCatalog/{rewardId} {
+        allow get, list: if request.auth != null; // Public to see rewards
+        allow create, update, delete: if false; // Admin-only
     }
 
-    /**
-     * @description Rule for /commissions/{userId} collection.
-     * @path /commissions/{userId}
-     * @allow (create) User with UID 'user123' creates their commission record.
-     *   - Request: { auth: { uid: 'user123' } }
-     *   - Resource Data: { uid: 'user123', totalEarnings: 0, pending: 0 }
-     * @allow (get, update) User with UID 'user123' reads/updates their commission record.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @deny (create) User with UID 'user456' tries to create a commission record for 'user123'.
-     *   - Request: { auth: { uid: 'user456' } }
-     *   - Resource Data: { uid: 'user123', totalEarnings: 0, pending: 0 }
-     * @deny (list, delete) Any user tries to list or delete user commissions.
-     *   - Request: { auth: { uid: 'user123' } }
-     * @principle Enforces document ownership for writes.
-     */
-    match /commissions/{userId} {
-      allow get, update: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow list, delete: if false;
+    // --- Posts ---
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+    }
+    
+    // --- Transactions ---
+    match /transactions/{txId} {
+      allow get, list: if request.auth != null && 
+        (resource.data.uid == request.auth.uid || request.auth.token.email == "blagridigital@gmail.com");
+      allow create: if request.auth != null && 
+        (request.resource.data.uid == request.auth.uid || !('uid' in request.resource.data));
+      allow update, delete: if false;
+    }
+
+    // --- Plans ---
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // --- Admin Agents ---
+    match /adminAgents/{agentId} {
+      allow get, list: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+    }
+
+    // --- User Agents ---
+    match /users/{userId}/agents/{agentId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // --- Calls ---
+    match /calls/{callId} {
+        allow read, write: if request.auth != null && request.auth.uid == resource.data.callerId;
+    }
+    
+    // --- Admin Settings & Commissions ---
+    match /adminSettings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+    }
+    match /commissionRates/{docId} {
+      allow read: if true; // Functions need read access
+      allow write: if request.auth != null && request.auth.token.email == "blagridigital@gmail.com";
+    }
+    
+    // --- Marketplace, Escrow & Trust ---
+    match /products/{productId} {
+        allow read: if true;
+        allow create, update: if request.auth != null && request.auth.uid == request.resource.data.ownerId;
+        allow delete: if false;
+    }
+     match /productVerification/{verificationId} {
+        allow read: if true;
+        allow write: if false; // Server-only
+    }
+    match /orders/{orderId} {
+        allow read: if request.auth != null && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.buyerId;
+        allow update: if request.auth != null && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
+        allow delete: if false;
+    }
+     match /escrow/{escrowId} {
+        allow read: if request.auth != null && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
+        allow create, update: if false; // Server-only
+    }
+     match /deliveryProofs/{proofId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.uploaderId;
+        allow update, delete: if false;
+    }
+    match /trustScores/{sellerId} {
+        allow get: if true;
+        allow list, write: if false; // Server-only
+    }
+     match /buyerTrust/{buyerId} {
+        allow get: if true;
+        allow list, write: if false; // Server-only
+    }
+    
+    // Default deny all other paths
+    match /{path=**} {
+      allow read, write: if false;
     }
   }
 }
