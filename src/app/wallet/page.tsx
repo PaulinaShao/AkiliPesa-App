@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { ArrowDownLeft, ArrowUpRight, Plus, Send, ShieldCheck, Hourglass, Credit
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 
 
 const transactionIcons: Record<string, JSX.Element> = {
@@ -35,46 +35,29 @@ export default function WalletPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const [wallet, setWallet] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (isUserLoading || !firestore) return;
-    
-    const unsub = firestore && user ? onSnapshot(doc(firestore, "wallets", user.uid), (doc) => {
-        if(doc.exists()) setWallet(doc.data());
-    }) : () => {};
-
-    if (!user) {
-        setIsLoading(false);
-    }
-    
-    return () => unsub();
-
-  }, [user, isUserLoading, firestore]);
+  // Use real-time hook for wallet data
+  const walletDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, "wallets", user.uid) : null),
+    [user, firestore]
+  );
+  const { data: wallet, isLoading: isWalletLoading } = useDoc<any>(walletDocRef);
   
-  useEffect(() => {
-      if (!user || !firestore) return;
+  // Use real-time hook for transactions
+  const transactionsQuery = useMemoFirebase(
+    () =>
+      user && firestore
+        ? query(
+            collection(firestore, "transactions"),
+            where("uid", "==", user.uid),
+            orderBy("createdAt", "desc")
+          )
+        : null,
+    [user, firestore]
+  );
+  const { data: transactions, isLoading: areTransactionsLoading } = useCollection<any>(transactionsQuery);
 
-      const txQuery = query(
-          collection(firestore, "transactions"), 
-          where("uid", "==", user.uid),
-          orderBy("createdAt", "desc")
-      );
-      
-      const unsubTx = onSnapshot(txQuery, (snapshot) => {
-          const txList = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-          setTransactions(txList);
-          if(isLoading) setIsLoading(false);
-      }, (error) => {
-          console.error("Error fetching transactions: ", error);
-          setIsLoading(false);
-      });
-
-      return () => unsubTx();
-  }, [user, firestore, isLoading]);
-
+  const isLoading = isUserLoading || isWalletLoading || areTransactionsLoading;
+  
   const userProfile = wallet; // for compatibility with old structure
 
   return (
@@ -89,7 +72,7 @@ export default function WalletPage() {
               <CardTitle className="text-sm font-light text-primary-foreground/80">Available Balance</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {isLoading ? (
+              {isLoading && !wallet ? (
                  <p className="text-4xl font-bold">Loading...</p>
               ) : (
                 <p className="text-4xl font-bold">TZS {wallet?.balanceTZS?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</p>
