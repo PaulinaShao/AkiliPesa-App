@@ -8,91 +8,135 @@ service cloud.firestore {
       return request.auth.token.email == "blagridigital@gmail.com";
     }
 
-    // --- ADMIN & CORE CONFIG ---
-    match /adminSettings/{docId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
+    // --- USERS ---
+    match /users/{userId} {
+      // Allow any authenticated user to read a profile
+      allow get: if request.auth != null;
+      // Only the user themselves can create or update their profile
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      // No one can list all users or delete from the client
+      allow list, delete: if false;
     }
-    match /adminAgents/{docId} {
-        allow read: if request.auth != null;
+
+    // --- ADMIN AGENTS ---
+    match /adminAgents/{agentId} {
+        // Allow any authenticated user to read the list of admin agents
+        allow get, list: if request.auth != null;
+        // Only admin can create/update/delete them
         allow write: if isAdmin();
     }
-    match /plans/{planId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
 
-    // --- USER DATA ---
-    match /users/{userId} {
-      allow get: if request.auth != null;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if isAdmin();
-    }
-
-    match /users/{userId}/clones/{cloneId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /users/{userId}/agents/{agentId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // --- FINANCIAL DATA ---
+    // --- WALLETS ---
     match /wallets/{walletId} {
       allow get, create, update: if request.auth != null && request.auth.uid == walletId;
-      allow list: if false; // prevent listing all wallets
+      allow list: if false;
     }
 
+    // --- TRANSACTIONS ---
     match /transactions/{txId} {
       allow get: if request.auth != null && resource.data.uid == request.auth.uid;
-      allow list: if request.auth != null && request.query.where.size() > 0 && request.query.where[0][0] == "uid" && request.query.where[0][2] == request.auth.uid;
-      allow create: if request.auth != null; // Allow create, will be secured by CF
+      // Allow a user to list their OWN transactions via a query
+      allow list: if request.auth != null && request.query.get("uid") == request.auth.uid;
+      allow create: if request.auth != null;
       allow update, delete: if false;
     }
-    
+
+    // --- ESCROW + COMMISSIONS ---
     match /commissions/{uid} {
       allow get, create, update: if request.auth != null && request.auth.uid == uid;
       allow list: if false;
     }
-    
-    match /escrow/{eid} {
-      allow read, update: if request.auth != null && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+     match /referrals/{userId} {
+      allow get, create, update: if request.auth != null && request.auth.uid == userId;
+      allow list, delete: if false;
     }
 
-    // --- CONTENT & E-COMMERCE ---
+    match /escrow/{eid} {
+      allow read, update: if request.auth != null;
+    }
+
+    // --- POSTS, PRODUCTS, ETC ---
     match /posts/{pid} {
       allow read: if true;
       allow create, update, delete: if request.auth != null && request.resource.data.authorId == request.auth.uid;
     }
-
     match /products/{pid} {
       allow read: if true;
       allow write: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
     }
-    
-    match /orders/{orderId} {
-        allow read, write: if request.auth != null && (request.resource.data.buyerId == request.auth.uid || request.resource.data.sellerId == request.auth.uid);
-    }
-    
-    match /deliveryProofs/{proofId} {
-        allow read, write: if request.auth != null;
-    }
-    
-    match /refunds/{refundId} {
-        allow read, write: if request.auth != null;
-    }
-
-    // --- OTHER ---
-    match /calls/{callId} {
-        allow read, write: if request.auth != null && request.resource.data.callerId == request.auth.uid;
-    }
-    
-    match /aiSessions/{sessionId} {
+     match /aiSessions/{sessionId} {
       allow read, write: if request.auth != null && request.auth.uid == sessionId;
     }
+    match /calls/{callId} {
+      allow read, write: if request.auth != null && request.resource.data.callerId == request.auth.uid;
+    }
+    match /adminSettings/settings {
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
+    }
+    match /commissionRates/adminConfig {
+         allow read: if request.auth != null;
+         allow write: if isAdmin();
+    }
+     match /withdrawalRequests/{reqId} {
+        allow create: if request.auth != null;
+        allow read, update: if isAdmin();
+    }
+     match /agentStats/{agentId} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
+    }
+     match /revenueReports/{reportId} {
+        allow read: if isAdmin();
+    }
+     match /sales/{saleId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+     }
+     match /akiliPoints/{userId} {
+        allow read: if request.auth != null;
+     }
+     match /rewardHistory/{historyId} {
+        allow read: if request.auth != null;
+     }
+     match /rewardCatalog/{rewardId} {
+        allow read: if request.auth != null;
+     }
+      match /orders/{orderId} {
+        allow read, write: if request.auth != null;
+      }
+      match /deliveryProofs/{proofId} {
+        allow read, write: if request.auth != null;
+      }
+      match /refunds/{refundId} {
+        allow read, write: if request.auth != null;
+      }
+      match /productVerification/{productId} {
+        allow read: if request.auth != null;
+      }
+      match /mediaReports/{reportId} {
+         allow read, write: if isAdmin();
+      }
+      match /trustScores/{sellerId} {
+        allow read: if request.auth != null;
+      }
+       match /trustHistory/{historyId} {
+        allow read: if request.auth != null;
+      }
+       match /feedback/{feedbackId} {
+         allow read, write: if request.auth != null;
+      }
+       match /buyerTrust/{buyerId} {
+        allow read: if request.auth != null;
+      }
+       match /buyerHistory/{historyId} {
+        allow read: if request.auth != null;
+      }
+       match /plans/{planId} {
+        allow read: if true;
+      }
 
     // --- ADMIN GLOBAL OVERRIDE ---
-    // This should be last to act as a fallback
     match /{document=**} {
       allow read, write: if isAdmin();
     }
