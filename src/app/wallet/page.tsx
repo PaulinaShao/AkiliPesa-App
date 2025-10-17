@@ -42,6 +42,7 @@ export default function WalletPage() {
   
   const transactionsQuery = useMemoFirebase(() => {
     // This query now explicitly waits for the user's UID before being constructed.
+    // If firestore or user.uid is not available, it returns null, and useCollection will wait.
     if (!firestore || !user?.uid) {
       return null;
     }
@@ -51,7 +52,7 @@ export default function WalletPage() {
         where("uid", "==", user.uid),
         orderBy("createdAt", "desc")
     );
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid]); // The dependency array ensures this only re-runs when the user ID is available.
 
   const { data: transactions, isLoading: isTransactionsLoading } = useCollection<any>(transactionsQuery);
 
