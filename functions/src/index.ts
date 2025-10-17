@@ -8,6 +8,7 @@ import fetch from "node-fetch";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall } from 'firebase-functions/v2/https';
 import { enforceTransactionUid } from "./enforceTransactionUid";
+import { onSaleCreated } from './onSaleCreated';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -15,68 +16,7 @@ const db = admin.firestore();
 
 // --- V2 Functions ---
 
-export { enforceTransactionUid };
-
-// 🔹 Trigger when a sale record is created
-export const onSaleCreated = onDocumentCreated("sales/{saleId}", async (event) => {
-  const saleData = event.data?.data();
-  if (!saleData) {
-    console.log("No data associated with the event.");
-    return;
-  }
-  
-  const { agentId, type, amount } = saleData;
-  if (!agentId || !type || !amount) {
-    console.log(`Missing required fields in sale doc: ${event.params.saleId}`);
-    return;
-  }
-
-  // Fetch commission rates from a single admin config document
-  const configDoc = await db.doc("commissionRates/adminConfig").get();
-  const config = configDoc.data();
-  const productRate = config?.productCommission ?? 0.9; // Default 90%
-  const serviceRate = config?.serviceCommission ?? 0.6; // Default 60%
-  const callRate = config?.callCommission ?? 0; // Default 0%
-
-  let commission = 0;
-  if (type === "product") commission = amount * productRate;
-  if (type === "service") commission = amount * serviceRate;
-  if (type === "call") commission = amount * callRate;
-
-  // Skip if no commission is earned
-  if (commission <= 0) {
-    console.log(`No commission for sale type '${type}' on sale ${event.params.saleId}`);
-    return;
-  }
-
-  // Use a transaction to ensure atomicity
-  const walletRef = db.collection("wallets").doc(agentId);
-  const transactionRef = db.collection("walletTransactions").doc();
-  
-  await db.runTransaction(async (t) => {
-    // 1. Record the transaction
-    t.set(transactionRef, {
-      agentId,
-      saleId: event.params.saleId,
-      amount: commission,
-      type: "credit",
-      source: type,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      description: `Commission from ${type} sale`
-    });
-
-    // 2. Update wallet, creating it if it doesn't exist
-    t.set(walletRef, {
-      agentId,
-      balanceTZS: admin.firestore.FieldValue.increment(commission),
-      earnedToday: admin.firestore.FieldValue.increment(commission),
-      totalEarnings: admin.firestore.FieldValue.increment(commission),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-  });
-
-  console.log(`Processed commission of ${commission} for agent ${agentId} from sale ${event.params.saleId}`);
-});
+export { enforceTransactionUid, onSaleCreated };
 
 const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/your-webhook-id"; // IMPORTANT: Replace with your real Make.com webhook URL
 
