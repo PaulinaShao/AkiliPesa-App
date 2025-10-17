@@ -93,16 +93,19 @@ export default function ProfilePage() {
   const { username } = useParams() as { username?: string };
   const [profile, setProfile] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("reels");
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
-  const [showNotifs, setShowNotifs] = useState(false);
   const [creditFlash, setCreditFlash] = useState(false);
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
+
+  // 🔔 NOTIFICATIONS STATE
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const walletListenerRef = useRef<() => void>();
   const notifListenerRef = useRef<() => void>();
@@ -168,14 +171,6 @@ export default function ProfilePage() {
                 setWallet(data);
             }
         });
-
-        // Notifications listener
-        if (currentUser && currentUser.uid === profileId) {
-            const notifQuery = query(collection(firestore, "notifications"), where("uid", "==", profileId), orderBy("createdAt", "desc"), limit(20));
-            notifListenerRef.current = onSnapshot(notifQuery, (snap) => {
-                setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-            });
-        }
         
         // Follow status listener
         if (currentUser && currentUser.uid !== profileId) {
@@ -188,10 +183,52 @@ export default function ProfilePage() {
     
     fetchProfile();
 
-  }, [username, currentUser, firestore]);
+  }, [username, currentUser, firestore, wallet]);
+
+
+  // 📡 Listen for notifications with isRead flag
+  useEffect(() => {
+    if (!profile?.id || !firestore) return;
+
+    const notifQuery = query(
+      collection(firestore, "notifications"),
+      where("uid", "==", profile.id),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubNotif = onSnapshot(notifQuery, (snap) => {
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setNotifications(items);
+
+      // 🧮 Unread counter
+      setUnreadCount(items.filter((n) => !n.isRead).length);
+    });
+
+    notifListenerRef.current = unsubNotif;
+
+    return () => unsubNotif();
+  }, [profile?.id, firestore]);
+
+  // 🧠 Mark all notifications as read when panel opens
+  const markAllAsRead = async () => {
+    if (!firestore) return;
+    const unread = notifications.filter((n) => !n.isRead);
+    for (const note of unread) {
+      const ref = doc(firestore, "notifications", note.id);
+      await updateDoc(ref, { isRead: true });
+    }
+    setUnreadCount(0);
+  };
+
+  // Toggle notification panel
+  const toggleNotifs = async () => {
+    const newState = !showNotifs;
+    setShowNotifs(newState);
+    if (newState) await markAllAsRead();
+  };
 
    const handleFollowToggle = async () => {
-    if (!currentUser || !profile) return;
+    if (!currentUser || !profile || !firestore) return;
     const followRef = doc(firestore, "followers", `${currentUser.uid}_${profile.id}`);
     const userRef = doc(firestore, "users", profile.id);
 
@@ -210,6 +247,7 @@ export default function ProfilePage() {
           uid: profile.id,
           type: "new_follower",
           message: `${currentUser.displayName || "Someone"} followed you.`,
+          isRead: false,
           createdAt: new Date(),
         });
       }
@@ -219,7 +257,7 @@ export default function ProfilePage() {
   };
 
   const handleSaveProfile = async (updates: any) => {
-    if (!currentUser || !profile || currentUser.uid !== profile.id) return;
+    if (!currentUser || !profile || !firestore || currentUser.uid !== profile.id) return;
     try {
       const userRef = doc(firestore, "users", profile.id);
       await updateDoc(userRef, { ...updates, updatedAt: new Date() });
@@ -272,15 +310,15 @@ export default function ProfilePage() {
                 </span>
             </motion.div>
             <button
-            onClick={() => setShowNotifs(!showNotifs)}
-            className="relative bg-[#0e0e10]/80 border border-[#8B5CF6]/30 p-2.5 rounded-xl hover:border-[#8B5CF6]/70"
+              onClick={toggleNotifs}
+              className="relative bg-[#0e0e10]/80 border border-[#8B5CF6]/30 p-2.5 rounded-xl hover:border-[#8B5CF6]/70"
             >
-                <Bell size={18} className="text-[#8B5CF6]" />
-                {notifications.filter(n => !n.read).length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-[#8B5CF6] text-xs text-white w-4 h-4 rounded-full flex items-center justify-center">
-                    {notifications.filter(n => !n.read).length}
-                    </span>
-                )}
+              <Bell size={18} className="text-[#8B5CF6]" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#8B5CF6] text-xs text-white w-4 h-4 rounded-full flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </button>
         </div>
       )}
@@ -305,7 +343,7 @@ export default function ProfilePage() {
                 {notifications.map((n) => (
                   <div
                     key={n.id}
-                    className="bg-[#18181b]/60 border border-[#8B5CF6]/20 p-3 rounded-lg text-xs text-gray-300"
+                    className={`bg-[#18181b]/60 border border-[#8B5CF6]/20 p-3 rounded-lg text-xs text-gray-300 ${!n.isRead ? 'font-bold' : 'opacity-70'}`}
                   >
                     <p>{n.message}</p>
                     <p className="text-gray-500 text-[10px] mt-1">{new Date(n.createdAt?.toDate()).toLocaleString()}</p>

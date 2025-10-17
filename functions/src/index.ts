@@ -162,7 +162,8 @@ async function awardPoints(userId: string, points: number, reason: string) {
     points,
     reason,
     type: "earned",
-    timestamp: admin.firestore.FieldValue.serverTimestamp()
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    isRead: false
   });
 }
 
