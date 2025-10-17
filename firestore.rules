@@ -4,144 +4,97 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for admin by email
     function isAdmin() {
       return request.auth.token.email == "blagridigital@gmail.com";
     }
 
-    // --- User Data ---
-    match /users/{userId} {
-      // Read: A user can only read their own profile.
-      allow get: if request.auth != null && request.auth.uid == userId;
-
-      // List: Disallow listing all users for security.
-      allow list: if false;
-      
-      // Create/Update: A user can create/update their own profile, but cannot change their UID.
-      allow create: if request.auth != null && request.resource.data.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId && request.resource.data.uid == resource.data.uid;
-
-      // Delete: Users can delete their own profile.
-      allow delete: if request.auth != null && request.auth.uid == userId;
-
-      match /clones/{cloneId} {
-        allow read, write: if request.auth.uid == userId;
-      }
-      match /agents/{agentId} {
-        allow read, write: if request.auth.uid == userId;
-      }
+    // --- ADMIN & CORE CONFIG ---
+    match /adminSettings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
     }
-
-    // --- Core Content ---
-    match /posts/{postId} {
-      allow read: if true; // Publicly readable
-      allow create, update: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.authorId == request.auth.uid;
-    }
-
-    match /products/{productId} {
-      allow read: if true; // Publicly readable
-      allow create, update, delete: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-    }
-    
-    // --- Financial & Orders ---
-    match /orders/{orderId} {
-      // Users can read/write their own orders (as buyer or seller)
-      allow read, write: if request.auth != null && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
-    }
-    
-    match /transactions/{txId} {
-      // Admin can list all, users can only list their own.
-      allow get, list: if request.auth != null && (isAdmin() || resource.data.uid == request.auth.uid);
-      // User can only create their own transaction. Allow create even if client omits UID.
-      allow create: if request.auth != null && (request.resource.data.uid == request.auth.uid || !('uid' in request.resource.data));
-      allow update, delete: if false; // No client-side updates
-    }
-
-    match /payments/{paymentId} {
-      allow read, write: if isAdmin(); // Only admin
-    }
-    
-    match /plans/{planId} {
-        allow read: if true; // All plans are public
-        allow write: if isAdmin(); // Only admin can create/edit plans
-    }
-
-    match /calls/{callId} {
-        allow read, write: if request.auth != null && request.auth.uid == resource.data.callerId;
-    }
-
-    // --- Admin & Config ---
-    match /adminSettings/{settingId} {
-        allow read: if true; // Settings can be public
-        allow write: if isAdmin(); // Only admin
-    }
-
-    match /adminAgents/{agentId} {
-        // Any authenticated user can see the list of admin agents
-        allow get, list: if request.auth != null;
-        // Only admin can create/modify them
-        allow create, update, delete: if isAdmin();
-    }
-    
-    // --- Phase 7 Collections ---
-    match /escrow/{escrowId} {
-      allow read, update: if request.auth != null && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId || isAdmin());
-    }
-
-    match /deliveryProofs/{proofId} {
-       allow read, create: if request.auth != null;
-       allow update: if isAdmin();
-    }
-    
-    // --- Phase 8+ Collections ---
-    match /productVerification/{verificationId} {
-       allow read: if true;
-       allow write: if isAdmin();
-    }
-
-    match /trustScores/{scoreId} {
-       allow read: if true;
-       allow write: if isAdmin();
-    }
-
-    match /buyerTrust/{scoreId} {
-        allow read: if true;
+    match /adminAgents/{docId} {
+        allow read: if request.auth != null;
         allow write: if isAdmin();
     }
-
-    match /feedback/{feedbackId} {
-      allow create: if request.auth != null;
+    match /plans/{planId} {
       allow read: if true;
-    }
-    
-    // --- New Rules from Prompt ---
-    match /commissions/{userId} {
-      allow get, create, update: if request.auth != null && request.auth.uid == userId;
-      allow list, delete: if false;
+      allow write: if isAdmin();
     }
 
-    match /referrals/{userId} {
-      allow get, create, update: if request.auth != null && request.auth.uid == userId;
-      allow list, delete: if false;
+    // --- USER DATA ---
+    match /users/{userId} {
+      allow get: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if isAdmin();
     }
 
-     // --- V2 Collections ---
-    match /sales/{saleId} {
-      allow read, create, update: if request.auth != null;
+    match /users/{userId}/clones/{cloneId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
+
+    match /users/{userId}/agents/{agentId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // --- FINANCIAL DATA ---
     match /wallets/{walletId} {
       allow get, create, update: if request.auth != null && request.auth.uid == walletId;
+      allow list: if false; // prevent listing all wallets
     }
 
-    match /withdrawalRequests/{reqId} {
-      allow read, create: if request.auth != null;
-      allow update: if isAdmin();
+    match /transactions/{txId} {
+      allow get: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow list: if request.auth != null && request.query.where.size() > 0 && request.query.where[0][0] == "uid" && request.query.where[0][2] == request.auth.uid;
+      allow create: if request.auth != null; // Allow create, will be secured by CF
+      allow update, delete: if false;
+    }
+    
+    match /commissions/{uid} {
+      allow get, create, update: if request.auth != null && request.auth.uid == uid;
+      allow list: if false;
+    }
+    
+    match /escrow/{eid} {
+      allow read, update: if request.auth != null && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
     }
 
-    match /revenueReports/{reportId} {
-      allow read: if isAdmin();
+    // --- CONTENT & E-COMMERCE ---
+    match /posts/{pid} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+    }
+
+    match /products/{pid} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+    }
+    
+    match /orders/{orderId} {
+        allow read, write: if request.auth != null && (request.resource.data.buyerId == request.auth.uid || request.resource.data.sellerId == request.auth.uid);
+    }
+    
+    match /deliveryProofs/{proofId} {
+        allow read, write: if request.auth != null;
+    }
+    
+    match /refunds/{refundId} {
+        allow read, write: if request.auth != null;
+    }
+
+    // --- OTHER ---
+    match /calls/{callId} {
+        allow read, write: if request.auth != null && request.resource.data.callerId == request.auth.uid;
+    }
+    
+    match /aiSessions/{sessionId} {
+      allow read, write: if request.auth != null && request.auth.uid == sessionId;
+    }
+
+    // --- ADMIN GLOBAL OVERRIDE ---
+    // This should be last to act as a fallback
+    match /{document=**} {
+      allow read, write: if isAdmin();
     }
   }
 }

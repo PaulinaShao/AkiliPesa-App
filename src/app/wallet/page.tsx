@@ -11,7 +11,7 @@ import { ArrowDownLeft, ArrowUpRight, Plus, Send, ShieldCheck, Hourglass, Credit
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 
 
 const transactionIcons: Record<string, JSX.Element> = {
@@ -30,34 +30,52 @@ const transactionIcons: Record<string, JSX.Element> = {
   'Purchase': <CreditCard className="h-5 w-5 text-blue-400" />,
 };
 
-const isCredit = (type: Transaction['type']) => !['Sent', 'Withdraw', 'deduction', 'purchase', 'Purchase', 'Escrow Hold'].includes(type);
-
 
 export default function WalletPage() {
-  const { user, isUserLoading: isAuthLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
-  
-  const transactionsQuery = useMemoFirebase(() => {
-    // This query now explicitly waits for the user's UID before being constructed.
-    // If firestore or user.uid is not available, it returns null, and useCollection will wait.
-    if (!firestore || !user?.uid) {
-      return null;
+  const [wallet, setWallet] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (isUserLoading || !firestore) return;
+    
+    const unsub = firestore && user ? onSnapshot(doc(firestore, "wallets", user.uid), (doc) => {
+        if(doc.exists()) setWallet(doc.data());
+    }) : () => {};
+
+    if (!user) {
+        setIsLoading(false);
     }
-    // The where clause is the critical piece that makes this query compliant with security rules.
-    return query(
-        collection(firestore, "transactions"),
-        where("uid", "==", user.uid),
-        orderBy("createdAt", "desc")
-    );
-  }, [firestore, user?.uid]); // The dependency array ensures this only re-runs when the user ID is available.
+    
+    return () => unsub();
 
-  const { data: transactions, isLoading: isTransactionsLoading } = useCollection<any>(transactionsQuery);
+  }, [user, isUserLoading, firestore]);
+  
+  useEffect(() => {
+      if (!user || !firestore) return;
 
-  const wallet = userProfile?.wallet;
-  const isLoading = isAuthLoading || isProfileLoading;
+      const txQuery = query(
+          collection(firestore, "transactions"), 
+          where("uid", "==", user.uid),
+          orderBy("createdAt", "desc")
+      );
+      
+      const unsubTx = onSnapshot(txQuery, (snapshot) => {
+          const txList = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+          setTransactions(txList);
+          if(isLoading) setIsLoading(false);
+      }, (error) => {
+          console.error("Error fetching transactions: ", error);
+          setIsLoading(false);
+      });
+
+      return () => unsubTx();
+  }, [user, firestore, isLoading]);
+
+  const userProfile = wallet; // for compatibility with old structure
 
   return (
     <div className="dark">
@@ -74,7 +92,7 @@ export default function WalletPage() {
               {isLoading ? (
                  <p className="text-4xl font-bold">Loading...</p>
               ) : (
-                <p className="text-4xl font-bold">TZS {wallet?.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</p>
+                <p className="text-4xl font-bold">TZS {wallet?.balanceTZS?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</p>
               )}
             </CardContent>
           </div>
@@ -94,7 +112,7 @@ export default function WalletPage() {
                 <CardHeader className="flex-row items-center justify-between p-4">
                 <div>
                     <CardTitle className="text-sm font-light text-muted-foreground">Plan Credits</CardTitle>
-                    <CardDescription className="text-xl font-bold text-foreground">{wallet?.plan?.credits ?? '0'}</CardDescription>
+                    <CardDescription className="text-xl font-bold text-foreground">{userProfile?.plan?.credits ?? '0'}</CardDescription>
                 </div>
                 <CreditCard className="h-8 w-8 text-green-400"/>
                 </CardHeader>
@@ -125,7 +143,7 @@ export default function WalletPage() {
                 <Card className="bg-card/50 border-border/50 mt-4">
                     <CardContent className="p-0">
                     <ul className="divide-y divide-border/50">
-                        {isTransactionsLoading && <li className="p-4 text-center">Loading transactions...</li>}
+                        {isLoading && <li className="p-4 text-center">Loading transactions...</li>}
                         {transactions?.map(transaction => (
                         <li key={transaction.id} className="flex items-center justify-between p-4">
                             <div className="flex items-center gap-4">
@@ -145,7 +163,7 @@ export default function WalletPage() {
                             </div>
                         </li>
                         ))}
-                         {!isTransactionsLoading && transactions?.length === 0 && <li className="p-4 text-center text-muted-foreground">No transactions yet.</li>}
+                         {!isLoading && transactions?.length === 0 && <li className="p-4 text-center text-muted-foreground">No transactions yet.</li>}
                     </ul>
                     </CardContent>
                 </Card>
@@ -153,23 +171,23 @@ export default function WalletPage() {
             <TabsContent value="plan">
                  <Card className="bg-card/50 border-border/50 mt-4">
                     <CardHeader>
-                        <CardTitle>Current Plan: {wallet?.plan?.id ?? 'N/A'}</CardTitle>
+                        <CardTitle>Current Plan: {userProfile?.plan?.id ?? 'N/A'}</CardTitle>
                         <CardDescription>Your plan is active and gives you access to premium features.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {wallet?.plan ? (
+                        {userProfile?.plan ? (
                             <>
                             <div>
                                 <div className="flex justify-between mb-1 text-sm">
                                     <span className="font-medium">Credits Remaining</span>
-                                    <span className="font-bold">{wallet.plan.credits}</span>
+                                    <span className="font-bold">{userProfile.plan.credits}</span>
                                 </div>
                                 <div className="w-full bg-muted rounded-full h-2.5">
-                                    <div className="bg-green-500 h-2.5 rounded-full" style={{width: `${(wallet.plan.credits / 200) * 100}%`}}></div>
+                                    <div className="bg-green-500 h-2.5 rounded-full" style={{width: `${(userProfile.plan.credits / 200) * 100}%`}}></div>
                                 </div>
                             </div>
                             <div>
-                                <p className="text-sm font-medium">Expires on: <span className="font-bold">{wallet.plan.expiry ? format(wallet.plan.expiry.toDate(), 'MMMM d, yyyy') : 'N/A'}</span></p>
+                                <p className="text-sm font-medium">Expires on: <span className="font-bold">{userProfile.plan.expiry ? format(userProfile.plan.expiry.toDate(), 'MMMM d, yyyy') : 'N/A'}</span></p>
                             </div>
                             </>
                         ) : (
