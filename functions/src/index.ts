@@ -8,7 +8,7 @@ import fetch from "node-fetch";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall } from 'firebase-functions/v2/https';
 import { enforceTransactionUid } from "./enforceTransactionUid";
-import { onSaleCreated } from './onSaleCreated';
+import { realtimePayoutManager } from "./realtimePayoutManager";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -16,7 +16,7 @@ const db = admin.firestore();
 
 // --- V2 Functions ---
 
-export { enforceTransactionUid, onSaleCreated };
+export { enforceTransactionUid, realtimePayoutManager };
 
 const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/your-webhook-id"; // IMPORTANT: Replace with your real Make.com webhook URL
 
@@ -112,100 +112,6 @@ export const aggregateDailyRevenue = onSchedule("every day 00:00", async () => {
     console.log("Daily revenue report generated.");
 });
 
-// Trigger when escrow is released (after buyer confirms)
-export const onEscrowReleased = onDocumentUpdated("escrow/{escrowId}", async (event) => {
-    if (!event.data) return;
-    const before = event.data.before.data();
-    const after = event.data.after.data();
-
-    // Trigger only when status changes to "released"
-    if (before.status !== "released" && after.status === "released") {
-        const saleId = after.saleId;
-        const saleDoc = await db.collection("sales").doc(saleId).get();
-        if (!saleDoc.exists) {
-            console.log(`Sale document ${saleId} not found.`);
-            return;
-        }
-        const sale = saleDoc.data()!;
-
-        const sellerId = sale.agentId;
-        const amount = sale.amount;
-
-        // Check for an affiliate referral
-        const referralQuery = db.collection("referrals").where("saleId", "==", saleId).where("status", "==", "converted").limit(1);
-        const referralSnapshot = await referralQuery.get();
-
-        let referralCommission = 0;
-        let referralUser: string | null = null;
-        let refId: string | null = null;
-
-        if (!referralSnapshot.empty) {
-            const refData = referralSnapshot.docs[0].data();
-            refId = referralSnapshot.docs[0].id;
-            referralCommission = refData.commissionAmount || 0;
-            referralUser = refData.sharedBy;
-        }
-
-        const sellerShare = amount - referralCommission; // Seller gets the remainder
-
-        // --- Start Transaction ---
-        const batch = db.batch();
-
-        // 1. Credit seller wallet
-        const sellerTxRef = db.collection("walletTransactions").doc();
-        batch.set(sellerTxRef, {
-            agentId: sellerId,
-            amount: sellerShare,
-            type: "credit",
-            source: "product_sale",
-            saleId: saleId,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            description: `Sale funds released for: ${sale.productName || saleId}`
-        });
-        const sellerWalletRef = db.collection("wallets").doc(sellerId);
-        batch.set(sellerWalletRef, { 
-            balanceTZS: admin.firestore.FieldValue.increment(sellerShare),
-            totalEarnings: admin.firestore.FieldValue.increment(sellerShare),
-        }, { merge: true });
-
-        // 2. Credit referral user if one exists
-        if (referralUser && referralCommission > 0) {
-            const referrerTxRef = db.collection("walletTransactions").doc();
-            batch.set(referrerTxRef, {
-                agentId: referralUser,
-                amount: referralCommission,
-                type: "credit",
-                source: "referral_commission",
-                saleId: saleId,
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                description: `Referral commission from sale: ${saleId}`
-            });
-            const referrerWalletRef = db.collection("wallets").doc(referralUser);
-            batch.set(referrerWalletRef, {
-                balanceTZS: admin.firestore.FieldValue.increment(referralCommission),
-                totalEarnings: admin.firestore.FieldValue.increment(referralCommission),
-            }, { merge: true });
-
-            // Optionally update agent stats for the referrer
-            const referrerStatsRef = db.collection("agentStats").doc(referralUser);
-            batch.set(referrerStatsRef, {
-                referralsConverted: admin.firestore.FieldValue.increment(1),
-                totalCommission: admin.firestore.FieldValue.increment(referralCommission)
-            }, { merge: true });
-        }
-
-        // 3. Update seller agent stats
-        const sellerStatsRef = db.collection("agentStats").doc(sellerId);
-        batch.set(sellerStatsRef, {
-            totalSales: admin.firestore.FieldValue.increment(1),
-            totalRevenue: admin.firestore.FieldValue.increment(amount),
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        await batch.commit();
-        console.log(`Payout processed for sale ${saleId}. Seller: ${sellerId}, Referrer: ${referralUser || 'None'}`);
-    }
-});
 
 // Scheduled function to update agent ranks nightly
 export const updateAgentRanks = onSchedule("every day 02:00", async () => {
@@ -783,46 +689,6 @@ export const onpostcreate = functions.firestore
       .update({
         'stats.postsCount': admin.firestore.FieldValue.increment(1),
       });
-  });
-
-// Order updated → trigger payments
-export const onorderupdate = functions.firestore
-  .document('orders/{orderId}')
-  .onUpdate(async (change, context) => {
-    const after = change.after.data();
-    if (!after) return null;
-
-    if (after.status === 'paid') {
-      const productRef = db
-        .collection('products')
-        .doc(after.productId);
-      await productRef.update({
-        'metrics.unitsSold': admin.firestore.FieldValue.increment(
-          after.quantity
-        ),
-        'metrics.revenue': admin.firestore.FieldValue.increment(after.amount),
-      });
-
-      const commissionRate = 0.1; // 10%
-      const ownerShare = after.amount * (1 - commissionRate);
-      const akilipesaShare = after.amount * commissionRate;
-
-      await db.collection('payments').add({
-        orderId: context.params.orderId,
-        sellerId: after.sellerId,
-        amountGross: after.amount,
-        fees: { platform: akilipesaShare, taxes: 0, transferFee: 0 },
-        amountNet: ownerShare,
-        breakdown: {
-          ownerShare,
-          akilipesaShare,
-          commissionShare: 0, // Assuming no separate affiliate commission here
-        },
-        status: 'completed',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    }
-    return null;
   });
 
 // Callable function to buy a plan
