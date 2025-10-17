@@ -3,8 +3,8 @@
 
 import { useEffect, useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
-import { useAuth, useFirestore } from '@/firebase';
-import { doc, getDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
+import { useAuth, useFirestore, useUser } from '@/firebase';
+import { doc, getDoc, query, collection, where, getDocs, limit, onSnapshot } from 'firebase/firestore';
 
 import { Header } from '@/components/header';
 import { ProfileHeader } from './components/ProfileHeader';
@@ -20,53 +20,63 @@ const userVideos: any[] = [];
 
 export default function ProfilePage() {
   const params = useParams();
-  const auth = useAuth();
+  const { user: authUser } = useUser();
   const firestore = useFirestore();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { username } = params as { username?: string };
 
   useEffect(() => {
-    async function fetchProfile() {
-      if (!firestore) return;
-
-      try {
-        const username = params?.username;
-        if (!username || typeof username !== 'string') {
-            setLoading(false);
-            return;
-        };
-
-        const usersRef = collection(firestore, "users");
-        const q = query(usersRef, where("handle", "==", username), limit(1));
-        const snap = await getDocs(q);
-
-        if (!snap.empty) {
-          setProfile({ ...snap.docs[0].data(), id: snap.docs[0].id });
-        } else {
-            // Fallback for cases where the URL might be a UID
-            const user = auth?.currentUser;
-            if (user && user.uid === username) {
-                 const ref = doc(firestore, "users", user.uid);
-                 const userSnap = await getDoc(ref);
-                 if (userSnap.exists()) setProfile({ ...userSnap.data(), id: userSnap.id });
-            }
-        }
-      } catch (e) {
-        console.error("Profile fetch failed:", e);
-      } finally {
-        setLoading(false);
-      }
+    if (!username || !firestore) {
+      setLoading(false);
+      return;
     }
 
-    const unsub = auth?.onAuthStateChanged(() => {
-      fetchProfile();
+    const fetchProfile = async () => {
+        setLoading(true);
+        try {
+            // 🔍 Try match by handle first
+            const usersRef = collection(firestore, "users");
+            const handleQuery = query(usersRef, where("handle", "==", username), limit(1));
+            const handleSnap = await getDocs(handleQuery);
+
+            if (!handleSnap.empty) {
+                const userDoc = handleSnap.docs[0];
+                setProfile({ ...userDoc.data(), id: userDoc.id });
+            } else {
+                // 🔄 Fallback to UID lookup if handle not found
+                const userRef = doc(firestore, "users", username);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                    setProfile({ ...userSnap.data(), id: userSnap.id });
+                } else {
+                    setProfile(null);
+                }
+            }
+        } catch (err) {
+            console.error("Profile fetch failed:", err);
+            setProfile(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // We need auth to be ready to have permission to query, but the query itself doesn't depend on who is logged in.
+    const unsub = authUser !== undefined ? fetchProfile() : null;
+    
+    const authListener = onSnapshot(doc(firestore, `users/${authUser?.uid}`), (doc) => {
+        // This listener is mainly to ensure the component re-evaluates if needed,
+        // but the core logic is in fetchProfile.
     });
 
+
     return () => {
-      if (unsub) unsub();
+      // Cleanup, although fetchProfile is async and might complete after unmount.
+      // A more robust solution might use an AbortController.
+      if(authListener) authListener();
     };
 
-  }, [params, auth, firestore]);
+  }, [username, authUser, firestore]);
 
   if (loading) {
     return (
@@ -80,7 +90,14 @@ export default function ProfilePage() {
   }
   
   if (!profile) {
-    notFound();
+    return (
+        <div className="dark">
+             <Header isMuted={true} onToggleMute={() => {}} />
+             <div className="flex h-screen w-full items-center justify-center">
+                <p>User not found.</p>
+             </div>
+        </div>
+    );
   }
 
   return (
@@ -88,16 +105,16 @@ export default function ProfilePage() {
       <Header isMuted={true} onToggleMute={() => {}} />
       <div className="max-w-xl mx-auto p-4 pt-20 supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[calc(env(safe-area-inset-bottom)+80px)]">
         <ProfileHeader user={{
-            id: profile.uid,
+            id: profile.id,
             username: profile.handle,
             name: profile.displayName,
             avatar: profile.photoURL,
             bio: profile.bio || '', // Provide default empty string
             stats: profile.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 } // Provide default stats
         }} />
-        <TrustScoreBadge sellerId={profile.uid} />
-        <BuyerTrustBadge buyerId={profile.uid} />
-        <AkiliPointsBadge userId={profile.uid} />
+        <TrustScoreBadge sellerId={profile.id} />
+        <BuyerTrustBadge buyerId={profile.id} />
+        <AkiliPointsBadge userId={profile.id} />
         <ProfileQuickActions />
         <ProfileNav />
         
