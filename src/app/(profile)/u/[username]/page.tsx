@@ -1,8 +1,8 @@
 
-'use client';
+"use client";
 import { useEffect, useState, useRef, FormEvent } from 'react';
 import { useParams } from 'next/navigation';
-import { useAuth, useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import {
   doc,
   getDoc,
@@ -94,15 +94,15 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState("reels");
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const [showEditor, setShowEditor] = useState(false);
   const [creditFlash, setCreditFlash] = useState(false);
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
 
-  // 🔔 NOTIFICATIONS STATE
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -126,10 +126,10 @@ export default function ProfilePage() {
       return;
     }
     
-    setLoading(true);
     let profileData: any = null;
 
     const fetchProfile = async () => {
+        setLoading(true);
         const usersRef = collection(firestore, "users");
         const handleQuery = query(usersRef, where("handle", "==", username), limit(1));
         const handleSnap = await getDocs(handleQuery);
@@ -137,6 +137,7 @@ export default function ProfilePage() {
         if (!handleSnap.empty) {
             profileData = { ...handleSnap.docs[0].data(), id: handleSnap.docs[0].id };
         } else {
+            // Fallback to UID lookup
             const userRef = doc(firestore, "users", username);
             const userSnap = await getDoc(userRef);
             if (userSnap.exists()) {
@@ -151,15 +152,19 @@ export default function ProfilePage() {
             const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileData.id), orderBy("createdAt", "desc"));
             const postsSnap = await getDocs(postsQuery);
             setPosts(postsSnap.docs.map(d => ({...d.data(), id: d.id })));
+            
+            const followersSnap = await getDocs(query(collection(firestore, "followers"), where("followedId", "==", profileData.id)));
+            setFollowersCount(followersSnap.size);
+            const followingSnap = await getDocs(query(collection(firestore, "followers"), where("followerId", "==", profileData.id)));
+            setFollowingCount(followingSnap.size);
 
         } else {
            setProfile(null);
         }
-         setLoading(false);
+        setLoading(false);
     };
 
     const setupListeners = (profileId: string) => {
-        // Wallet listener
         const walletRef = doc(firestore, "wallets", profileId);
         walletListenerRef.current = onSnapshot(walletRef, (snap) => {
             if (snap.exists()) {
@@ -169,10 +174,11 @@ export default function ProfilePage() {
                     setTimeout(() => setCreditFlash(false), 1500);
                 }
                 setWallet(data);
+            } else {
+                setWallet({ balanceTZS: 0, escrow: 0, plan: { credits: 0 } });
             }
         });
         
-        // Follow status listener
         if (currentUser && currentUser.uid !== profileId) {
             const followRef = doc(firestore, 'followers', `${currentUser.uid}_${profileId}`);
             followListenerRef.current = onSnapshot(followRef, (snap) => {
@@ -183,10 +189,9 @@ export default function ProfilePage() {
     
     fetchProfile();
 
-  }, [username, currentUser, firestore, wallet]);
+  }, [username, currentUser, firestore]);
 
 
-  // 📡 Listen for notifications with isRead flag
   useEffect(() => {
     if (!profile?.id || !firestore) return;
 
@@ -199,8 +204,6 @@ export default function ProfilePage() {
     const unsubNotif = onSnapshot(notifQuery, (snap) => {
       const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setNotifications(items);
-
-      // 🧮 Unread counter
       setUnreadCount(items.filter((n) => !n.isRead).length);
     });
 
@@ -209,7 +212,6 @@ export default function ProfilePage() {
     return () => unsubNotif();
   }, [profile?.id, firestore]);
 
-  // 🧠 Mark all notifications as read when panel opens
   const markAllAsRead = async () => {
     if (!firestore) return;
     const unread = notifications.filter((n) => !n.isRead);
@@ -220,7 +222,6 @@ export default function ProfilePage() {
     setUnreadCount(0);
   };
 
-  // Toggle notification panel
   const toggleNotifs = async () => {
     const newState = !showNotifs;
     setShowNotifs(newState);
@@ -280,7 +281,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-3 gap-1 mt-4">
             {posts.map(post => (
                 <div key={post.id} className="relative aspect-[9/16] bg-muted overflow-hidden rounded-md group">
-                    <Image src={post.media.url} alt={post.caption || 'Post'} layout="fill" objectFit="cover" className="group-hover:scale-105 transition-transform duration-300" data-ai-hint="lifestyle content" />
+                    <Image src={post.media.url} alt={post.caption || 'Post'} fill objectFit="cover" className="group-hover:scale-105 transition-transform duration-300" data-ai-hint="lifestyle content" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                     <div className="absolute bottom-2 left-2 text-white flex items-center gap-1 text-sm font-bold">
                         <Heart size={14}/>
@@ -296,7 +297,6 @@ export default function ProfilePage() {
     <div className="dark">
       <Header isMuted={true} onToggleMute={()=>{}}/>
       
-      {/* --- Wallet Micro-Widget + Notification Bell --- */}
       {isOwnProfile && (
         <div className="fixed top-4 right-6 flex gap-3 z-50 items-center">
             <motion.div
@@ -323,7 +323,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* --- Notifications Panel --- */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div
@@ -371,7 +370,7 @@ export default function ProfilePage() {
             name: profile.displayName,
             avatar: profile.photoURL,
             bio: profile.bio || '',
-            stats: profile.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 }
+            stats: { ...profile.stats, followers: followersCount, following: followingCount }
           }}
           isOwnProfile={isOwnProfile}
           isFollowing={isFollowing}
@@ -379,10 +378,10 @@ export default function ProfilePage() {
           onEditClick={() => setShowEditor(true)}
         />
         
-        <TrustScoreBadge sellerId={profile.id} />
-        <BuyerTrustBadge buyerId={profile.id} />
-        <AkiliPointsBadge userId={profile.id} />
-        <ProfileQuickActions />
+        {isOwnProfile && <TrustScoreBadge sellerId={profile.id} />}
+        {isOwnProfile && <BuyerTrustBadge buyerId={profile.id} />}
+        {isOwnProfile && <AkiliPointsBadge userId={profile.id} />}
+        {isOwnProfile && <ProfileQuickActions />}
         <ProfileNav />
         
         <div className="pb-16 md:pb-0">
@@ -392,3 +391,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
