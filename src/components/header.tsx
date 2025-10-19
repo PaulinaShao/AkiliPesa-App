@@ -6,7 +6,7 @@ import { Logo } from './logo';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { useDoc, useFirestore, useUser } from '@/firebase';
+import { useDoc, useFirestore, useFirebaseUser } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/use-memo-firebase';
 import { doc } from 'firebase/firestore';
 
@@ -17,7 +17,7 @@ interface HeaderProps {
 }
 
 export function Header({ transparent, isMuted, onToggleMute }: HeaderProps) {
-  const { user } = useUser();
+  const { user } = useFirebaseUser();
   const firestore = useFirestore();
 
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);

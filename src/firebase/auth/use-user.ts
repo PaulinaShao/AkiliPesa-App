@@ -9,7 +9,7 @@ interface AuthState {
   loading: boolean;
 }
 
-export function useUser() {
+export function useFirebaseUser() {
   const auth = useAuth();
   const [state, setState] = useState<AuthState>({
     user: null,

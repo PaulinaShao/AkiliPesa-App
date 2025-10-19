@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { useFirestore, useUser } from "@/firebase";
+import { useFirestore, useFirebaseUser } from "@/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -20,7 +20,7 @@ type AgentStat = {
 
 export default function AgentRanking() {
   const [agents, setAgents] = useState<AgentStat[]>([]);
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
   const router = useRouter();
 

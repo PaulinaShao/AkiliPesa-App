@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { ArrowDownLeft, ArrowUpRight, Plus, Send, ShieldCheck, Hourglass, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebaseUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 
 
@@ -27,7 +27,7 @@ const transactionIcons: Record<string, JSX.Element> = {
 
 
 export default function WalletPage() {
-  const { user, isUserLoading } = useUser();
+  const { user, loading: isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
 
   const walletDocRef = useMemoFirebase(
@@ -37,17 +37,19 @@ export default function WalletPage() {
   const { data: walletData, isLoading: isWalletLoading } = useDoc<any>(walletDocRef);
   const wallet = walletData || { balanceTZS: 0, escrow: 0, plan: { credits: 0 } };
 
-  const transactionsQuery = useMemoFirebase(
-    () =>
-      user && firestore
-        ? query(
-            collection(firestore, "transactions"),
-            where("uid", "==", user.uid),
-            orderBy("createdAt", "desc")
-          )
-        : null,
-    [user, firestore]
-  );
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    try {
+      return query(
+        collection(firestore, "transactions"),
+        where("uid", "==", user.uid),
+        orderBy("createdAt", "desc")
+      );
+    } catch (err) {
+      console.error("Transaction query blocked by rules:", err);
+      return null;
+    }
+  }, [user, firestore]);
   const { data: transactions, isLoading: areTransactionsLoading } = useCollection<any>(transactionsQuery);
 
   const isLoading = isUserLoading || isWalletLoading || areTransactionsLoading;

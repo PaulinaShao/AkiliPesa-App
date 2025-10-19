@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useFirestore, useUser } from "@/firebase";
+import { useFirestore, useFirebaseUser } from "@/firebase";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -29,7 +29,7 @@ type SessionRecord = {
 export default function AdminSessions() {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [filter, setFilter] = useState({ type: "all", status: "all" });
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
   const router = useRouter();
 

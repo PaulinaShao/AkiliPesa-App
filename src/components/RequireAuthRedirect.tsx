@@ -3,11 +3,11 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/firebase";
+import { useFirebaseUser } from "@/firebase";
 import { setPostLoginRedirect } from "@/lib/redirect";
 
 export default function RequireAuthRedirect({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useFirebaseUser();
   const router = useRouter();
 
   useEffect(() => {

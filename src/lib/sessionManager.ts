@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { useUser, useFirestore } from '@/firebase';
+import { useFirebaseUser, useFirestore } from '@/firebase';
 
 type SessionState = {
   sessionId: string;
@@ -15,7 +15,7 @@ type SessionState = {
 };
 
 export default function useSessionManager(agentId?: string, mode: 'audio' | 'video' | 'chat' = 'chat') {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
   const [session, setSession] = useState<SessionState | null>(null);
   const [loading, setLoading] = useState(true);

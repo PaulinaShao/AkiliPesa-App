@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/definitions';
 import { format } from 'date-fns';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useFirebaseUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { httpsCallable } from 'firebase/functions';
 import { AgentPicker } from '@/components/AgentPicker';

@@ -2,7 +2,7 @@
 "use client";
 import { useEffect, useState, useRef, FormEvent } from 'react';
 import { useParams } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase';
+import { useFirebaseUser, useFirestore } from '@/firebase';
 import {
   doc,
   getDoc,
@@ -100,7 +100,7 @@ export default function ProfilePage() {
   const [followingCount, setFollowingCount] = useState(0);
   const [showEditor, setShowEditor] = useState(false);
   const [creditFlash, setCreditFlash] = useState(false);
-  const { user: currentUser } = useUser();
+  const { user: currentUser } = useFirebaseUser();
   const firestore = useFirestore();
 
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -391,5 +391,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    

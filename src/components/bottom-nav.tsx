@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Wallet, Plus, Inbox, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 const navLinks = [
@@ -17,7 +17,7 @@ const navLinks = [
 
 export function BottomNavWrapper() {
   const pathname = usePathname();
-  const { user: authUser } = useUser();
+  const { user: authUser } = useFirebaseUser();
   const firestore = useFirestore();
   
   const userDocRef = useMemoFirebase(

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Chrome, Phone } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useFirebaseUser } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup, User, getRedirectResult, signInWithRedirect } from 'firebase/auth';
 import type { FirebaseError } from 'firebase/app';
 import { getPostLoginRedirect, setPostLoginRedirect } from '@/lib/redirect';
@@ -21,7 +21,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useFirebaseUser();
   
   useEffect(() => {
     const queryRedirect = searchParams.get('redirect');

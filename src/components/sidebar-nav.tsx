@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 const mainNavLinks = [
@@ -21,7 +21,7 @@ const mainNavLinks = [
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const { user: authUser } = useUser();
+  const { user: authUser } = useFirebaseUser();
   const firestore = useFirestore();
 
   const userDocRef = useMemoFirebase(

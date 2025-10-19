@@ -144,7 +144,7 @@ export const useFirebaseApp = (): FirebaseApp => {
   return firebaseApp;
 };
 
-export const useUser = (): UserHookResult => {
+export const useFirebaseUser = (): UserHookResult => {
   const { user, isUserLoading, userError } = useFirebase();
   return { user, isUserLoading, userError };
 };

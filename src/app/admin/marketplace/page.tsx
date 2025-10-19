@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { useFirestore, useUser } from "@/firebase";
+import { useFirestore, useFirebaseUser } from "@/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
@@ -21,7 +21,7 @@ type Order = {
 
 export default function MarketplaceAdmin() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
   const router = useRouter();
 

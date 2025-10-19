@@ -1,7 +1,7 @@
 
 "use client";
 import { useEffect, useState, useMemo } from "react";
-import { useUser, useFirestore } from "@/firebase";
+import { useFirebaseUser, useFirestore } from "@/firebase";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Doughnut } from "react-chartjs-2";
@@ -32,7 +32,7 @@ type DataState = {
 export default function RevenueDashboard() {
   const router = useRouter();
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useFirebaseUser();
   
   const [data, setData] = useState<DataState>({
     totalSales: 0,

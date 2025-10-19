@@ -19,7 +19,7 @@ import { comments as allComments } from '@/lib/data';
 import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useFirebaseUser } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { AgentPicker } from './AgentPicker';

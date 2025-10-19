@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useFirebaseUser } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/use-memo-firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -32,7 +32,7 @@ interface AgentPickerProps {
 
 export function AgentPicker({ show, onSelect, onCancel }: AgentPickerProps) {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user } = useFirebaseUser();
 
   const adminAgentsQuery = useMemoFirebase(
     () =>
