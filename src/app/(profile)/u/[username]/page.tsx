@@ -50,6 +50,7 @@ import { Header } from '@/components/header';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
+import { useAuthRedirect } from '@/hooks/useAuthRedirect';
 
 function ProfileEditor({ profile, onSave, onCancel }: { profile: any, onSave: (updates: any) => void, onCancel: () => void }) {
     const [bio, setBio] = useState(profile.bio || "");
@@ -90,6 +91,7 @@ function ProfileEditor({ profile, onSave, onCancel }: { profile: any, onSave: (u
 
 
 export default function ProfilePage() {
+  useAuthRedirect();
   const { username } = useParams() as { username?: string };
   const [profile, setProfile] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
