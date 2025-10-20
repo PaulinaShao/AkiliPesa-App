@@ -8,24 +8,26 @@ import {
   getDoc, 
   setDoc,
   serverTimestamp,
+  collection,
 } from "firebase/firestore";
 
 export const ensureUserDoc = async (firestore: Firestore, user: User) => {
   if (!user) return;
 
-  const userRef = doc(firestore, "users", user.uid);
-  
-  // Use a single getDoc call to check for existence.
+  const uid = user.uid;
+  const displayName = user.displayName || "New User";
+
+  // 1️⃣ USER PROFILE
+  const userRef = doc(firestore, "users", uid);
   const userSnap = await getDoc(userRef);
 
-  // 1️⃣ Create user profile if missing
   if (!userSnap.exists()) {
-    console.log("Initializing documents for new user:", user.uid);
+    console.log("Initializing documents for new user:", uid);
     try {
       await setDoc(userRef, {
-        uid: user.uid,
-        displayName: user.displayName || "New User",
-        handle: user.email?.split('@')[0] || `user_${user.uid.slice(0, 6)}`,
+        uid,
+        displayName,
+        handle: user.email?.split('@')[0] || `user_${uid.slice(0, 6)}`,
         phone: user.phoneNumber || null,
         email: user.email || null,
         photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`,
@@ -46,22 +48,22 @@ export const ensureUserDoc = async (firestore: Firestore, user: User) => {
       });
       console.log("✅ User profile initialized.");
 
-      // 2️⃣ Create wallet
-      const walletRef = doc(firestore, "wallets", user.uid);
+      // 2️⃣ WALLET
+      const walletRef = doc(firestore, "wallets", uid);
       await setDoc(walletRef, {
-        agentId: user.uid,
-        balanceTZS: 20000, // Default starting balance
+        agentId: uid,
+        balanceTZS: 20000,
         earnedToday: 0,
         totalEarnings: 0,
         updatedAt: serverTimestamp(),
       }, { merge: true });
       console.log("✅ Wallet initialized.");
 
-      // 3️⃣ Create buyerTrust
-      const trustRef = doc(firestore, "buyerTrust", user.uid);
+      // 3️⃣ TRUST SCORE
+      const trustRef = doc(firestore, "buyerTrust", uid);
       await setDoc(trustRef, {
-        buyerId: user.uid,
-        trustScore: 70, // Start with a neutral score
+        buyerId: uid,
+        trustScore: 70,
         level: 'Bronze',
         lastUpdated: serverTimestamp(),
         metrics: {
@@ -73,6 +75,25 @@ export const ensureUserDoc = async (firestore: Firestore, user: User) => {
         }
       });
       console.log("✅ BuyerTrust initialized.");
+      
+      // 4️⃣ DEFAULT AI CLONE
+      const cloneCollectionRef = collection(firestore, "users", uid, "clones");
+      const defaultCloneId = `clone_${uid.slice(0, 5)}`;
+      const defaultCloneDocRef = doc(cloneCollectionRef, defaultCloneId);
+      
+      await setDoc(defaultCloneDocRef, {
+          cloneId: defaultCloneId,
+          userId: uid,
+          name: `${displayName}'s AI Clone`,
+          description: "Your personalized AI avatar for voice, face & chat.",
+          avatarUrl: "/assets/default-avatar-tanzanite.svg",
+          type: 'face', // Defaulting to face, can be changed
+          voiceModelUrl: "akilipesa_default_voice",
+          status: "active",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+      });
+      console.log("🤖 Default AI Clone initialized");
 
     } catch (error) {
         console.error("❌ Error initializing user documents:", error);
