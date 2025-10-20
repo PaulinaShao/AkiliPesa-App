@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Video, User } from '@/lib/definitions';
 import { useInView } from '@/lib/hooks';
-import { UserAvatar } from '@/components/user-avatar';
+import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Button } from '@/components/ui/button';
 import { Heart, MessageCircle, Share2, Play, Pause, Phone, Video as VideoIcon, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -160,7 +160,7 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
           <div className="flex items-start gap-3 mb-2">
             <div className="relative">
               <Link href={`/u/${user.username}`}>
-                <UserAvatar src={user.avatar} username={user.username} className="h-12 w-12 border-2 border-white" />
+                <FallbackAvatar src={user.avatar} alt={user.username} size={48} className="h-12 w-12 border-2 border-white" />
               </Link>
               <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
                 <PlusCircle className="h-5 w-5 text-primary fill-background" />
@@ -225,7 +225,7 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
                   const commentUser = user; // In a real app, you'd find the actual comment user
                   return (
                     <div key={comment.id} className="flex gap-2">
-                      <UserAvatar src={commentUser.avatar} username={commentUser.username} className="h-8 w-8"/>
+                      <FallbackAvatar src={commentUser.avatar} alt={commentUser.username} size={32}/>
                       <div>
                         <p className="font-bold text-sm">@{commentUser.username}</p>
                         <p>{comment.text}</p>

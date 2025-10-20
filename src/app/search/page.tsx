@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { users as allUsers, videos as allVideos } from '@/lib/data';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserAvatar } from '@/components/user-avatar';
+import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -81,7 +82,7 @@ function SearchResults() {
             <div className="space-y-4 mb-8">
               {filteredUsers.slice(0, 3).map(user => (
                 <Link key={user.id} href={`/profile/${user.username}`} className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted">
-                    <UserAvatar src={user.avatar} username={user.username} className="w-16 h-16"/>
+                    <FallbackAvatar src={user.avatar} alt={user.username} size={64}/>
                     <div>
                       <p className="font-bold text-lg">{user.username}</p>
                       <p className="text-muted-foreground">{user.name} · {user.followers.toLocaleString()} followers</p>
@@ -104,7 +105,7 @@ function SearchResults() {
                       <div className="p-3">
                          <p className="font-semibold truncate">{video.caption}</p>
                          <div className="flex items-center gap-2 mt-2 text-muted-foreground text-sm">
-                            <UserAvatar src={user?.avatar} username={user?.username} className="w-6 h-6"/>
+                            <FallbackAvatar src={user?.avatar} alt={user?.username} size={24}/>
                             <span>{user?.username}</span>
                             <span className="flex items-center gap-1 ml-auto"><Heart className="w-4 h-4"/> {video.likes.toLocaleString()}</span>
                          </div>
@@ -118,7 +119,7 @@ function SearchResults() {
           <div className="space-y-4">
             {filteredUsers.map(user => (
               <Link key={user.id} href={`/profile/${user.username}`} className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted">
-                  <UserAvatar src={user.avatar} username={user.username} className="w-16 h-16"/>
+                  <FallbackAvatar src={user.avatar} alt={user.username} size={64}/>
                   <div>
                     <p className="font-bold text-lg">{user.username}</p>
                     <p className="text-muted-foreground">{user.name} · {user.followers.toLocaleString()} followers</p>
@@ -141,7 +142,7 @@ function SearchResults() {
                       <div className="p-3">
                          <p className="font-semibold truncate">{video.caption}</p>
                          <div className="flex items-center gap-2 mt-2 text-muted-foreground text-sm">
-                            <UserAvatar src={user?.avatar} username={user?.username} className="w-6 h-6"/>
+                            <FallbackAvatar src={user?.avatar} alt={user?.username} size={24}/>
                             <span>{user?.username}</span>
                             <span className="flex items-center gap-1 ml-auto"><Heart className="w-4 h-4"/> {video.likes.toLocaleString()}</span>
                          </div>

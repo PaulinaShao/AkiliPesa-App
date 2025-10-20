@@ -1,10 +1,10 @@
 
 'use client';
 
-import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { Edit, MessageCircle, Share2, UserCheck, UserPlus } from 'lucide-react';
+import FallbackAvatar from '@/components/ui/FallbackAvatar';
 
 interface ProfileHeaderProps {
   user: {
@@ -35,7 +35,7 @@ export function ProfileHeader({ user, isOwnProfile, isFollowing, onFollowToggle,
 
   return (
     <header className="flex flex-col items-center text-center">
-      <Image src={user.avatar} alt={user.username} width={96} height={96} className="w-24 h-24 rounded-full border-4 border-background" data-ai-hint="person portrait"/>
+      <FallbackAvatar src={user.avatar} alt={user.username} size={96} className="w-24 h-24 border-4 border-background" />
       <h1 className="text-2xl font-bold mt-4">@{user.username}</h1>
       <p className="text-muted-foreground">{user.name}</p>
       

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Sparkles, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
-import { UserAvatar } from '@/components/user-avatar';
+import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Input } from '@/components/ui/input';
 import { Paperclip, Mic, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -123,7 +123,7 @@ export default function AkiliPesaAIChatPage() {
                                 </div>
                             </Avatar>
                         ) : (
-                           <UserAvatar src={currentUser.avatar} username={currentUser.username} className="w-8 h-8" />
+                           <FallbackAvatar src={currentUser.avatar} alt={currentUser.username} size={32} />
                         )}
                         <div className={cn(
                             "rounded-2xl px-4 py-2",

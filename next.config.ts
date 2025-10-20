@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
         hostname: 'picsum.photos',
         pathname: '/**',
       },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "firebasestorage.googleapis.com" },
+      { protocol: "https", hostname: "*.fbcdn.net" },
+      { protocol: "https", hostname: "cdn.discordapp.com" },
     ],
   },
 };

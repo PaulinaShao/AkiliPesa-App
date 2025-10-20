@@ -7,7 +7,7 @@ import { ChevronLeft, Paperclip, Mic, Send, Phone, Video } from 'lucide-react';
 import { users, messages as allMessages } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { UserAvatar } from '@/components/user-avatar';
+import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/definitions';
@@ -119,7 +119,7 @@ export default function ChatPage() {
                     <ChevronLeft className="h-6 w-6" />
                 </Button>
                 <div className="flex items-center gap-3 overflow-hidden">
-                    <UserAvatar src={otherUser.avatar} username={otherUser.username} className="w-10 h-10 shrink-0" />
+                    <FallbackAvatar src={otherUser.avatar} alt={otherUser.username} size={40} />
                     <span className="font-bold text-lg truncate">{otherUser.username}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -140,7 +140,7 @@ export default function ChatPage() {
                         "flex items-end gap-2 max-w-[80%]",
                         msg.senderId === currentUser.id ? "ml-auto flex-row-reverse" : "mr-auto"
                     )}>
-                        <UserAvatar src={users.find(u => u.id === msg.senderId)?.avatar} username={users.find(u => u.id === msg.senderId)?.username} className="w-8 h-8 shrink-0" />
+                        <FallbackAvatar src={users.find(u => u.id === msg.senderId)?.avatar} alt={users.find(u => u.id === msg.senderId)?.username} size={32} />
                         <div className={cn(
                             "rounded-2xl px-4 py-2",
                             msg.senderId === currentUser.id ? "bg-primary text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"

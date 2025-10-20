@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -5,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Home, Search, PlusSquare, User, Users, Wallet, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
-import { UserAvatar } from '@/components/user-avatar';
+import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Button } from '@/components/ui/button';
 import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -28,7 +29,7 @@ export function SidebarNav() {
     () => (authUser ? doc(firestore, 'users', authUser.uid) : null),
     [authUser, firestore]
   );
-  const { data: currentUserProfile } = useDoc(userDocRef);
+  const { data: currentUserProfile } = useDoc<any>(userDocRef);
 
   const profileHref = currentUserProfile?.handle ? `/u/${currentUserProfile.handle}` : (authUser ? `/u/${authUser.uid}` : '/auth/login');
 
@@ -74,7 +75,7 @@ export function SidebarNav() {
         <div className="mt-auto">
           <Link href={profileHref}>
             <Button variant="outline" className="w-full justify-start h-14">
-              <UserAvatar src={currentUserProfile.photoURL} username={currentUserProfile.handle} className="h-10 w-10 mr-3" />
+              <FallbackAvatar src={currentUserProfile.photoURL} alt={currentUserProfile.handle} size={40} className="h-10 w-10 mr-3" />
               <div className='text-left'>
                   <p className='font-bold'>{currentUserProfile.displayName}</p>
                   <p className='text-muted-foreground text-sm'>@{currentUserProfile.handle}</p>

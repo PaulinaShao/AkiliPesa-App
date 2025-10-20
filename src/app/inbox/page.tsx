@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { UserAvatar } from '@/components/user-avatar';
+import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { conversations, users } from '@/lib/data';
 import { Phone, Sparkles, Video, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -124,7 +124,7 @@ export default function InboxPage() {
                         return (
                             <Link href={`/inbox/${otherUser.username}`} key={convo.id} className="flex items-center gap-4 p-4 border-b hover:bg-muted transition-colors cursor-pointer">
                                 <div className="relative shrink-0">
-                                    <UserAvatar src={otherUser.avatar} username={otherUser.username} className="w-14 h-14"/>
+                                    <FallbackAvatar src={otherUser.avatar} alt={otherUser.username} size={56}/>
                                     {isUnread && <span className={cn(
                                         "absolute top-0 right-0 block h-3.5 w-3.5 rounded-full ring-2 ring-background",
                                         "bg-gradient-tanzanite animate-pulse"

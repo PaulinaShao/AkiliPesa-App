@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -14,7 +15,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserAvatar } from './user-avatar';
+import FallbackAvatar from './ui/FallbackAvatar';
 
 interface Agent {
     id: string;
@@ -78,7 +79,7 @@ export function AgentPicker({ show, onSelect, onCancel }: AgentPickerProps) {
                 {adminAgents?.map(agent => (
                     <div key={agent.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
                         <div className="flex items-center gap-3">
-                            <UserAvatar src={agent.avatarUrl} username={agent.name} className="h-10 w-10"/>
+                            <FallbackAvatar src={agent.avatarUrl} alt={agent.name} size={40}/>
                             <div>
                                 <p className="font-semibold">{agent.name}</p>
                                 <p className="text-xs text-muted-foreground">{agent.pricePerSecondCredits} credits/sec</p>
@@ -96,7 +97,7 @@ export function AgentPicker({ show, onSelect, onCancel }: AgentPickerProps) {
                 {userAgents?.map(agent => (
                     <div key={agent.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
                          <div className="flex items-center gap-3">
-                            <UserAvatar src={agent.avatarUrl} username={agent.name} className="h-10 w-10"/>
+                            <FallbackAvatar src={agent.avatarUrl} alt={agent.name} size={40}/>
                             <div>
                                 <p className="font-semibold">{agent.name}</p>
                                 <p className="text-xs text-muted-foreground">{agent.specialty}</p>
