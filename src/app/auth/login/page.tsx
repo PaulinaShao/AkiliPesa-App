@@ -34,7 +34,7 @@ export default function LoginPage() {
     if (user.email === 'blagridigital@gmail.com') {
        router.replace('/admin/agents');
     } else {
-      router.replace(getPostLoginRedirect('/'));
+      router.replace(getPostLoginRedirect('/auth/setup'));
     }
   };
   
@@ -79,7 +79,7 @@ export default function LoginPage() {
   };
 
   const handlePhoneSignIn = () => {
-    const target = getPostLoginRedirect('/');
+    const target = getPostLoginRedirect('/auth/setup');
     router.push(`/auth/phone?redirect=${encodeURIComponent(target)}`);
   };
 
