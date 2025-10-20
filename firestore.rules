@@ -8,6 +8,7 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
@@ -21,9 +22,16 @@ service cloud.firestore {
     }
 
     // ---------------------------
-    // 🤖 Clones & Agents (subcollections)
+    // 🤖 CLONES subcollection
     // ---------------------------
-    match /users/{userId}/{subCollection=clones|agents}/{docId} {
+    match /users/{userId}/clones/{cloneId} {
+      allow get, list, create, update, delete: if isOwner(userId);
+    }
+
+    // ---------------------------
+    // 👥 AGENTS subcollection
+    // ---------------------------
+    match /users/{userId}/agents/{agentId} {
       allow get, list, create, update, delete: if isOwner(userId);
     }
 
@@ -52,39 +60,53 @@ service cloud.firestore {
     }
 
     // ---------------------------
-    // 🧩 ADMIN AGENTS (fix 403)
+    // 🧩 ADMIN AGENTS (fixed 403)
     // ---------------------------
     match /adminAgents/{agentId} {
+      // Allow both Google & phone users to read or list
       allow get: if isSignedIn();
-      allow list: if isSignedIn(); // Added explicit list access
+      allow list: if isSignedIn();
       allow create, update, delete: if false;
     }
 
     // ---------------------------
-    // 💳 Other public collections
+    // 💳 WALLETS (user-only)
     // ---------------------------
+    match /wallets/{walletId} {
+      allow get, list, create, update, delete: if isOwner(walletId);
+    }
+
+    // ---------------------------
+    // 💰 TRANSACTIONS / PAYMENTS / ORDERS / PLANS
+    // ---------------------------
+    match /transactions/{txId} {
+      allow get, list, create: if isSignedIn();
+    }
+
+    match /payments/{paymentId} {
+      allow get, list, create: if isSignedIn();
+    }
+
+    match /orders/{orderId} {
+      allow get, list, create: if isSignedIn();
+    }
+
     match /plans/{planId} {
       allow get, list: if true;
     }
-    match /payments/{paymentId} {
-      allow get, list: if isSignedIn();
-    }
-    match /transactions/{txId} {
-      allow get, list: if isSignedIn();
-    }
-    match /orders/{orderId} {
-      allow get, list: if isSignedIn();
-    }
-    
-    // Followers & Notifications
+
+    // ---------------------------
+    // 👥 Followers & Notifications
+    // ---------------------------
     match /followers/{followId} {
-      allow get, list: if request.auth != null;
-      allow create, delete: if request.auth != null;
+      allow get, list: if isSignedIn();
+      allow create, delete: if isSignedIn();
     }
+
     match /notifications/{notifId} {
-      allow get, list: if request.auth != null && request.query.where[0].field == 'uid' && request.query.where[0].value == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow update: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
       allow delete: if false;
     }
 

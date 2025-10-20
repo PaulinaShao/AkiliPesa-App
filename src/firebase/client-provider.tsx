@@ -15,7 +15,9 @@ const firebaseServices = initializeFirebase();
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   useEffect(() => {
     // Initializes the smart user session handler on app startup.
-    initUserSession(firebaseServices.auth, firebaseServices.firestore);
+    if (firebaseServices.auth && firebaseServices.firestore) {
+      initUserSession(firebaseServices.auth, firebaseServices.firestore);
+    }
   }, []);
 
   return (

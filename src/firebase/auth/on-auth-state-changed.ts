@@ -1,15 +1,85 @@
 
 'use client';
 
-import { Auth, onAuthStateChanged } from "firebase/auth";
+import { Auth, onAuthStateChanged, User } from "firebase/auth";
 import { 
   Firestore,
   doc, 
   getDoc, 
-  setDoc, 
-  collection, 
-  serverTimestamp
+  setDoc,
+  serverTimestamp,
 } from "firebase/firestore";
+
+export const ensureUserDoc = async (firestore: Firestore, user: User) => {
+  if (!user) return;
+
+  const userRef = doc(firestore, "users", user.uid);
+  
+  // Use a single getDoc call to check for existence.
+  const userSnap = await getDoc(userRef);
+
+  // 1️⃣ Create user profile if missing
+  if (!userSnap.exists()) {
+    console.log("Initializing documents for new user:", user.uid);
+    try {
+      await setDoc(userRef, {
+        uid: user.uid,
+        displayName: user.displayName || "New User",
+        handle: user.email?.split('@')[0] || `user_${user.uid.slice(0, 6)}`,
+        phone: user.phoneNumber || null,
+        email: user.email || null,
+        photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`,
+        bio: "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        stats: { followers: 0, following: 0, likes: 0, postsCount: 0 },
+        wallet: {
+            balance: 10,
+            escrow: 0,
+            plan: {
+                id: 'trial',
+                credits: 10,
+            },
+            lastDeduction: null,
+            lastTrialReset: serverTimestamp(),
+        },
+      });
+      console.log("✅ User profile initialized.");
+
+      // 2️⃣ Create wallet
+      const walletRef = doc(firestore, "wallets", user.uid);
+      await setDoc(walletRef, {
+        agentId: user.uid,
+        balanceTZS: 20000, // Default starting balance
+        earnedToday: 0,
+        totalEarnings: 0,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      console.log("✅ Wallet initialized.");
+
+      // 3️⃣ Create buyerTrust
+      const trustRef = doc(firestore, "buyerTrust", user.uid);
+      await setDoc(trustRef, {
+        buyerId: user.uid,
+        trustScore: 70, // Start with a neutral score
+        level: 'Bronze',
+        lastUpdated: serverTimestamp(),
+        metrics: {
+            onTimePayments: 0,
+            latePayments: 0,
+            refundsRequested: 0,
+            positiveFeedback: 0,
+            negativeFeedback: 0
+        }
+      });
+      console.log("✅ BuyerTrust initialized.");
+
+    } catch (error) {
+        console.error("❌ Error initializing user documents:", error);
+    }
+  }
+};
+
 
 /**
  * Initializes a listener for the user's authentication state.
@@ -21,78 +91,11 @@ import {
  */
 export const initUserSession = (auth: Auth, db: Firestore) => {
   onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      console.log("User is signed out.");
-      return;
-    }
-
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (userSnap.exists()) {
-      console.log("✅ Existing user detected:", user.email);
+    if (user) {
+      console.log("✅ Auth state changed. User detected:", user.email || user.phoneNumber);
+      await ensureUserDoc(db, user); // 🔥 Create missing docs automatically
     } else {
-      console.log("🆕 New user detected, creating records for:", user.email);
-      
-      const newUserProfile = {
-        uid: user.uid,
-        displayName: user.displayName || 'New User',
-        email: user.email,
-        phone: user.phoneNumber || null,
-        photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`,
-        handle: user.email?.split('@')[0] || `user_${user.uid.substring(0, 5)}`,
-        bio: '',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        stats: { followers: 0, following: 0, likes: 0, postsCount: 0 },
-        wallet: {
-            balance: 10, // Starting trial balance
-            escrow: 0,
-            plan: {
-                id: 'trial',
-                credits: 10, // Starting trial credits
-                expiry: null,
-            },
-            lastDeduction: null,
-            lastTrialReset: serverTimestamp(),
-        },
-      };
-
-      const walletRef = doc(collection(db, "wallets"), user.uid);
-      const referralRef = doc(collection(db, "referrals"), user.uid);
-      const commissionRef = doc(collection(db, "commissions"), user.uid);
-
-      try {
-        await setDoc(userRef, newUserProfile);
-        
-        // These are now handled by the user document, but can be kept for more granular data
-        // or removed for simplification. For now, we'll keep them as they might be used
-        // by other parts of a larger system.
-        await Promise.all([
-          setDoc(walletRef, {
-            agentId: user.uid,
-            balanceTZS: 0,
-            earnedToday: 0,
-            totalEarnings: 0,
-            updatedAt: serverTimestamp(),
-          }, { merge: true }),
-          setDoc(referralRef, {
-            referredBy: null,
-            referredUsers: [],
-            totalEarned: 0,
-            lastUpdated: serverTimestamp(),
-          }),
-          setDoc(commissionRef, {
-            totalSales: 0,
-            totalEarnings: 0,
-            pending: 0,
-            lastUpdated: serverTimestamp(),
-          }),
-        ]);
-        console.log(`✅ Successfully created all records for new user ${user.uid}`);
-      } catch (error) {
-        console.error("❌ Error creating records for new user:", error);
-      }
+      console.log("🚪 No user signed in.");
     }
   });
 };

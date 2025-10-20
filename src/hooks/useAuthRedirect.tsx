@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth, useFirestore, useFirebaseUser } from "@/firebase";
+import { useFirebaseUser, useFirestore } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { motion } from "framer-motion";
 
@@ -35,18 +36,23 @@ export const useAuthRedirect = () => {
       return;
     }
 
+    // Auth is loaded and we have a user, now check Firestore.
     const checkUserProfile = async () => {
-      if (!firestore) return;
+      if (!firestore) {
+          console.warn("Firestore not available yet in useAuthRedirect.");
+          return;
+      };
       try {
         const userRef = doc(firestore, "users", user.uid);
         const userSnap = await getDoc(userRef);
 
+        // The ensureUserDoc function now handles creation.
+        // This check is for routing to the setup page if the doc is still missing.
         if (!userSnap.exists()) {
-          // This assumes you have or will create an /auth/setup page
           router.replace("/auth/setup");
         }
       } catch (err) {
-        console.error("🔥 Auth Redirect Error:", err);
+        console.error("🔥 Auth Redirect Error checking Firestore:", err);
       } finally {
         setIsCheckingDb(false);
       }
