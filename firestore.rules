@@ -16,10 +16,9 @@ service cloud.firestore {
     // 👤 USERS collection
     // ---------------------------
     match /users/{userId} {
-      allow get: if true;
-      allow list: if true;
       allow create: if isOwner(userId);
-      allow update, delete: if isOwner(userId);
+      allow get, update, delete: if isOwner(userId);
+      allow list: if false;
     }
 
     // ---------------------------
@@ -52,31 +51,15 @@ service cloud.firestore {
       allow get: if isOwner(buyerId);
       allow list, create, update, delete: if false;
     }
-    
-    match /trustScores/{sellerId} {
-      allow get: if isOwner(sellerId);
-      allow list, create, update, delete: if false;
-    }
 
     // ---------------------------
     // 🧩 ADMIN AGENTS (fix 403)
     // ---------------------------
     match /adminAgents/{agentId} {
-      allow read, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create, update, delete: if false;
     }
-    
-    match /followers/{followId} {
-      allow get, list: if isSignedIn();
-      allow create, delete: if isSignedIn();
-    }
-    match /notifications/{notifId} {
-      allow get, list: if isOwner(resource.data.uid);
-      allow create: if isSignedIn();
-      allow update: if isOwner(resource.data.uid);
-      allow delete: if false;
-    }
-
 
     // ---------------------------
     // 💳 Other public collections
@@ -88,24 +71,17 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
     }
     match /transactions/{txId} {
-      allow list: if isSignedIn() && request.query.where[0][2] == request.auth.uid;
-      allow get: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow get, list: if isSignedIn();
     }
     match /orders/{orderId} {
       allow get, list: if isSignedIn();
     }
-    
-    match /wallets/{walletId} {
-        allow get, list, create, update: if isOwner(walletId);
-        allow delete: if false;
-    }
-    
-    match /calls/{callId} {
-        allow read, write: if isSignedIn();
-    }
-    
-    match /aiSessions/{sessionId} {
-      allow read, write: if isOwner(sessionId);
+
+    // ---------------------------
+    // 🚫 Deny everything else
+    // ---------------------------
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
