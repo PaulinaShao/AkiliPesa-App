@@ -1,120 +1,87 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---------------------------
-    // 🔐 Helper functions
-    // ---------------------------
     function isSignedIn() {
       return request.auth != null;
     }
-
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // ---------------------------
-    // 👤 USERS collection
-    // ---------------------------
+    // USERS
     match /users/{userId} {
       allow create, get, update, delete: if isOwner(userId);
       allow list: if false;
     }
 
-    // ---------------------------
-    // 🤖 CLONES subcollection
-    // ---------------------------
-    match /users/{userId}/clones/{cloneId} {
+    // CLONES / AGENTS (nested)
+    match /users/{userId}/{subCollection=clones|agents}/{docId} {
       allow get, list, create, update, delete: if isOwner(userId);
     }
 
-    // ---------------------------
-    // 👥 AGENTS subcollection
-    // ---------------------------
-    match /users/{userId}/agents/{agentId} {
-      allow get, list, create, update, delete: if isOwner(userId);
-    }
-
-    // ---------------------------
-    // 📰 POSTS (public read)
-    // ---------------------------
+    // POSTS (public)
     match /posts/{postId} {
       allow get, list: if true;
       allow create, update, delete: if isSignedIn();
     }
 
-    // ---------------------------
-    // 🛍 PRODUCTS (public read)
-    // ---------------------------
+    // PRODUCTS (public)
     match /products/{productId} {
       allow get, list: if true;
       allow create, update, delete: if isSignedIn();
     }
 
-    // ---------------------------
-    // 💎 TRUST SCORE (buyerTrust)
-    // ---------------------------
+    // TRUST INFO (buyerTrust)
     match /buyerTrust/{buyerId} {
       allow get: if isOwner(buyerId);
       allow list, create, update, delete: if false;
     }
 
-    // ---------------------------
-    // 🧩 ADMIN AGENTS (fixed 403)
-    // ---------------------------
+    // ADMIN AGENTS
     match /adminAgents/{agentId} {
-      // Allow both Google & phone users to read or list
       allow get: if isSignedIn();
       allow list: if isSignedIn();
       allow create, update, delete: if false;
     }
 
-    // ---------------------------
-    // 💳 WALLETS (user-only)
-    // ---------------------------
-    match /wallets/{walletId} {
-      allow get, list, create, update, delete: if isOwner(walletId);
-    }
-
-    // ---------------------------
-    // 💰 TRANSACTIONS / PAYMENTS / ORDERS / PLANS
-    // ---------------------------
-    match /transactions/{txId} {
-      allow get, list, create: if isSignedIn();
-    }
-
-    match /payments/{paymentId} {
-      allow get, list, create: if isSignedIn();
-    }
-
-    match /orders/{orderId} {
-      allow get, list, create: if isSignedIn();
-    }
-
+    // PLANS / PAYMENTS / ORDERS / TRANSACTIONS
     match /plans/{planId} {
       allow get, list: if true;
     }
-
-    // ---------------------------
-    // 👥 Followers & Notifications
-    // ---------------------------
-    match /followers/{followId} {
+    match /payments/{paymentId} {
       allow get, list: if isSignedIn();
-      allow create, delete: if isSignedIn();
+    }
+    match /transactions/{txId} {
+      allow get, list: if isSignedIn();
+    }
+    match /orders/{orderId} {
+      allow get, list: if isSignedIn();
     }
 
-    match /notifications/{notifId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if false;
-    }
-
-    // ---------------------------
-    // 🚫 Deny everything else
-    // ---------------------------
+    // Default Deny (safety)
     match /{document=**} {
       allow read, write: if false;
+    }
+  }
+}
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /avatars/{userId}/{fileName} {
+      allow read, write: if isOwner(userId);
+    }
+    match /voices/{userId}/{fileName} {
+      allow read, write: if isOwner(userId);
     }
   }
 }

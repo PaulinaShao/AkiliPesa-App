@@ -6,6 +6,7 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
+import { getStorage } from 'firebase/storage';
 
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
@@ -30,7 +31,8 @@ export function getSdks(firebaseApp: FirebaseApp) {
     firebaseApp,
     auth: getAuth(firebaseApp),
     firestore: getFirestore(firebaseApp),
-    functions: getFunctions(firebaseApp)
+    functions: getFunctions(firebaseApp),
+    storage: getStorage(firebaseApp)
   };
 }
 
