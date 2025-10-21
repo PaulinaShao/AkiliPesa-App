@@ -1,6 +1,4 @@
-
 'use client';
-
 import { useEffect, useState } from "react";
 import { useFirebaseUser, useFirestore, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
@@ -11,11 +9,14 @@ import { motion } from "framer-motion";
 import { Bot, UserSquare, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CloneAgentModal } from './CloneAgentModal';
 
 
 export function ProfileQuickActions() {
   const { user, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
+  const [activeModal, setActiveModal] = useState<null | "clone" | "agent">(null);
+
 
   const cloneDocRef = useMemoFirebase(() => {
       if (!user || !firestore) return null;
@@ -42,6 +43,7 @@ export function ProfileQuickActions() {
   }
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
@@ -50,37 +52,38 @@ export function ProfileQuickActions() {
     >
       {/* My Clone */}
       {clone ? (
-        <Link href="/u/me/clones">
-        <div className="bg-[#0e0e10]/80 border border-[#8B5CF6]/40 p-4 rounded-2xl text-center shadow-lg backdrop-blur-md h-full hover:border-[#8B5CF6]/70 transition-colors">
+        <div
+            className="bg-[#0e0e10]/80 border border-[#8B5CF6]/40 p-4 rounded-2xl text-center shadow-lg backdrop-blur-md cursor-pointer hover:border-[#8B5CF6]/70 transition-colors"
+            onClick={() => setActiveModal("clone")}
+        >
           <div className="relative w-16 h-16 mx-auto mb-3">
             <Image
-              src={clone.avatarUrl || "/assets/default-avatar.png"}
+              src={clone.avatarUrl || "/assets/default-avatar-tanzanite.svg"}
               alt="AI Clone"
               fill
               className="rounded-full object-cover border border-[#8B5CF6]/30"
             />
           </div>
           <h3 className="text-white font-semibold text-sm truncate">{clone.name}</h3>
-          <p className="text-[#8B5CF6] text-xs mt-1 capitalize">Status: {clone.status}</p>
+          <p className="text-[#8B5CF6] text-xs mt-1 capitalize">Tap to edit</p>
         </div>
-        </Link>
       ) : (
         <Button
           size="lg"
           className="bg-gradient-to-r from-[#8B5CF6] to-[#6366F1] text-white h-full rounded-2xl flex flex-col items-center justify-center hover:opacity-90"
-          asChild
+          onClick={() => setActiveModal("clone")}
         >
-          <Link href="/u/me/clones">
-            <UserSquare className="h-6 w-6 mb-2" />
-            My Clone
-          </Link>
+          <UserSquare className="h-6 w-6 mb-2" />
+          My Clone
         </Button>
       )}
 
       {/* My Agent */}
       {agent ? (
-        <Link href="/u/me/agents">
-        <div className="bg-[#0e0e10]/80 border border-[#8B5CF6]/40 p-4 rounded-2xl text-center shadow-lg backdrop-blur-md h-full hover:border-[#8B5CF6]/70 transition-colors">
+        <div
+            className="bg-[#0e0e10]/80 border border-[#8B5CF6]/40 p-4 rounded-2xl text-center shadow-lg backdrop-blur-md cursor-pointer hover:border-[#8B5CF6]/70 transition-colors"
+            onClick={() => setActiveModal("agent")}
+        >
           <div className="relative w-16 h-16 mx-auto mb-3">
             <Image
               src={agent.avatarUrl || "/assets/default-agent.png"}
@@ -90,21 +93,35 @@ export function ProfileQuickActions() {
             />
           </div>
           <h3 className="text-white font-semibold text-sm truncate">{agent.name}</h3>
-          <p className="text-[#8B5CF6] text-xs mt-1 capitalize">Status: {agent.status}</p>
+          <p className="text-[#8B5CF6] text-xs mt-1 capitalize">Tap to edit</p>
         </div>
-        </Link>
       ) : (
         <Button
           size="lg"
           className="bg-gradient-to-r from-[#8B5CF6] to-[#6366F1] text-white h-full rounded-2xl flex flex-col items-center justify-center hover:opacity-90"
-          asChild
+          onClick={() => setActiveModal("agent")}
         >
-          <Link href="/u/me/agents">
-            <Bot className="h-6 w-6 mb-2" />
-            My Agent
-          </Link>
+          <Bot className="h-6 w-6 mb-2" />
+          My Agent
         </Button>
       )}
     </motion.div>
+    
+      {/* Modals */}
+      <CloneAgentModal
+        isOpen={activeModal === "clone"}
+        onClose={() => setActiveModal(null)}
+        type="clone"
+        data={clone}
+        uid={user?.uid}
+      />
+      <CloneAgentModal
+        isOpen={activeModal === "agent"}
+        onClose={() => setActiveModal(null)}
+        type="agent"
+        data={agent}
+        uid={user?.uid}
+      />
+    </>
   );
 }
