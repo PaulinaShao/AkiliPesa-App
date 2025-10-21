@@ -1,28 +1,38 @@
+
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    function isAuthed() { return request.auth != null; }
-
-    // Public read of posted media; writes only by owner
-    match /posts/{uid}/{postId}/{fileName} {
-      allow read: if true;
-      allow write: if isAuthed() && request.auth.uid == uid;
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // User avatars & clones
-    match /users/{uid}/avatars/{fileName} {
+    // Publicly readable images (e.g., product images, public avatars)
+    match /public/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthed() && request.auth.uid == uid;
-    }
-    match /clones/{uid}/{cloneId}/{fileName} {
-      allow read: if isAuthed(); // restrict by auth
-      allow write: if isAuthed() && request.auth.uid == uid;
+      allow write: if request.auth != null; // Allow signed-in users to write
     }
 
-    // Products
-    match /products/{productId}/{fileName} {
-      allow read: if true;
-      allow write: if isAuthed();
+    // User-specific avatars
+    match /avatars/{uid}/{fileName} {
+      allow read: if true; // Avatars are often public
+      allow write: if isOwner(uid);
+    }
+
+    // User-specific voice samples (private)
+    match /voices/{uid}/{fileName} {
+      allow read, write: if isOwner(uid);
+    }
+    
+    // User-specific delivery proofs (private)
+    match /delivery-proofs/{uid}/{fileName} {
+       allow read, write: if isOwner(uid);
+    }
+
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -9,6 +9,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall } from 'firebase-functions/v2/https';
 import { enforceTransactionUid } from "./enforceTransactionUid";
 import { realtimePayoutManager } from "./realtimePayoutManager";
+import { onVoiceUpload } from "./openvoiceTrigger";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -16,7 +17,7 @@ const db = admin.firestore();
 
 // --- V2 Functions ---
 
-export { enforceTransactionUid, realtimePayoutManager };
+export { enforceTransactionUid, realtimePayoutManager, onVoiceUpload };
 
 const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/your-webhook-id"; // IMPORTANT: Replace with your real Make.com webhook URL
 
