@@ -11,19 +11,28 @@ import {
   collection,
 } from "firebase/firestore";
 
+/**
+ * Auto-initialize user-related Firestore data after first login.
+ * Creates:
+ *  - /users/{uid}
+ *  - /wallets/{uid}
+ *  - /buyerTrust/{uid}
+ *  - /users/{uid}/clones/{cloneId}
+ *  - /users/{uid}/agents/{agentId}
+ */
 export const ensureUserDoc = async (firestore: Firestore, user: User) => {
   if (!user) return;
 
   const uid = user.uid;
   const displayName = user.displayName || "New User";
 
-  // 1️⃣ USER PROFILE
   const userRef = doc(firestore, "users", uid);
   const userSnap = await getDoc(userRef);
 
   if (!userSnap.exists()) {
     console.log("Initializing documents for new user:", uid);
     try {
+      // 1️⃣ USER PROFILE
       await setDoc(userRef, {
         uid,
         displayName,
@@ -61,7 +70,7 @@ export const ensureUserDoc = async (firestore: Firestore, user: User) => {
 
       // 3️⃣ TRUST SCORE
       const trustRef = doc(firestore, "buyerTrust", uid);
-      await setDoc(trustRef, {
+       await setDoc(trustRef, {
         buyerId: uid,
         trustScore: 70,
         level: 'Bronze',
@@ -77,23 +86,38 @@ export const ensureUserDoc = async (firestore: Firestore, user: User) => {
       console.log("✅ BuyerTrust initialized.");
       
       // 4️⃣ DEFAULT AI CLONE
-      const cloneCollectionRef = collection(firestore, "users", uid, "clones");
-      const defaultCloneId = `clone_${uid.slice(0, 5)}`;
-      const defaultCloneDocRef = doc(cloneCollectionRef, defaultCloneId);
-      
-      await setDoc(defaultCloneDocRef, {
-          cloneId: defaultCloneId,
+      const cloneRef = doc(firestore, "users", uid, "clones", `clone_${uid.slice(0, 5)}`);
+      await setDoc(cloneRef, {
+          cloneId: `clone_${uid.slice(0, 5)}`,
           userId: uid,
           name: `${displayName}'s AI Clone`,
           description: "Your personalized AI avatar for voice, face & chat.",
           avatarUrl: "/assets/default-avatar-tanzanite.svg",
-          type: 'face', // Defaulting to face, can be changed
+          type: 'face',
           voiceModelUrl: "akilipesa_default_voice",
           status: "active",
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
       });
       console.log("🤖 Default AI Clone initialized");
+
+      // 5️⃣ DEFAULT AGENT (Sales/Support Assistant)
+      const agentRef = doc(firestore, "users", uid, "agents", `agent_${uid.slice(0, 5)}`);
+      await setDoc(agentRef, {
+        agentId: `agent_${uid.slice(0, 5)}`,
+        uid,
+        name: `${displayName}'s Agent`,
+        role: "Sales & Support Assistant",
+        description: "Your AI-powered agent to assist customers and manage inquiries.",
+        avatarUrl: "/images/default-agent.png",
+        specialty: ["sales", "support", "community"],
+        tone: "helpful",
+        status: "active",
+        responseSpeed: "normal",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      console.log("🧠 Default AI Agent initialized");
 
     } catch (error) {
         console.error("❌ Error initializing user documents:", error);
