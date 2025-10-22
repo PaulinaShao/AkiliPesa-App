@@ -94,7 +94,7 @@ function ProfileEditor({ profile, onSave, onCancel }: { profile: any, onSave: (u
 
 export default function ProfilePage() {
   useAuthRedirect();
-  const { username: profileHandle } = useParams() as { username?: string };
+  const { username: profileUid } = useParams() as { username?: string };
   const [profile, setProfile] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
@@ -126,7 +126,7 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (!profileHandle || !firestore) {
+    if (!profileUid || !firestore) {
       setLoading(false);
       return;
     }
@@ -134,30 +134,24 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
         setLoading(true);
 
-        // Determine the UID to fetch. If the current user is viewing their own profile
-        // (by handle), use their auth UID directly to prevent permission errors.
-        const isOwnProfile = currentUser && currentUser.displayName?.toLowerCase() === profileHandle.toLowerCase();
-        const profileUidToFetch = isOwnProfile ? currentUser.uid : profileHandle;
-
-
         try {
-            const userRef = doc(firestore, "users", profileUidToFetch);
+            const userRef = doc(firestore, "users", profileUid);
             const userSnap = await getDoc(userRef);
 
             if (userSnap.exists()) {
                 const profileData = { ...userSnap.data(), id: userSnap.id };
                 setProfile(profileData);
-                setupListeners(profileUidToFetch);
+                setupListeners(profileUid);
 
-                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileUidToFetch), orderBy("createdAt", "desc"));
+                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileUid), orderBy("createdAt", "desc"));
                 const postsSnap = await getDocs(postsQuery);
                 setPosts(postsSnap.docs.map(d => ({...d.data(), id: d.id })));
                 
-                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileUidToFetch));
+                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileUid));
                 const followersSnap = await getDocs(followersQuery);
                 setFollowersCount(followersSnap.size);
 
-                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileUidToFetch));
+                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileUid));
                 const followingSnap = await getDocs(followingQuery);
                 setFollowingCount(followingSnap.size);
 
@@ -167,7 +161,7 @@ export default function ProfilePage() {
         } catch (error) {
              const contextualError = new FirestorePermissionError({
                 operation: 'get',
-                path: `users/${profileUidToFetch}`,
+                path: `users/${profileUid}`,
             });
             errorEmitter.emit('permission-error', contextualError);
         } finally {
@@ -176,6 +170,7 @@ export default function ProfilePage() {
     };
 
     const setupListeners = (profileId: string) => {
+        if (!firestore) return;
         const walletRef = doc(firestore, "wallets", profileId);
         walletListenerRef.current = onSnapshot(walletRef, (snap) => {
             if (snap.exists()) {
@@ -202,15 +197,9 @@ export default function ProfilePage() {
         }
     };
     
-    // We need to wait for currentUser to be available before fetching.
-    if (!currentUser) {
-        if (!loading) setLoading(true);
-        return;
-    }
-
     fetchProfile();
 
-  }, [profileHandle, currentUser, firestore]);
+  }, [profileUid, currentUser, firestore]);
 
 
   useEffect(() => {
@@ -236,7 +225,7 @@ export default function ProfilePage() {
   }, [profile?.id, firestore]);
 
   const markAllAsRead = async () => {
-    if (!firestore) return;
+    if (!firestore || !profile?.id) return;
     const unread = notifications.filter((n) => !n.isRead);
     for (const note of unread) {
       const ref = doc(firestore, "notifications", note.id);
@@ -425,5 +414,4 @@ export default function ProfilePage() {
       </div>
     </div>
   );
-
-    
+}
