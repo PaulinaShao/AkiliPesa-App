@@ -132,11 +132,8 @@ export default function ProfilePage() {
     
     const fetchProfile = async () => {
         setLoading(true);
-        let profileData: any = null;
-        let profileId: string | null = null;
-        
-        // The ONLY supported way to fetch a profile is by its UID.
-        // The `username` from the URL is assumed to be the UID.
+        // The username from the URL is assumed to be the UID.
+        // We will perform a direct `get` operation.
         const profileUid = username;
 
         try {
@@ -144,23 +141,19 @@ export default function ProfilePage() {
             const userSnap = await getDoc(userRef);
 
             if (userSnap.exists()) {
-                profileData = { ...userSnap.data(), id: userSnap.id };
-                profileId = userSnap.id;
-            }
-            
-            if (profileData && profileId) {
+                const profileData = { ...userSnap.data(), id: userSnap.id };
                 setProfile(profileData);
-                setupListeners(profileId);
+                setupListeners(profileUid);
 
-                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileId), orderBy("createdAt", "desc"));
+                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileUid), orderBy("createdAt", "desc"));
                 const postsSnap = await getDocs(postsQuery);
                 setPosts(postsSnap.docs.map(d => ({...d.data(), id: d.id })));
                 
-                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileId));
+                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileUid));
                 const followersSnap = await getDocs(followersQuery);
                 setFollowersCount(followersSnap.size);
 
-                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileId));
+                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileUid));
                 const followingSnap = await getDocs(followingQuery);
                 setFollowingCount(followingSnap.size);
 
@@ -423,5 +416,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
