@@ -37,10 +37,10 @@ export function AgentPicker({ show, onSelect, onCancel }: AgentPickerProps) {
 
   const adminAgentsQuery = useMemoFirebase(
     () =>
-      firestore
+      firestore && user // Only create query if user is authenticated
         ? query(collection(firestore, 'adminAgents'), where('status', '==', 'active'))
         : null,
-    [firestore]
+    [firestore, user]
   );
   const { data: adminAgents, isLoading: adminLoading } = useCollection<Agent>(adminAgentsQuery);
   

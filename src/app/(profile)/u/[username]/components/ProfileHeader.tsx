@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { Edit, MessageCircle, Share2, UserCheck, UserPlus } from 'lucide-react';
 import FallbackAvatar from '@/components/ui/FallbackAvatar';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProfileHeaderProps {
   user: {
@@ -27,10 +28,30 @@ interface ProfileHeaderProps {
 }
 
 export function ProfileHeader({ user, isOwnProfile, isFollowing, onFollowToggle, onEditClick }: ProfileHeaderProps) {
+  const { toast } = useToast();
+  
   const formatStat = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num || 0;
+  };
+  
+  const handleShare = async () => {
+    const profileUrl = `${window.location.origin}/u/${user.username}`;
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      toast({
+        title: "Link Copied!",
+        description: "Profile URL has been copied to your clipboard.",
+      });
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      toast({
+        variant: "destructive",
+        title: "Copy Failed",
+        description: "Could not copy link to clipboard.",
+      });
+    }
   };
 
   return (
@@ -60,7 +81,7 @@ export function ProfileHeader({ user, isOwnProfile, isFollowing, onFollowToggle,
         {isOwnProfile ? (
           <>
             <Button onClick={onEditClick} className="flex-1 bg-secondary text-secondary-foreground font-bold"><Edit size={16}/> Edit Profile</Button>
-            <Button variant="secondary" className="flex-1 font-bold"><Share2 size={16}/> Share Profile</Button>
+            <Button variant="secondary" className="flex-1 font-bold" onClick={handleShare}><Share2 size={16}/> Share Profile</Button>
           </>
         ) : (
           <>
