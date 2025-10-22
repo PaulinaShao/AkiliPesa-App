@@ -95,7 +95,7 @@ function ProfileEditor({ profile, onSave, onCancel }: { profile: any, onSave: (u
 
 export default function ProfilePage() {
   useAuthRedirect();
-  const { username } = useParams() as { username?: string };
+  const { username: profileUid } = useParams() as { username?: string };
   const [profile, setProfile] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
@@ -125,16 +125,13 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (!username || !firestore) {
+    if (!profileUid || !firestore) {
       setLoading(false);
       return;
     }
     
     const fetchProfile = async () => {
         setLoading(true);
-        // The username from the URL is assumed to be the UID.
-        // We will perform a direct `get` operation.
-        const profileUid = username;
 
         try {
             const userRef = doc(firestore, "users", profileUid);
@@ -200,7 +197,7 @@ export default function ProfilePage() {
     
     fetchProfile();
 
-  }, [username, currentUser, firestore]);
+  }, [profileUid, currentUser, firestore]);
 
 
   useEffect(() => {

@@ -31,7 +31,8 @@ export function SidebarNav() {
   );
   const { data: currentUserProfile } = useDoc<any>(userDocRef);
 
-  const profileHref = currentUserProfile?.handle ? `/u/${currentUserProfile.handle}` : (authUser ? `/u/${authUser.uid}` : '/auth/login');
+  // Always use the UID for the profile link.
+  const profileHref = authUser ? `/u/${authUser.uid}` : '/auth/login';
 
   return (
     <aside className="hidden md:flex flex-col w-64 border-r bg-background fixed h-full p-4 space-y-6">

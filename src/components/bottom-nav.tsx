@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -18,15 +19,9 @@ const navLinks = [
 export function BottomNavWrapper() {
   const pathname = usePathname();
   const { user: authUser } = useFirebaseUser();
-  const firestore = useFirestore();
   
-  const userDocRef = useMemoFirebase(
-    () => (authUser ? doc(firestore, 'users', authUser.uid) : null),
-    [authUser, firestore]
-  );
-  const { data: currentUserProfile } = useDoc(userDocRef);
-
-  const profileHref = currentUserProfile?.handle ? `/u/${currentUserProfile.handle}` : (authUser ? `/u/${authUser.uid}` : '/auth/login');
+  // Always use UID for the profile link.
+  const profileHref = authUser ? `/u/${authUser.uid}` : '/auth/login';
   
   // Hide nav on any deep inbox (chat) pages.
   const isChatPage = /^\/inbox\/(?!akilipesa-ai)[^/]+$/.test(pathname);
