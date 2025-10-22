@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -31,11 +30,9 @@ export default function LoginPage() {
   }, [searchParams]);
 
   const handleSuccessfulLogin = (user: User) => {
-    if (user.email === 'blagridigital@gmail.com') {
-       router.replace('/admin/agents');
-    } else {
-      router.replace(getPostLoginRedirect('/auth/setup'));
-    }
+    // After any successful login, always redirect to the setup page.
+    // The useAuthRedirect hook will then handle routing to the correct final destination.
+    router.replace(getPostLoginRedirect('/auth/setup'));
   };
   
   // Handle redirect result on page load
