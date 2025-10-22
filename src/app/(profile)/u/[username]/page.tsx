@@ -51,6 +51,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { useAuthRedirect } from '@/hooks/useAuthRedirect';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 function ProfileEditor({ profile, onSave, onCancel }: { profile: any, onSave: (updates: any) => void, onCancel: () => void }) {
     const [bio, setBio] = useState(profile.bio || "");
@@ -114,7 +116,6 @@ export default function ProfilePage() {
   const followListenerRef = useRef<() => void>();
 
   useEffect(() => {
-    // Cleanup function to be called on unmount
     return () => {
         if (walletListenerRef.current) walletListenerRef.current();
         if (notifListenerRef.current) notifListenerRef.current();
@@ -134,36 +135,48 @@ export default function ProfilePage() {
         setLoading(true);
         const usersRef = collection(firestore, "users");
         const handleQuery = query(usersRef, where("handle", "==", username), limit(1));
-        const handleSnap = await getDocs(handleQuery);
-
-        if (!handleSnap.empty) {
-            profileData = { ...handleSnap.docs[0].data(), id: handleSnap.docs[0].id };
-        } else {
-            // Fallback to UID lookup
-            const userRef = doc(firestore, "users", username);
-            const userSnap = await getDoc(userRef);
-            if (userSnap.exists()) {
-                profileData = { ...userSnap.data(), id: userSnap.id };
-            }
-        }
         
-        if (profileData) {
-            setProfile(profileData);
-            setupListeners(profileData.id);
+        try {
+            const handleSnap = await getDocs(handleQuery);
 
-            const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileData.id), orderBy("createdAt", "desc"));
-            const postsSnap = await getDocs(postsQuery);
-            setPosts(postsSnap.docs.map(d => ({...d.data(), id: d.id })));
+            if (!handleSnap.empty) {
+                profileData = { ...handleSnap.docs[0].data(), id: handleSnap.docs[0].id };
+            } else {
+                const userRef = doc(firestore, "users", username);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                    profileData = { ...userSnap.data(), id: userSnap.id };
+                }
+            }
             
-            const followersSnap = await getDocs(query(collection(firestore, "followers"), where("followedId", "==", profileData.id)));
-            setFollowersCount(followersSnap.size);
-            const followingSnap = await getDocs(query(collection(firestore, "followers"), where("followerId", "==", profileData.id)));
-            setFollowingCount(followingSnap.size);
+            if (profileData) {
+                setProfile(profileData);
+                setupListeners(profileData.id);
 
-        } else {
-           setProfile(null);
+                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileData.id), orderBy("createdAt", "desc"));
+                const postsSnap = await getDocs(postsQuery);
+                setPosts(postsSnap.docs.map(d => ({...d.data(), id: d.id })));
+                
+                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileData.id));
+                const followersSnap = await getDocs(followersQuery);
+                setFollowersCount(followersSnap.size);
+
+                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileData.id));
+                const followingSnap = await getDocs(followingQuery);
+                setFollowingCount(followingSnap.size);
+
+            } else {
+               setProfile(null);
+            }
+        } catch (error) {
+             const contextualError = new FirestorePermissionError({
+                operation: 'list',
+                path: `users (querying by handle: ${username})`,
+            });
+            errorEmitter.emit('permission-error', contextualError);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const setupListeners = (profileId: string) => {
@@ -179,12 +192,16 @@ export default function ProfilePage() {
             } else {
                 setWallet({ balanceTZS: 0, escrow: 0, plan: { credits: 0 } });
             }
+        }, (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'get', path: walletRef.path }));
         });
         
         if (currentUser && currentUser.uid !== profileId) {
             const followRef = doc(firestore, 'followers', `${currentUser.uid}_${profileId}`);
             followListenerRef.current = onSnapshot(followRef, (snap) => {
                 setIsFollowing(snap.exists());
+            }, (error) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'get', path: followRef.path }));
             });
         }
     };
@@ -207,6 +224,8 @@ export default function ProfilePage() {
       const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setNotifications(items);
       setUnreadCount(items.filter((n) => !n.isRead).length);
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'list', path: 'notifications' }));
     });
 
     notifListenerRef.current = unsubNotif;
@@ -219,7 +238,9 @@ export default function ProfilePage() {
     const unread = notifications.filter((n) => !n.isRead);
     for (const note of unread) {
       const ref = doc(firestore, "notifications", note.id);
-      await updateDoc(ref, { isRead: true });
+      updateDoc(ref, { isRead: true }).catch(err => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'update', path: ref.path, requestResourceData: { isRead: true }}));
+      });
     }
     setUnreadCount(0);
   };
@@ -235,40 +256,50 @@ export default function ProfilePage() {
     const followRef = doc(firestore, "followers", `${currentUser.uid}_${profile.id}`);
     const userRef = doc(firestore, "users", profile.id);
 
-    try {
-      if (isFollowing) {
-        await deleteDoc(followRef);
-        await updateDoc(userRef, { "stats.followers": (profile.stats.followers || 1) - 1 });
-      } else {
-        await setDoc(followRef, {
+    if (isFollowing) {
+        deleteDoc(followRef).catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'delete', path: followRef.path }));
+        });
+        updateDoc(userRef, { "stats.followers": (profile.stats.followers || 1) - 1 }).catch(err => {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'update', path: userRef.path, requestResourceData: { 'stats.followers': (profile.stats.followers || 1) - 1 }}));
+        });
+    } else {
+        const followData = {
           followerId: currentUser.uid,
           followedId: profile.id,
           createdAt: new Date(),
+        };
+        setDoc(followRef, followData).catch(err => {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'create', path: followRef.path, requestResourceData: followData}));
         });
-        await updateDoc(userRef, { "stats.followers": (profile.stats.followers || 0) + 1 });
-        await addDoc(collection(firestore, "notifications"), {
+        updateDoc(userRef, { "stats.followers": (profile.stats.followers || 0) + 1 }).catch(err => {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'update', path: userRef.path, requestResourceData: { 'stats.followers': (profile.stats.followers || 0) + 1 }}));
+        });
+        
+        const notifCollection = collection(firestore, "notifications");
+        const notifData = {
           uid: profile.id,
           type: "new_follower",
           message: `${currentUser.displayName || "Someone"} followed you.`,
           isRead: false,
           createdAt: new Date(),
+        };
+        addDoc(notifCollection, notifData).catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'create', path: notifCollection.path, requestResourceData: notifData}));
         });
-      }
-    } catch (e) {
-      console.error("Follow action failed:", e);
     }
   };
 
   const handleSaveProfile = async (updates: any) => {
     if (!currentUser || !profile || !firestore || currentUser.uid !== profile.id) return;
-    try {
-      const userRef = doc(firestore, "users", profile.id);
-      await updateDoc(userRef, { ...updates, updatedAt: new Date() });
-      setProfile((prev: any) => ({ ...prev, ...updates }));
-      setShowEditor(false);
-    } catch (e) {
-      console.error("Profile update failed:", e);
-    }
+    const userRef = doc(firestore, "users", profile.id);
+    const updateData = { ...updates, updatedAt: new Date() };
+
+    updateDoc(userRef, updateData).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'update', path: userRef.path, requestResourceData: updateData}));
+    });
+    setProfile((prev: any) => ({ ...prev, ...updates }));
+    setShowEditor(false);
   };
   
   if (loading) return <div className="flex justify-center items-center h-screen text-gray-400">Loading...</div>;
