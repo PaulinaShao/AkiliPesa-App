@@ -1,19 +1,23 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    function isSignedIn() {
-      return request.auth != null;
-    }
+
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
+    // User-specific avatars and voice samples
     match /avatars/{userId}/{fileName} {
-      allow read, write: if isOwner(userId);
+      allow read: if true; // Avatars are often public
+      allow write: if isOwner(userId);
     }
     match /voices/{userId}/{fileName} {
       allow read, write: if isOwner(userId);
+    }
+
+    // Default deny for all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

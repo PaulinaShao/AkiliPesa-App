@@ -11,76 +11,67 @@ service cloud.firestore {
 
     // USERS
     match /users/{userId} {
-      allow create, get, update, delete: if isOwner(userId);
-      allow list: if false;
+      allow read, write: if isOwner(userId);
+      allow list: if false; // Prevent listing all users for security
     }
 
-    // CLONES (nested)
+    // USER SUBCOLLECTIONS (Clones & Agents)
     match /users/{userId}/clones/{cloneId} {
       allow read, write: if isOwner(userId);
     }
-
-    // AGENTS (nested)
     match /users/{userId}/agents/{agentId} {
       allow read, write: if isOwner(userId);
     }
 
-    // POSTS (public)
+    // PUBLIC COLLECTIONS
     match /posts/{postId} {
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
-
-    // PRODUCTS (public)
     match /products/{productId} {
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
-
-    // TRUST INFO (buyerTrust)
-    match /buyerTrust/{buyerId} {
-      allow get: if isOwner(buyerId);
-      allow list, create, update, delete: if false;
-    }
-
-    // ADMIN AGENTS
-    match /adminAgents/{agentId} {
-      allow read: if isSignedIn();
-      allow write: if false;
-    }
-
-    // PLANS / PAYMENTS / ORDERS / TRANSACTIONS
     match /plans/{planId} {
       allow read: if true;
+      allow write: if false; // Plans should be managed by admins, not users
     }
-    match /payments/{paymentId} {
+    match /adminAgents/{agentId} {
       allow read: if isSignedIn();
+      allow write: if false; // Admin agents are read-only for users
     }
-    match /transactions/{txId} {
-      allow read: if isSignedIn();
+
+    // USER-SPECIFIC DATA
+    match /buyerTrust/{buyerId} {
+      allow read: if isOwner(buyerId);
+      allow write: if false; // Managed by backend functions
     }
-    match /orders/{orderId} {
-      allow read: if isSignedIn();
-    }
-    
-    // NOTIFICATIONS
-    match /notifications/{notificationId} {
-      allow read, write: if isSignedIn() && isOwner(request.resource.data.uid);
-    }
-    
-    // FOLLOWERS
-    match /followers/{followId} {
-        allow read, write: if isSignedIn();
-    }
-    
-    // WALLETS
     match /wallets/{walletId} {
         allow read: if isOwner(walletId);
+        allow write: if false; // Managed by backend functions
     }
-    
-    // AI SESSIONS
-    match /aiSessions/{sessionId} {
-        allow read, write: if isOwner(sessionId);
+    match /transactions/{txId} {
+      allow read: if isOwner(getDocumentData(/databases/$(database)/documents/transactions/$(txId)).uid);
+      allow write: if false; // Managed by backend functions
+    }
+    match /orders/{orderId} {
+      function getOrderData() {
+        return get(/databases/$(database)/documents/orders/$(orderId)).data;
+      }
+      allow read: if isSignedIn() && (request.auth.uid == getOrderData().buyerId || request.auth.uid == getOrderData().sellerId);
+      allow write: if false; // Managed by backend functions
+    }
+     match /notifications/{notificationId} {
+        allow read, write: if isOwner(get(/databases/$(database)/documents/notifications/$(notificationId)).data.uid);
+    }
+    match /followers/{followId} {
+        allow read: if true;
+        allow write: if isSignedIn();
+    }
+
+    // Default Deny (Safety Net)
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
