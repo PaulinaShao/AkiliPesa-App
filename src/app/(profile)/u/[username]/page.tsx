@@ -1,4 +1,5 @@
 
+
 "use client";
 import { useEffect, useState, useRef, FormEvent } from 'react';
 import { useParams } from 'next/navigation';
@@ -133,27 +134,18 @@ export default function ProfilePage() {
         setLoading(true);
         let profileData: any = null;
         let profileId: string | null = null;
+        
+        // The ONLY supported way to fetch a profile is by its UID.
+        // The `username` from the URL is assumed to be the UID.
+        const profileUid = username;
 
         try {
-            // First, try to fetch by username parameter as a direct UID
-            const userRefByUid = doc(firestore, "users", username);
-            const userSnapByUid = await getDoc(userRefByUid);
+            const userRef = doc(firestore, "users", profileUid);
+            const userSnap = await getDoc(userRef);
 
-            if (userSnapByUid.exists()) {
-                profileData = { ...userSnapByUid.data(), id: userSnapByUid.id };
-                profileId = userSnapByUid.id;
-            } else {
-                // If not found by UID, then query by handle (assuming rules might allow this for public profiles in future)
-                // This part is now the fallback and might fail if rules are strict.
-                const usersRef = collection(firestore, "users");
-                const handleQuery = query(usersRef, where("handle", "==", username), limit(1));
-                const handleSnap = await getDocs(handleQuery);
-
-                if (!handleSnap.empty) {
-                    const doc = handleSnap.docs[0];
-                    profileData = { ...doc.data(), id: doc.id };
-                    profileId = doc.id;
-                }
+            if (userSnap.exists()) {
+                profileData = { ...userSnap.data(), id: userSnap.id };
+                profileId = userSnap.id;
             }
             
             if (profileData && profileId) {
@@ -177,8 +169,8 @@ export default function ProfilePage() {
             }
         } catch (error) {
              const contextualError = new FirestorePermissionError({
-                operation: 'list',
-                path: `users (querying by handle: ${username})`,
+                operation: 'get',
+                path: `users/${profileUid}`,
             });
             errorEmitter.emit('permission-error', contextualError);
         } finally {
@@ -431,3 +423,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
