@@ -20,6 +20,8 @@ export const CloneAgentModal = ({ isOpen, onClose, type, data, uid }: { isOpen: 
     emotionProfile: "",
     avatarUrl: "",
     voiceUrl: "",
+    cloneStatus: "",
+    voiceCloneUrl: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -36,6 +38,8 @@ export const CloneAgentModal = ({ isOpen, onClose, type, data, uid }: { isOpen: 
             emotionProfile: data.emotionProfile || "friendly",
             avatarUrl: data.avatarUrl || "",
             voiceUrl: data.voiceUrl || "",
+            cloneStatus: data.cloneStatus || "not_started",
+            voiceCloneUrl: data.voiceCloneUrl || "",
         });
     }
   }, [data, isOpen]);
@@ -208,9 +212,20 @@ export const CloneAgentModal = ({ isOpen, onClose, type, data, uid }: { isOpen: 
                 </label>
                 <input type="file" accept="audio/*" onChange={handleVoiceUpload} id="voiceUpload" className="hidden" />
               </div>
-              {form.voiceUrl && (
-                <audio controls src={form.voiceUrl} className="w-full mt-3 rounded-lg border-none" />
-              )}
+
+               {/* --- VISUAL FEEDBACK FOR VOICE CLONE --- */}
+              {form.cloneStatus === "ready" && form.voiceCloneUrl ? (
+                <div className="flex flex-col items-center mt-4">
+                  <audio controls src={form.voiceCloneUrl} className="w-full rounded-xl border border-[#8B5CF6]/40" />
+                  <p className="text-[#8B5CF6] mt-2 text-sm font-semibold animate-pulse">AI Voice Ready 🔮</p>
+                </div>
+              ) : form.voiceUrl ? (
+                 <div className="mt-4">
+                    <audio controls src={form.voiceUrl} className="w-full mt-3 rounded-lg border-none" />
+                    <p className="text-gray-400 text-xs text-center mt-2">Processing voice clone...</p>
+                 </div>
+              ) : null}
+
             </div>
 
 
