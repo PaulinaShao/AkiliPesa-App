@@ -129,39 +129,46 @@ export default function ProfilePage() {
       return;
     }
     
-    let profileData: any = null;
-
     const fetchProfile = async () => {
         setLoading(true);
-        const usersRef = collection(firestore, "users");
-        const handleQuery = query(usersRef, where("handle", "==", username), limit(1));
-        
-        try {
-            const handleSnap = await getDocs(handleQuery);
+        let profileData: any = null;
+        let profileId: string | null = null;
 
-            if (!handleSnap.empty) {
-                profileData = { ...handleSnap.docs[0].data(), id: handleSnap.docs[0].id };
+        try {
+            // First, try to fetch by username parameter as a direct UID
+            const userRefByUid = doc(firestore, "users", username);
+            const userSnapByUid = await getDoc(userRefByUid);
+
+            if (userSnapByUid.exists()) {
+                profileData = { ...userSnapByUid.data(), id: userSnapByUid.id };
+                profileId = userSnapByUid.id;
             } else {
-                const userRef = doc(firestore, "users", username);
-                const userSnap = await getDoc(userRef);
-                if (userSnap.exists()) {
-                    profileData = { ...userSnap.data(), id: userSnap.id };
+                // If not found by UID, then query by handle (assuming rules might allow this for public profiles in future)
+                // This part is now the fallback and might fail if rules are strict.
+                const usersRef = collection(firestore, "users");
+                const handleQuery = query(usersRef, where("handle", "==", username), limit(1));
+                const handleSnap = await getDocs(handleQuery);
+
+                if (!handleSnap.empty) {
+                    const doc = handleSnap.docs[0];
+                    profileData = { ...doc.data(), id: doc.id };
+                    profileId = doc.id;
                 }
             }
             
-            if (profileData) {
+            if (profileData && profileId) {
                 setProfile(profileData);
-                setupListeners(profileData.id);
+                setupListeners(profileId);
 
-                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileData.id), orderBy("createdAt", "desc"));
+                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileId), orderBy("createdAt", "desc"));
                 const postsSnap = await getDocs(postsQuery);
                 setPosts(postsSnap.docs.map(d => ({...d.data(), id: d.id })));
                 
-                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileData.id));
+                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileId));
                 const followersSnap = await getDocs(followersQuery);
                 setFollowersCount(followersSnap.size);
 
-                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileData.id));
+                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileId));
                 const followingSnap = await getDocs(followingQuery);
                 setFollowingCount(followingSnap.size);
 
