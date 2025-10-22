@@ -1,8 +1,7 @@
 
-
 "use client";
 import { useEffect, useState, useRef, FormEvent } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useFirebaseUser, useFirestore } from '@/firebase';
 import {
   doc,
@@ -95,7 +94,7 @@ function ProfileEditor({ profile, onSave, onCancel }: { profile: any, onSave: (u
 
 export default function ProfilePage() {
   useAuthRedirect();
-  const { username: profileUid } = useParams() as { username?: string };
+  const { username: profileHandle } = useParams() as { username?: string };
   const [profile, setProfile] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
@@ -107,6 +106,8 @@ export default function ProfilePage() {
   const [creditFlash, setCreditFlash] = useState(false);
   const { user: currentUser } = useFirebaseUser();
   const firestore = useFirestore();
+  const router = useRouter();
+
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -125,7 +126,7 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (!profileUid || !firestore) {
+    if (!profileHandle || !firestore) {
       setLoading(false);
       return;
     }
@@ -133,24 +134,30 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
         setLoading(true);
 
+        // Determine the UID to fetch. If the current user is viewing their own profile
+        // (by handle), use their auth UID directly to prevent permission errors.
+        const isOwnProfile = currentUser && currentUser.displayName?.toLowerCase() === profileHandle.toLowerCase();
+        const profileUidToFetch = isOwnProfile ? currentUser.uid : profileHandle;
+
+
         try {
-            const userRef = doc(firestore, "users", profileUid);
+            const userRef = doc(firestore, "users", profileUidToFetch);
             const userSnap = await getDoc(userRef);
 
             if (userSnap.exists()) {
                 const profileData = { ...userSnap.data(), id: userSnap.id };
                 setProfile(profileData);
-                setupListeners(profileUid);
+                setupListeners(profileUidToFetch);
 
-                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileUid), orderBy("createdAt", "desc"));
+                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileUidToFetch), orderBy("createdAt", "desc"));
                 const postsSnap = await getDocs(postsQuery);
                 setPosts(postsSnap.docs.map(d => ({...d.data(), id: d.id })));
                 
-                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileUid));
+                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileUidToFetch));
                 const followersSnap = await getDocs(followersQuery);
                 setFollowersCount(followersSnap.size);
 
-                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileUid));
+                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileUidToFetch));
                 const followingSnap = await getDocs(followingQuery);
                 setFollowingCount(followingSnap.size);
 
@@ -160,7 +167,7 @@ export default function ProfilePage() {
         } catch (error) {
              const contextualError = new FirestorePermissionError({
                 operation: 'get',
-                path: `users/${profileUid}`,
+                path: `users/${profileUidToFetch}`,
             });
             errorEmitter.emit('permission-error', contextualError);
         } finally {
@@ -195,9 +202,15 @@ export default function ProfilePage() {
         }
     };
     
+    // We need to wait for currentUser to be available before fetching.
+    if (!currentUser) {
+        if (!loading) setLoading(true);
+        return;
+    }
+
     fetchProfile();
 
-  }, [profileUid, currentUser, firestore]);
+  }, [profileHandle, currentUser, firestore]);
 
 
   useEffect(() => {
@@ -412,4 +425,5 @@ export default function ProfilePage() {
       </div>
     </div>
   );
-}
+
+    
