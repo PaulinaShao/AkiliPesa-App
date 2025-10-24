@@ -159,7 +159,7 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
         >
           <div className="flex items-start gap-3 mb-2">
             <div className="relative">
-              <Link href={`/u/${user.username}`}>
+              <Link href={`/profile`}>
                 <FallbackAvatar src={user.avatar} alt={user.username} size={48} className="h-12 w-12 border-2 border-white" />
               </Link>
               <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
@@ -167,7 +167,7 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
               </button>
             </div>
             <div className="pt-2">
-              <Link href={`/u/${user.username}`}>
+              <Link href={`/profile`}>
                 <h3 className="font-bold text-lg text-white">@{user.username}</h3>
               </Link>
             </div>
