@@ -31,30 +31,22 @@ export default function LoginPage() {
   }, [searchParams]);
 
   const handleSuccessfulLogin = (user: User) => {
-    // After any successful login, always redirect to the setup page.
-    // The setup page will then handle routing to the correct final destination (the profile).
     router.replace('/auth/setup');
   };
   
-  // Handle redirect result on page load
   useEffect(() => {
     if (!auth || isUserLoading) return;
-    
-    // If a user is already authenticated, handle login
+  
     if (user) {
-        handleSuccessfulLogin(user);
-        return;
+      handleSuccessfulLogin(user);
+      return;
     }
-
+  
     getRedirectResult(auth)
       .then((result) => {
-        if (result?.user) {
-          handleSuccessfulLogin(result.user);
-        }
+        if (result?.user) handleSuccessfulLogin(result.user);
       })
-      .catch((err) => {
-        console.error("Redirect sign-in error:", err);
-      });
+      .catch((err) => console.error('Redirect sign-in error:', err));
   }, [auth, isUserLoading, user, router]);
 
 

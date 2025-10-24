@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuthRedirect } from '@/hooks/useAuthRedirect';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -16,16 +16,18 @@ import { ProfileEditorModal } from './components/ProfileEditorModal';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProfilePage() {
-  useAuthRedirect();
-  const { user: currentUser, isUserLoading } = useFirebaseUser();
+  // Redirects only once if unauthenticated
+  const { user: currentUser, isUserLoading } = useRequireAuth('/profile');
   const firestore = useFirestore();
   const [showEditor, setShowEditor] = useState(false);
 
+  // Build ref only when we have a user
   const userDocRef = useMemoFirebase(() => {
     if (!currentUser || !firestore) return null;
     return doc(firestore, 'users', currentUser.uid);
   }, [currentUser, firestore]);
 
+  // Start Firestore read only when ref is ready
   const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
 
   const handleSaveProfile = async (updates: any) => {
@@ -47,18 +49,9 @@ export default function ProfilePage() {
             <Skeleton className="h-8 w-48 mt-4" />
             <Skeleton className="h-4 w-32 mt-2" />
             <div className="flex justify-center gap-6 my-4 w-full">
-              <div className="text-center">
-                <Skeleton className="h-7 w-12" />
-                <Skeleton className="h-4 w-16 mt-1" />
-              </div>
-              <div className="text-center">
-                <Skeleton className="h-7 w-12" />
-                <Skeleton className="h-4 w-16 mt-1" />
-              </div>
-              <div className="text-center">
-                <Skeleton className="h-7 w-12" />
-                <Skeleton className="h-4 w-14 mt-1" />
-              </div>
+              <div className="text-center"><Skeleton className="h-7 w-12" /><Skeleton className="h-4 w-16 mt-1" /></div>
+              <div className="text-center"><Skeleton className="h-7 w-12" /><Skeleton className="h-4 w-16 mt-1" /></div>
+              <div className="text-center"><Skeleton className="h-7 w-12" /><Skeleton className="h-4 w-14 mt-1" /></div>
             </div>
             <Skeleton className="h-10 w-full max-w-sm" />
           </div>
@@ -68,7 +61,11 @@ export default function ProfilePage() {
   }
 
   if (!profile) {
-    return <div className="flex justify-center items-center h-screen text-gray-400">User not found.</div>;
+    return (
+      <div className="flex justify-center items-center h-screen text-gray-400 dark">
+        User not found.
+      </div>
+    );
   }
 
   return (
