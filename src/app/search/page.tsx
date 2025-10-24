@@ -81,7 +81,7 @@ function SearchResults() {
             <h2 className="text-xl font-semibold mb-4">Accounts</h2>
             <div className="space-y-4 mb-8">
               {filteredUsers.slice(0, 3).map(user => (
-                <Link key={user.id} href={`/profile/${user.username}`} className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted">
+                <Link key={user.id} href={`/profile`} className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted">
                     <FallbackAvatar src={user.avatar} alt={user.username} size={64}/>
                     <div>
                       <p className="font-bold text-lg">{user.username}</p>
@@ -118,7 +118,7 @@ function SearchResults() {
         <TabsContent value="accounts" className="mt-6">
           <div className="space-y-4">
             {filteredUsers.map(user => (
-              <Link key={user.id} href={`/profile/${user.username}`} className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted">
+              <Link key={user.id} href={`/profile`} className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted">
                   <FallbackAvatar src={user.avatar} alt={user.username} size={64}/>
                   <div>
                     <p className="font-bold text-lg">{user.username}</p>

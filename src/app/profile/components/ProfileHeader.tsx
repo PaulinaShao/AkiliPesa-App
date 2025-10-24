@@ -34,7 +34,7 @@ export function ProfileHeader({ user, isOwnProfile, onEditClick }: ProfileHeader
   };
   
   const handleShare = async () => {
-    const profileUrl = `${window.location.origin}/u/${user.id}`; // Use user.id which is the UID
+    const profileUrl = `${window.location.origin}/profile`; // Use canonical profile URL
     try {
       await navigator.clipboard.writeText(profileUrl);
       toast({
