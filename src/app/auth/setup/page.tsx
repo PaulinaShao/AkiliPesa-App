@@ -44,7 +44,8 @@ export default function AuthSetupPage() {
 
       if (docSnap.exists()) {
         setStatus("Profile found! Redirecting...");
-        const finalRedirect = getPostLoginRedirect(`/u/${docSnap.data().handle || firebaseUser.uid}`);
+        // Redirect using the user's UID for consistency
+        const finalRedirect = getPostLoginRedirect(`/u/${firebaseUser.uid}`);
         router.replace(finalRedirect);
       } else {
         // User does not have a profile, stay on this page to create one
@@ -125,7 +126,7 @@ export default function AuthSetupPage() {
     try {
       await batch.commit();
       console.log("✅ All documents initialized for", user.email);
-      const finalRedirect = getPostLoginRedirect(`/u/${handle.toLowerCase()}`);
+      const finalRedirect = getPostLoginRedirect(`/u/${user.uid}`);
       router.replace(finalRedirect);
     } catch (err) {
       console.error("🔥 Setup Error:", err);

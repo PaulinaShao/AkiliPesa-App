@@ -1,6 +1,6 @@
 
 "use client";
-import { useEffect, useState, useRef, FormEvent } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebaseUser, useFirestore } from '@/firebase';
 import {
@@ -16,28 +16,14 @@ import {
   deleteDoc,
   addDoc,
   orderBy,
-  limit,
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet,
-  Share2,
-  Edit,
-  Grid3X3,
-  Bot,
-  Grid,
-  Briefcase,
-  Gift,
-  Settings,
-  UserPlus,
-  UserCheck,
+  Save,
   Bell,
   X,
-  Save,
-  ShoppingBag,
-  Receipt,
   Heart,
-  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileHeader } from './components/ProfileHeader';
@@ -104,7 +90,7 @@ export default function ProfilePage() {
   const [followingCount, setFollowingCount] = useState(0);
   const [showEditor, setShowEditor] = useState(false);
   const [creditFlash, setCreditFlash] = useState(false);
-  const { user: currentUser } = useFirebaseUser();
+  const { user: currentUser, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
   const router = useRouter();
 
@@ -131,27 +117,33 @@ export default function ProfilePage() {
       return;
     }
     
+    // This is the definitive UID to use for all fetches on this page.
+    // If the current user is viewing their own profile, we MUST use their auth UID
+    // to prevent permission errors, regardless of what the URL says.
+    const isOwnProfile = currentUser?.uid === profileUid;
+    const resolvedProfileUid = isOwnProfile ? currentUser.uid : profileUid;
+
     const fetchProfile = async () => {
         setLoading(true);
 
         try {
-            const userRef = doc(firestore, "users", profileUid);
+            const userRef = doc(firestore, "users", resolvedProfileUid);
             const userSnap = await getDoc(userRef);
 
             if (userSnap.exists()) {
                 const profileData = { ...userSnap.data(), id: userSnap.id };
                 setProfile(profileData);
-                setupListeners(profileUid);
+                setupListeners(resolvedProfileUid);
 
-                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", profileUid), orderBy("createdAt", "desc"));
+                const postsQuery = query(collection(firestore, "posts"), where("authorId", "==", resolvedProfileUid), orderBy("createdAt", "desc"));
                 const postsSnap = await getDocs(postsQuery);
                 setPosts(postsSnap.docs.map(d => ({...d.data(), id: d.id })));
                 
-                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", profileUid));
+                const followersQuery = query(collection(firestore, "followers"), where("followedId", "==", resolvedProfileUid));
                 const followersSnap = await getDocs(followersQuery);
                 setFollowersCount(followersSnap.size);
 
-                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", profileUid));
+                const followingQuery = query(collection(firestore, "followers"), where("followerId", "==", resolvedProfileUid));
                 const followingSnap = await getDocs(followingQuery);
                 setFollowingCount(followingSnap.size);
 
@@ -161,7 +153,7 @@ export default function ProfilePage() {
         } catch (error) {
              const contextualError = new FirestorePermissionError({
                 operation: 'get',
-                path: `users/${profileUid}`,
+                path: `users/${resolvedProfileUid}`,
             });
             errorEmitter.emit('permission-error', contextualError);
         } finally {
@@ -197,9 +189,11 @@ export default function ProfilePage() {
         }
     };
     
-    fetchProfile();
+    if (currentUser || !isUserLoading) {
+      fetchProfile();
+    }
 
-  }, [profileUid, currentUser, firestore]);
+  }, [profileUid, currentUser, isUserLoading, firestore]);
 
 
   useEffect(() => {
