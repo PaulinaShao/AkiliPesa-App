@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, PlusSquare, User, Users, Wallet, Inbox } from 'lucide-react';
+import { Home, Search, PlusSquare, User, Wallet, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
 import FallbackAvatar from '@/components/ui/FallbackAvatar';
@@ -17,7 +17,7 @@ const mainNavLinks = [
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/create/ai', icon: PlusSquare, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
-  { href: '/u/placeholder', icon: User, label: 'Profile' }, // Placeholder href
+  { href: '/profile', icon: User, label: 'Profile' },
 ];
 
 export function SidebarNav() {
@@ -31,9 +31,6 @@ export function SidebarNav() {
   );
   const { data: currentUserProfile } = useDoc<any>(userDocRef);
 
-  // Always use the UID for the profile link.
-  const profileHref = authUser ? `/u/${authUser.uid}` : '/auth/login';
-
   return (
     <aside className="hidden md:flex flex-col w-64 border-r bg-background fixed h-full p-4 space-y-6">
       <Link href="/" className="flex items-center gap-2 px-2">
@@ -44,13 +41,12 @@ export function SidebarNav() {
       <nav className="flex-1">
         <ul className="space-y-2">
           {mainNavLinks.map(({ href, icon: Icon, label }) => {
-            const finalHref = label === 'Profile' ? profileHref : href;
             let isActive = false;
             if (href === '/') {
               isActive = pathname === '/';
-            } else if (label === 'Profile') {
-              isActive = pathname.startsWith('/u/');
-            } else if (label === 'Create') {
+            } else if (href === '/profile') {
+              isActive = pathname.startsWith('/profile');
+            } else if (href === '/create/ai') {
               isActive = pathname.startsWith('/create');
             } else {
               isActive = pathname.startsWith(href);
@@ -58,7 +54,7 @@ export function SidebarNav() {
 
             return (
             <li key={label}>
-              <Link href={finalHref}>
+              <Link href={href}>
                 <Button
                   variant={isActive ? 'secondary' : 'ghost'}
                   className="w-full justify-start text-lg h-12 text-foreground"
@@ -74,7 +70,7 @@ export function SidebarNav() {
 
       {currentUserProfile ? (
         <div className="mt-auto">
-          <Link href={profileHref}>
+          <Link href="/profile">
             <Button variant="outline" className="w-full justify-start h-14">
               <FallbackAvatar src={currentUserProfile.photoURL} alt={currentUserProfile.handle} size={40} className="h-10 w-10 mr-3" />
               <div className='text-left'>

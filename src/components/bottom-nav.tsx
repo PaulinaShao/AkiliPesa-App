@@ -5,23 +5,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Wallet, Plus, Inbox, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useFirebaseUser } from '@/firebase';
 
 const navLinks = [
   { href: '/', icon: Home, label: 'Home' },
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/create/ai', icon: Plus, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
-  { href: '/u/placeholder', icon: User, label: 'Profile' }, // Placeholder href
+  { href: '/profile', icon: User, label: 'Profile' },
 ];
 
 export function BottomNavWrapper() {
   const pathname = usePathname();
-  const { user: authUser } = useFirebaseUser();
-  
-  // Always use UID for the profile link.
-  const profileHref = authUser ? `/u/${authUser.uid}` : '/auth/login';
   
   // Hide nav on any deep inbox (chat) pages.
   const isChatPage = /^\/inbox\/(?!akilipesa-ai)[^/]+$/.test(pathname);
@@ -38,22 +33,20 @@ export function BottomNavWrapper() {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50 supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-safe">
       <div className="flex justify-around items-center h-16">
         {navLinks.map(({ href, icon: Icon, label }) => {
-          let isActive = false;
+          let isActive = pathname.startsWith(href) && href !== '/';
           if (href === '/') {
             isActive = pathname === '/';
-          } else if (label === 'Profile') {
-            isActive = pathname.startsWith('/u/');
-          } else if (label === 'Create') {
-            isActive = pathname.startsWith('/create');
-          } else {
-            isActive = pathname.startsWith(href);
           }
-          
-          const finalHref = label === 'Profile' ? profileHref : href;
+          if (href === '/profile') {
+            isActive = pathname.startsWith('/profile');
+          }
+           if (href === '/create/ai') {
+            isActive = pathname.startsWith('/create');
+          }
 
           if (label === 'Create') {
             return (
-              <Link href={finalHref} key={label} className="flex-1 relative -top-3">
+              <Link href={href} key={label} className="flex-1 relative -top-3">
                  <div className="relative w-16 h-16 mx-auto">
                     <div className="absolute inset-0 bg-gradient-tanzanite rounded-full p-0.5" style={{boxShadow: '0 0 15px 3px rgba(0,201,167,0.35)'}}>
                         <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
@@ -66,7 +59,7 @@ export function BottomNavWrapper() {
           }
 
           return (
-            <Link href={finalHref} key={label} className="flex-1">
+            <Link href={href} key={label} className="flex-1">
               <div
                 className={cn(
                   'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors',

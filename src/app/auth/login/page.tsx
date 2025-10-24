@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -31,8 +32,8 @@ export default function LoginPage() {
 
   const handleSuccessfulLogin = (user: User) => {
     // After any successful login, always redirect to the setup page.
-    // The useAuthRedirect hook will then handle routing to the correct final destination.
-    router.replace(getPostLoginRedirect('/auth/setup'));
+    // The setup page will then handle routing to the correct final destination (the profile).
+    router.replace('/auth/setup');
   };
   
   // Handle redirect result on page load
@@ -54,7 +55,7 @@ export default function LoginPage() {
       .catch((err) => {
         console.error("Redirect sign-in error:", err);
       });
-  }, [auth, isUserLoading, user]);
+  }, [auth, isUserLoading, user, router]);
 
 
   const handleGoogleSignIn = async () => {
@@ -76,8 +77,7 @@ export default function LoginPage() {
   };
 
   const handlePhoneSignIn = () => {
-    const target = getPostLoginRedirect('/auth/setup');
-    router.push(`/auth/phone?redirect=${encodeURIComponent(target)}`);
+    router.push(`/auth/phone`);
   };
 
   if (isUserLoading || user) {

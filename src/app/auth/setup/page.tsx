@@ -6,10 +6,9 @@ import { useRouter } from "next/navigation";
 import { useFirebaseUser, useFirestore } from "@/firebase";
 import {
   doc,
-  setDoc,
   getDoc,
-  serverTimestamp,
   writeBatch,
+  serverTimestamp,
 } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -44,9 +43,9 @@ export default function AuthSetupPage() {
 
       if (docSnap.exists()) {
         setStatus("Profile found! Redirecting...");
-        // Redirect using the user's UID for consistency
-        const finalRedirect = getPostLoginRedirect(`/u/${firebaseUser.uid}`);
-        router.replace(finalRedirect);
+        // Always redirect to the main /profile page.
+        // The page itself will handle loading the correct data.
+        router.replace('/profile');
       } else {
         // User does not have a profile, stay on this page to create one
         setStatus("Welcome! Please complete your profile.");
@@ -126,8 +125,8 @@ export default function AuthSetupPage() {
     try {
       await batch.commit();
       console.log("✅ All documents initialized for", user.email);
-      const finalRedirect = getPostLoginRedirect(`/u/${user.uid}`);
-      router.replace(finalRedirect);
+      // After saving, redirect to the main profile page.
+      router.replace('/profile');
     } catch (err) {
       console.error("🔥 Setup Error:", err);
       setStatus("Error creating profile. Please try again.");
