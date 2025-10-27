@@ -3,158 +3,66 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ─────────────────────────────
-    // 🔧  GLOBAL HELPER FUNCTIONS
+    // GLOBAL UTILITIES
     // ─────────────────────────────
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    // Custom claims (set by admin or backend)
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isAdmin() {
-      return isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.admin == true);
+      return isSignedIn() &&
+             (request.auth.token.role == 'admin' || request.auth.token.admin == true);
     }
-
-    function isAgent() {
-      return isSignedIn() && request.auth.token.role == 'agent';
-    }
-
+    function isAgent() { return isSignedIn() && request.auth.token.role == 'agent'; }
     function isCustomer() {
-      return isSignedIn() && (
-        !('role' in request.auth.token) ||
-        request.auth.token.role == 'customer'
-      );
+      return isSignedIn() &&
+             (!('role' in request.auth.token) || request.auth.token.role == 'customer');
     }
 
     // ─────────────────────────────
-    // 👤 USERS + SUBCOLLECTIONS
+    // USERS & PROFILE SUBCOLLECTIONS
     // ─────────────────────────────
     match /users/{userId} {
-      // Users can read/write their own record.
-      allow read, update, delete: if isOwner(userId);
-      // Admins can manage anyone.
-      allow create, read, write: if isAdmin();
-      // No list of all users for security.
+      allow read, write: if isOwner(userId) || isAdmin();
       allow list: if false;
     }
-
-    match /users/{userId}/clones/{cloneId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-    }
-
-    match /users/{userId}/agents/{agentId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-    }
+    match /users/{userId}/clones/{cloneId} { allow read, write: if isOwner(userId) || isAdmin(); }
+    match /users/{userId}/agents/{agentId} { allow read, write: if isOwner(userId) || isAdmin(); }
 
     // ─────────────────────────────
-    // 🌐 PUBLIC & SEMI-PUBLIC DATA
+    // PUBLIC CONTENT
     // ─────────────────────────────
-    match /posts/{postId} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    match /products/{productId} {
-      allow read: if true;
-      // Agents or admins may create/edit listings
-      allow write: if isAgent() || isAdmin();
-    }
-
-    match /plans/{planId} {
-      allow read: if true;
-      allow write: if isAdmin(); // only admins manage plans
-    }
-
-    match /adminAgents/{agentId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
+    match /posts/{postId}     { allow read: if true; allow write: if isSignedIn(); }
+    match /products/{pid}     { allow read: if true; allow write: if isAgent() || isAdmin(); }
+    match /plans/{planId}     { allow read: if true; allow write: if isAdmin(); }
+    match /adminAgents/{id}   { allow read: if isSignedIn(); allow write: if isAdmin(); }
 
     // ─────────────────────────────
-    // 💼  USER-SPECIFIC FINANCIAL DATA
+    // TRUST & SCORES
     // ─────────────────────────────
-    match /wallets/{walletId} {
-      allow read: if isOwner(walletId) || isAdmin();
-      allow write: if isAdmin(); // wallet balance handled by backend
-    }
-
-    match /transactions/{txId} {
-      allow read: if isAdmin() ||
-                  (isSignedIn() && request.auth.uid == resource.data.uid);
-      allow write: if isAdmin();
-    }
+    match /trustScores/{uid}  { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /buyerTrust/{uid}   { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /akiliPoints/{uid}  { allow read: if isOwner(uid) || isAdmin(); allow write: if isAdmin(); }
 
     // ─────────────────────────────
-    // 💬  ORDERS & ESCROW
+    // USER DATA
     // ─────────────────────────────
-    match /orders/{orderId} {
-      function orderData() {
-        return get(/databases/$(database)/documents/orders/$(orderId)).data;
-      }
-      allow read: if isAdmin()
-               || (isSignedIn() && (
-                    request.auth.uid == orderData().buyerId ||
-                    request.auth.uid == orderData().sellerId
-                  ));
-      allow write: if isAdmin(); // backend controls order flow
-    }
-
-    match /escrow/{escrowId} {
-      allow read: if isAdmin() || isSignedIn();
-      allow write: if isAdmin();
-    }
+    match /wallets/{wid}      { allow read: if isOwner(wid) || isAdmin(); allow write: if isAdmin(); }
+    match /transactions/{tid} { allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.uid);
+                                allow write: if isAdmin(); }
+    match /orders/{oid}       { allow read: if isAdmin() ||
+                                   (isSignedIn() &&
+                                    (request.auth.uid == resource.data.buyerId ||
+                                     request.auth.uid == resource.data.sellerId));
+                                allow write: if isAdmin(); }
 
     // ─────────────────────────────
-    // 🤝  TRUST & REPUTATION SYSTEM
+    // NOTIFICATIONS & FOLLOWERS
     // ─────────────────────────────
-    match /trustScores/{userId} {
-      // Anyone signed in can view trust score (for marketplace transparency)
-      allow read: if isSignedIn();
-      // Only backend or admin may write
-      allow write: if isAdmin();
-    }
-
-    match /buyerTrust/{buyerId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
+    match /notifications/{nid} { allow read, write: if isOwner(resource.data.uid) || isAdmin(); }
+    match /followers/{fid}     { allow read: if true; allow write: if isSignedIn(); }
 
     // ─────────────────────────────
-    // ⭐  POINTS & REWARDS
+    // DEFAULT DENY
     // ─────────────────────────────
-    match /akiliPoints/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if isAdmin();
-    }
-
-    match /rewardHistory/{rewardId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // ─────────────────────────────
-    // 🔔 NOTIFICATIONS
-    // ─────────────────────────────
-    match /notifications/{notifId} {
-      allow read, write: if isOwner(resource.data.uid) || isAdmin();
-    }
-
-    // ─────────────────────────────
-    // 👥 FOLLOWERS / SOCIAL GRAPH
-    // ─────────────────────────────
-    match /followers/{followId} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // ─────────────────────────────
-    // 🧱 DEFAULT DENY
-    // ─────────────────────────────
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }
