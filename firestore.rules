@@ -2,74 +2,157 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ─────────────────────────────
+    // 🔧  GLOBAL HELPER FUNCTIONS
+    // ─────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // USERS
+    // Custom claims (set by admin or backend)
+    function isAdmin() {
+      return isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.admin == true);
+    }
+
+    function isAgent() {
+      return isSignedIn() && request.auth.token.role == 'agent';
+    }
+
+    function isCustomer() {
+      return isSignedIn() && (
+        !('role' in request.auth.token) ||
+        request.auth.token.role == 'customer'
+      );
+    }
+
+    // ─────────────────────────────
+    // 👤 USERS + SUBCOLLECTIONS
+    // ─────────────────────────────
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
-      allow list: if false; // Prevent listing all users for security
+      // Users can read/write their own record.
+      allow read, update, delete: if isOwner(userId);
+      // Admins can manage anyone.
+      allow create, read, write: if isAdmin();
+      // No list of all users for security.
+      allow list: if false;
     }
 
-    // USER SUBCOLLECTIONS (Clones & Agents)
     match /users/{userId}/clones/{cloneId} {
-      allow read, write: if isOwner(userId);
-    }
-    match /users/{userId}/agents/{agentId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isOwner(userId) || isAdmin();
     }
 
-    // PUBLIC COLLECTIONS
+    match /users/{userId}/agents/{agentId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // ─────────────────────────────
+    // 🌐 PUBLIC & SEMI-PUBLIC DATA
+    // ─────────────────────────────
     match /posts/{postId} {
       allow read: if true;
       allow write: if isSignedIn();
     }
+
     match /products/{productId} {
+      allow read: if true;
+      // Agents or admins may create/edit listings
+      allow write: if isAgent() || isAdmin();
+    }
+
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin(); // only admins manage plans
+    }
+
+    match /adminAgents/{agentId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────
+    // 💼  USER-SPECIFIC FINANCIAL DATA
+    // ─────────────────────────────
+    match /wallets/{walletId} {
+      allow read: if isOwner(walletId) || isAdmin();
+      allow write: if isAdmin(); // wallet balance handled by backend
+    }
+
+    match /transactions/{txId} {
+      allow read: if isAdmin() ||
+                  (isSignedIn() && request.auth.uid == resource.data.uid);
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────
+    // 💬  ORDERS & ESCROW
+    // ─────────────────────────────
+    match /orders/{orderId} {
+      function orderData() {
+        return get(/databases/$(database)/documents/orders/$(orderId)).data;
+      }
+      allow read: if isAdmin()
+               || (isSignedIn() && (
+                    request.auth.uid == orderData().buyerId ||
+                    request.auth.uid == orderData().sellerId
+                  ));
+      allow write: if isAdmin(); // backend controls order flow
+    }
+
+    match /escrow/{escrowId} {
+      allow read: if isAdmin() || isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────
+    // 🤝  TRUST & REPUTATION SYSTEM
+    // ─────────────────────────────
+    match /trustScores/{userId} {
+      // Anyone signed in can view trust score (for marketplace transparency)
+      allow read: if isSignedIn();
+      // Only backend or admin may write
+      allow write: if isAdmin();
+    }
+
+    match /buyerTrust/{buyerId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────
+    // ⭐  POINTS & REWARDS
+    // ─────────────────────────────
+    match /akiliPoints/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /rewardHistory/{rewardId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────
+    // 🔔 NOTIFICATIONS
+    // ─────────────────────────────
+    match /notifications/{notifId} {
+      allow read, write: if isOwner(resource.data.uid) || isAdmin();
+    }
+
+    // ─────────────────────────────
+    // 👥 FOLLOWERS / SOCIAL GRAPH
+    // ─────────────────────────────
+    match /followers/{followId} {
       allow read: if true;
       allow write: if isSignedIn();
     }
-    match /plans/{planId} {
-      allow read: if true;
-      allow write: if false; // Plans should be managed by admins, not users
-    }
-    match /adminAgents/{agentId} {
-      allow read: if isSignedIn();
-      allow write: if false; // Admin agents are read-only for users
-    }
 
-    // USER-SPECIFIC DATA
-    match /buyerTrust/{buyerId} {
-      allow read: if isOwner(buyerId);
-      allow write: if false; // Managed by backend functions
-    }
-    match /wallets/{walletId} {
-        allow read: if isOwner(walletId);
-        allow write: if false; // Managed by backend functions
-    }
-    match /transactions/{txId} {
-      allow read: if isOwner(getDocumentData(/databases/$(database)/documents/transactions/$(txId)).uid);
-      allow write: if false; // Managed by backend functions
-    }
-    match /orders/{orderId} {
-      function getOrderData() {
-        return get(/databases/$(database)/documents/orders/$(orderId)).data;
-      }
-      allow read: if isSignedIn() && (request.auth.uid == getOrderData().buyerId || request.auth.uid == getOrderData().sellerId);
-      allow write: if false; // Managed by backend functions
-    }
-     match /notifications/{notificationId} {
-        allow read, write: if isOwner(get(/databases/$(database)/documents/notifications/$(notificationId)).data.uid);
-    }
-    match /followers/{followId} {
-        allow read: if true;
-        allow write: if isSignedIn();
-    }
-
-    // Default Deny (Safety Net)
+    // ─────────────────────────────
+    // 🧱 DEFAULT DENY
+    // ─────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }
