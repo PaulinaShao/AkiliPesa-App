@@ -2,9 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, notFound } from 'next/navigation';
-import { useFirebaseUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
 import { Header } from '@/components/header';
 import { ProfileQuickActions } from '@/app/profile/components/ProfileQuickActions';
@@ -13,62 +12,39 @@ import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
 import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { ProfileEditorModal } from '@/app/profile/components/ProfileEditorModal';
 import { Skeleton } from '@/components/ui/skeleton';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { useRouter } from 'next/navigation';
 
 export default function UserProfilePage() {
-  const params = useParams();
-  const username = params.username as string;
-  
-  const { user: currentUser } = useFirebaseUser();
+  const { user: currentUser, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
-  const [profile, setProfile] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+
   const [showEditor, setShowEditor] = useState(false);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!username || !firestore) return;
+    if (!isUserLoading && !currentUser) {
+      router.replace('/auth/login');
+    }
+  }, [currentUser, isUserLoading, router]);
+  
+  // Create a memoized reference to the user's document
+  const userDocRef = useMemoFirebase(() => {
+    if (!currentUser || !firestore) return null;
+    return doc(firestore, 'users', currentUser.uid);
+  }, [currentUser, firestore]);
 
-    const fetchProfile = async () => {
-      setIsLoading(true);
-      const usersRef = collection(firestore, "users");
-      const q = query(usersRef, where("handle", "==", username));
-      
-      getDocs(q)
-        .then((querySnapshot) => {
-          if (querySnapshot.empty) {
-            setProfile(null);
-          } else {
-            const profileDoc = querySnapshot.docs[0];
-            setProfile({ id: profileDoc.id, ...profileDoc.data() });
-          }
-        })
-        .catch((err) => {
-          console.error("Original error in fetchProfile:", err);
-          const contextualError = new FirestorePermissionError({
-            path: usersRef.path, // The path of the collection we are querying
-            operation: 'list', // getDocs is a 'list' operation
-          });
-          errorEmitter.emit('permission-error', contextualError);
-          setProfile(null);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    };
-
-    fetchProfile();
-  }, [username, firestore]);
+  // Use the useDoc hook to fetch the profile data
+  const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
 
   const handleSaveProfile = async (updates: any) => {
-    if (!profile?.id || !firestore) return;
-    const userRef = doc(firestore, 'users', profile.id);
+    if (!currentUser || !firestore) return;
+    const userRef = doc(firestore, 'users', currentUser.uid);
     await updateDoc(userRef, { ...updates, updatedAt: new Date() });
-    setProfile((prev: any) => ({ ...prev, ...updates }));
     setShowEditor(false);
   };
   
-  const isOwnProfile = currentUser?.uid === profile?.id;
+  const isLoading = isUserLoading || isProfileLoading;
 
   if (isLoading) {
     return (
@@ -92,7 +68,11 @@ export default function UserProfilePage() {
   }
 
   if (!profile) {
-    return notFound();
+     return (
+      <div className="flex h-screen w-full items-center justify-center bg-background dark">
+        <p>Loading profile...</p>
+      </div>
+    );
   }
 
   return (
@@ -108,28 +88,22 @@ export default function UserProfilePage() {
             bio: profile.bio || '',
             stats: profile.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 },
           }}
-          isOwnProfile={isOwnProfile}
+          isOwnProfile={true}
           onEditClick={() => setShowEditor(true)}
         />
         
-        {isOwnProfile && (
-            <>
-                <TrustScoreBadge sellerId={profile.id} />
-                <BuyerTrustBadge buyerId={profile.id} />
-                <AkiliPointsBadge userId={profile.id} />
-                <ProfileQuickActions />
-            </>
-        )}
+        <TrustScoreBadge sellerId={profile.id} />
+        <BuyerTrustBadge buyerId={profile.id} />
+        <AkiliPointsBadge userId={profile.id} />
+        <ProfileQuickActions />
         
       </div>
-      {isOwnProfile && (
-        <ProfileEditorModal
-            isOpen={showEditor}
-            onClose={() => setShowEditor(false)}
-            profile={profile}
-            onSave={handleSaveProfile}
-        />
-      )}
+      <ProfileEditorModal
+          isOpen={showEditor}
+          onClose={() => setShowEditor(false)}
+          profile={profile}
+          onSave={handleSaveProfile}
+      />
     </div>
   );
 }
