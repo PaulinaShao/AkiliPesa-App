@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebaseUser, useFirestore } from '@/firebase';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
 import { Header } from '@/components/header';
 import { ProfileQuickActions } from '@/app/profile/components/ProfileQuickActions';
@@ -24,7 +23,6 @@ export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
-  const [profileUid, setProfileUid] = useState<string | null>(null);
 
   useEffect(() => {
     if (!username || !firestore) return;
@@ -32,6 +30,7 @@ export default function UserProfilePage() {
     const fetchProfile = async () => {
       setIsLoading(true);
       const usersRef = collection(firestore, "users");
+      // Use 'handle' field for username lookup as defined in the backend.json
       const q = query(usersRef, where("handle", "==", username));
       
       try {
@@ -39,9 +38,9 @@ export default function UserProfilePage() {
         if (querySnapshot.empty) {
           setProfile(null);
         } else {
-          const profileData = querySnapshot.docs[0].data();
-          setProfileUid(querySnapshot.docs[0].id);
-          setProfile({ ...profileData, id: querySnapshot.docs[0].id });
+          // Assuming username (handle) is unique, take the first result.
+          const profileDoc = querySnapshot.docs[0];
+          setProfile({ id: profileDoc.id, ...profileDoc.data() });
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -55,8 +54,8 @@ export default function UserProfilePage() {
   }, [username, firestore]);
 
   const handleSaveProfile = async (updates: any) => {
-    if (!profileUid || !firestore) return;
-    const userRef = doc(firestore, 'users', profileUid);
+    if (!profile?.id || !firestore) return;
+    const userRef = doc(firestore, 'users', profile.id);
     await updateDoc(userRef, { ...updates, updatedAt: new Date() });
     setProfile((prev: any) => ({ ...prev, ...updates }));
     setShowEditor(false);
@@ -95,7 +94,7 @@ export default function UserProfilePage() {
       <div className="max-w-xl mx-auto p-4 pt-20 pb-24">
         <ProfileHeader
           user={{
-            id: profile.uid,
+            id: profile.id,
             username: profile.handle,
             name: profile.displayName,
             avatar: profile.photoURL,
