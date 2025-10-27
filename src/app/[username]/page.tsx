@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, notFound } from 'next/navigation';
 import { useFirebaseUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
 import { Header } from '@/components/header';
 import { ProfileQuickActions } from '@/app/profile/components/ProfileQuickActions';
@@ -12,7 +13,8 @@ import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
 import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { ProfileEditorModal } from '@/app/profile/components/ProfileEditorModal';
 import { Skeleton } from '@/components/ui/skeleton';
-import { notFound } from 'next/navigation';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -30,24 +32,29 @@ export default function UserProfilePage() {
     const fetchProfile = async () => {
       setIsLoading(true);
       const usersRef = collection(firestore, "users");
-      // Use 'handle' field for username lookup as defined in the backend.json
       const q = query(usersRef, where("handle", "==", username));
       
-      try {
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) {
+      getDocs(q)
+        .then((querySnapshot) => {
+          if (querySnapshot.empty) {
+            setProfile(null);
+          } else {
+            const profileDoc = querySnapshot.docs[0];
+            setProfile({ id: profileDoc.id, ...profileDoc.data() });
+          }
+        })
+        .catch((err) => {
+          console.error("Original error in fetchProfile:", err);
+          const contextualError = new FirestorePermissionError({
+            path: usersRef.path, // The path of the collection we are querying
+            operation: 'list', // getDocs is a 'list' operation
+          });
+          errorEmitter.emit('permission-error', contextualError);
           setProfile(null);
-        } else {
-          // Assuming username (handle) is unique, take the first result.
-          const profileDoc = querySnapshot.docs[0];
-          setProfile({ id: profileDoc.id, ...profileDoc.data() });
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-        setProfile(null);
-      } finally {
-        setIsLoading(false);
-      }
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     };
 
     fetchProfile();
