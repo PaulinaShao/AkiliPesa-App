@@ -1,4 +1,3 @@
-
 {
   "indexes": [
     {
@@ -41,13 +40,7 @@
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
-    {
-      "collectionGroup": "aiSessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "agentId", "order": "ASCENDING" }
-      ]
-    },
+    
     {
       "collectionGroup": "transactions",
       "queryScope": "COLLECTION",
@@ -63,9 +56,32 @@
         { "fieldPath": "uid", "order": "ASCENDING" },
         { "fieldPath": "totalEarnings", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "analytics",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wallets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerRole", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "read", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
 }
-
-    

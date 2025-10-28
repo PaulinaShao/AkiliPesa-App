@@ -3,66 +3,122 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ─────────────────────────────
-    // GLOBAL UTILITIES
+    // 🌐 GLOBAL UTILITIES
     // ─────────────────────────────
-    function isSignedIn() { return request.auth != null; }
-    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
     function isAdmin() {
       return isSignedIn() &&
-             (request.auth.token.role == 'admin' || request.auth.token.admin == true);
+        (request.auth.token.role == 'admin' || request.auth.token.admin == true);
     }
-    function isAgent() { return isSignedIn() && request.auth.token.role == 'agent'; }
-    function isCustomer() {
-      return isSignedIn() &&
-             (!('role' in request.auth.token) || request.auth.token.role == 'customer');
+
+    function isAgent() {
+      return isSignedIn() && request.auth.token.role == 'agent';
     }
 
     // ─────────────────────────────
-    // USERS & PROFILE SUBCOLLECTIONS
+    // 👤 USERS & PROFILE SUBCOLLECTIONS
     // ─────────────────────────────
     match /users/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
       allow list: if false;
     }
-    match /users/{userId}/clones/{cloneId} { allow read, write: if isOwner(userId) || isAdmin(); }
-    match /users/{userId}/agents/{agentId} { allow read, write: if isOwner(userId) || isAdmin(); }
+
+    match /users/{userId}/clones/{cloneId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/agents/{agentId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
 
     // ─────────────────────────────
-    // PUBLIC CONTENT
+    // 📢 PUBLIC CONTENT
     // ─────────────────────────────
-    match /posts/{postId}     { allow read: if true; allow write: if isSignedIn(); }
-    match /products/{pid}     { allow read: if true; allow write: if isAgent() || isAdmin(); }
-    match /plans/{planId}     { allow read: if true; allow write: if isAdmin(); }
-    match /adminAgents/{id}   { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /products/{pid} {
+      allow read: if true;
+      allow write: if isAgent() || isAdmin();
+    }
+
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /adminAgents/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
 
     // ─────────────────────────────
-    // TRUST & SCORES
+    // 🏆 TRUST & SCORES
     // ─────────────────────────────
-    match /trustScores/{uid}  { allow read: if isSignedIn(); allow write: if isAdmin(); }
-    match /buyerTrust/{uid}   { allow read: if isSignedIn(); allow write: if isAdmin(); }
-    match /akiliPoints/{uid}  { allow read: if isOwner(uid) || isAdmin(); allow write: if isAdmin(); }
+    match /trustScores/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /buyerTrust/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /akiliPoints/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
 
     // ─────────────────────────────
-    // USER DATA
+    // 💰 USER DATA
     // ─────────────────────────────
-    match /wallets/{wid}      { allow read: if isOwner(wid) || isAdmin(); allow write: if isAdmin(); }
-    match /transactions/{tid} { allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.uid);
-                                allow write: if isAdmin(); }
-    match /orders/{oid}       { allow read: if isAdmin() ||
-                                   (isSignedIn() &&
-                                    (request.auth.uid == resource.data.buyerId ||
-                                     request.auth.uid == resource.data.sellerId));
-                                allow write: if isAdmin(); }
+    match /wallets/{wid} {
+      allow read: if isOwner(wid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /transactions/{tid} {
+      allow read: if isAdmin() ||
+        (isSignedIn() && request.auth.uid == resource.data.uid);
+      allow write: if isAdmin();
+    }
+
+    match /orders/{oid} {
+      allow read: if isAdmin() ||
+        (isSignedIn() &&
+          (request.auth.uid == resource.data.buyerId ||
+           request.auth.uid == resource.data.sellerId));
+      allow write: if isAdmin();
+    }
 
     // ─────────────────────────────
-    // NOTIFICATIONS & FOLLOWERS
+    // 🔔 NOTIFICATIONS & FOLLOWERS
     // ─────────────────────────────
-    match /notifications/{nid} { allow read, write: if isOwner(resource.data.uid) || isAdmin(); }
-    match /followers/{fid}     { allow read: if true; allow write: if isSignedIn(); }
+    match /notifications/{nid} {
+      allow read, write: if isSignedIn() &&
+        (request.auth.uid == resource.data.userId || isAdmin());
+    }
+
+    match /followers/{fid} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
 
     // ─────────────────────────────
-    // DEFAULT DENY
+    // 🚫 DEFAULT DENY
     // ─────────────────────────────
-    match /{document=**} { allow read, write: if false; }
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
