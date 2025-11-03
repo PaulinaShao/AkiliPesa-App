@@ -79,7 +79,7 @@ export default function AiCreatePage() {
   useEffect(() => {
     // Auto-scroll to the bottom when new messages are added
     if (scrollAreaRef.current) {
-        const viewport = scrollAreaRef.current.querySelector('div');
+        const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
         if (viewport) {
             viewport.scrollTop = viewport.scrollHeight;
         }
@@ -164,8 +164,8 @@ export default function AiCreatePage() {
         onCancel={() => setShowAgentPicker(false)}
       />
 
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex justify-center p-2 border-b">
+      <div className="border-b">
+         <div className="flex justify-center p-2">
            <Tabs defaultValue="ai" className="w-auto">
               <TabsList>
                 <TabsTrigger value="ai" onClick={() => router.push('/create/ai')}>AkiliPesa AI</TabsTrigger>
@@ -174,35 +174,37 @@ export default function AiCreatePage() {
               </TabsList>
             </Tabs>
         </div>
-        <ScrollArea className="flex-1" ref={scrollAreaRef}>
-             <div className="p-4 space-y-6">
-                {messages.map(msg => (
-                <div key={msg.id} className={cn(
-                    "flex items-start gap-3 max-w-[85%]",
-                    msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
-                )}>
-                    {msg.sender === 'ai' ? (
-                    <Avatar className="w-8 h-8 bg-gradient-tanzanite p-0.5">
-                        <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
-                            <Sparkles className="w-4 h-4 text-white" />
-                        </div>
-                    </Avatar>
-                    ) : (
-                    <FallbackAvatar src={msg.avatar} alt={msg.username} className="w-8 h-8" />
-                    )}
-                    <div className={cn(
-                    "rounded-2xl px-4 py-2.5 text-sm",
-                    msg.sender === 'user'
-                        ? 'bg-gradient-tanzanite text-primary-foreground rounded-br-none'
-                        : 'bg-secondary rounded-bl-none'
-                    )}>
-                    <p>{msg.text}</p>
-                    </div>
-                </div>
-                ))}
-            </div>
-        </ScrollArea>
       </div>
+      
+      <ScrollArea className="flex-1 h-full" ref={scrollAreaRef}>
+         <div className="p-4 space-y-6">
+            {messages.map(msg => (
+            <div key={msg.id} className={cn(
+                "flex items-start gap-3 max-w-[85%]",
+                msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
+            )}>
+                {msg.sender === 'ai' ? (
+                <Avatar className="w-8 h-8 bg-gradient-tanzanite p-0.5">
+                    <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                </Avatar>
+                ) : (
+                <FallbackAvatar src={msg.avatar} alt={msg.username} className="w-8 h-8" />
+                )}
+                <div className={cn(
+                "rounded-2xl px-4 py-2.5 text-sm",
+                msg.sender === 'user'
+                    ? 'bg-gradient-tanzanite text-primary-foreground rounded-br-none'
+                    : 'bg-secondary rounded-bl-none'
+                )}>
+                <p>{msg.text}</p>
+                </div>
+            </div>
+            ))}
+        </div>
+      </ScrollArea>
+      
 
       <footer className="p-2 border-t bg-background">
         <div className="bg-muted/50 rounded-xl p-2 space-y-2">
