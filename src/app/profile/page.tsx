@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
@@ -27,11 +27,11 @@ function UserProfileContent() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
 
-  // If auth is not loading but there's no user, redirect to login
-  if (!isUserLoading && !currentUser) {
-    router.replace('/auth/login?redirect=/profile');
-    return null; 
-  }
+  useEffect(() => {
+    if (!isUserLoading && !currentUser) {
+      router.replace('/auth/login?redirect=/profile');
+    }
+  }, [isUserLoading, currentUser, router]);
 
   const handleSaveProfile = async (updates: any) => {
     if (!currentUser || !firestore) return;

@@ -3,6 +3,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useFirebaseUser } from '@/firebase';
+import { useEffect } from 'react';
 
 export default function AdminLayout({
   children,
@@ -13,27 +14,22 @@ export default function AdminLayout({
   const pathname = usePathname();
   const { user, isUserLoading } = useFirebaseUser();
 
-  // The root layout already shows a loading screen, so we just need to handle the redirect logic here.
-  // This effect will run once the global isUserLoading becomes false.
-  if (!isUserLoading) {
-    if (!user) {
-      // Use router.replace inside the render cycle is not ideal, but for a client component redirect like this it's a common pattern.
-      // For Next.js 13+, middleware or server-side redirects are preferred for initial loads,
-      // but this handles client-side transitions.
-      router.replace(`/auth/login?redirect=${pathname}`);
-      return null;
-    }
-    
-    if (user.email !== 'blagridigital@gmail.com') {
-      router.replace('/'); 
-      return null;
-    }
-  }
+  useEffect(() => {
+    if (isUserLoading) return; 
 
-  // Don't render children if we are still loading or if the user is not the admin.
-  // The root layout handles the "Authenticating..." screen.
+    if (!user) {
+      router.replace(`/auth/login?redirect=${pathname}`);
+    } else if (user.email !== 'blagridigital@gmail.com') {
+      router.replace('/'); 
+    }
+  }, [user, isUserLoading, router, pathname]);
+
   if (isUserLoading || user?.email !== 'blagridigital@gmail.com') {
-    return null;
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background dark">
+            <p>Authenticating Admin...</p>
+        </div>
+    );
   }
 
   return <div className="dark">{children}</div>;
