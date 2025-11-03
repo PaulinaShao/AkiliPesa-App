@@ -4,6 +4,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirebaseUser, useFirestore } from '@/firebase';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type SessionState = {
   sessionId: string;
@@ -35,8 +37,6 @@ export default function useSessionManager(agentId?: string, mode: 'audio' | 'vid
 
       if (snapshot.exists()) {
         const data = snapshot.data() as SessionState;
-        // If the agentId or mode is different, we might want to start a new session
-        // For now, we'll resume the existing one.
         sessionRef.current = data.sessionId;
         setSession(data);
       } else {
@@ -48,7 +48,19 @@ export default function useSessionManager(agentId?: string, mode: 'audio' | 'vid
           isActive: true,
           lastUpdated: Date.now(),
         };
-        await setDoc(userSessionRef, { ...newSession, createdAt: serverTimestamp() });
+        
+        const dataToSet = { ...newSession, createdAt: serverTimestamp() };
+
+        // Use non-blocking write with contextual error handling
+        setDoc(userSessionRef, dataToSet).catch(error => {
+          const contextualError = new FirestorePermissionError({
+            path: userSessionRef.path,
+            operation: 'create',
+            requestResourceData: dataToSet
+          });
+          errorEmitter.emit('permission-error', contextualError);
+        });
+
         sessionRef.current = newSession.sessionId;
         setSession(newSession);
       }
@@ -62,14 +74,24 @@ export default function useSessionManager(agentId?: string, mode: 'audio' | 'vid
   const updateSession = async (updates: Partial<Omit<SessionState, 'sessionId'>>) => {
     if (!user || !sessionRef.current || !firestore) return;
 
-    const currentSessionState = { ...session, ...updates, lastUpdated: Date.now() };
+    const updatesWithTimestamp = { ...updates, lastUpdated: Date.now() };
+    const fullSessionData = { ...session, ...updatesWithTimestamp };
 
     const ref = doc(firestore, 'aiSessions', user.uid);
-    await setDoc(ref, currentSessionState, { merge: true });
+    
+    // Use non-blocking write with contextual error handling
+    setDoc(ref, updatesWithTimestamp, { merge: true }).catch(error => {
+        const contextualError = new FirestorePermissionError({
+            path: ref.path,
+            operation: 'update',
+            requestResourceData: fullSessionData
+        });
+        errorEmitter.emit('permission-error', contextualError);
+    });
     
     setSession(prev => {
         if (!prev) return null;
-        return { ...prev, ...updates, lastUpdated: Date.now() };
+        return { ...prev, ...updatesWithTimestamp };
     });
   };
 
