@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
@@ -12,13 +11,11 @@ import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
 import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { ProfileEditorModal } from '@/app/profile/components/ProfileEditorModal';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useRouter } from 'next/navigation';
-import { setPostLoginRedirect } from '@/lib/redirect';
+import RequireAuthRedirect from '@/components/RequireAuthRedirect';
 
-export default function UserProfilePage() {
-  const { user: currentUser, isUserLoading } = useFirebaseUser();
+function UserProfileContent() {
+  const { user: currentUser } = useFirebaseUser();
   const firestore = useFirestore();
-  const router = useRouter();
 
   const [showEditor, setShowEditor] = useState(false);
   
@@ -29,13 +26,6 @@ export default function UserProfilePage() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
 
-  useEffect(() => {
-    if (!isUserLoading && !currentUser) {
-      setPostLoginRedirect('/profile');
-      router.replace('/auth/login');
-    }
-  }, [isUserLoading, currentUser, router]);
-
   const handleSaveProfile = async (updates: any) => {
     if (!currentUser || !firestore) return;
     const userRef = doc(firestore, 'users', currentUser.uid);
@@ -43,9 +33,8 @@ export default function UserProfilePage() {
     setShowEditor(false);
   };
   
-  const isLoading = isUserLoading || isProfileLoading;
-
-  if (isLoading || !profile || !currentUser) {
+  // This combines auth loading and profile data loading
+  if (isProfileLoading || !profile || !currentUser) {
     return (
       <div className="dark">
         <Header isMuted={true} onToggleMute={() => {}} />
@@ -97,4 +86,13 @@ export default function UserProfilePage() {
       />
     </div>
   );
+}
+
+
+export default function UserProfilePage() {
+    return (
+        <RequireAuthRedirect>
+            <UserProfileContent />
+        </RequireAuthRedirect>
+    )
 }
