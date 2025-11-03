@@ -33,7 +33,6 @@ function UserProfileContent() {
     setShowEditor(false);
   };
   
-  // This combines auth loading and profile data loading
   if (isProfileLoading || !profile || !currentUser) {
     return (
       <div className="dark">
