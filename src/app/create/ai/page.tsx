@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Avatar } from '@/components/ui/avatar';
 import { X, Phone, Video as VideoIcon, Sparkles, Globe, Paperclip, Mic, SendHorizonal } from 'lucide-react';
@@ -16,7 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 import { httpsCallable } from 'firebase/functions';
 import { AgentPicker } from '@/components/AgentPicker';
 import useSessionManager from '@/lib/sessionManager';
-
 
 interface Message {
   id: string;
@@ -76,12 +74,8 @@ export default function AiCreatePage() {
   }, [session, updateSession]);
 
   useEffect(() => {
-    // Auto-scroll to the bottom when new messages are added
     if (scrollAreaRef.current) {
-        const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-        if (viewport) {
-            viewport.scrollTop = viewport.scrollHeight;
-        }
+        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -146,7 +140,7 @@ export default function AiCreatePage() {
 
   return (
     <div className="flex flex-col h-screen dark bg-background text-foreground">
-      <header className="flex items-center justify-between p-2 border-b shrink-0 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
+      <header className="flex items-center justify-between p-2 border-b shrink-0 h-16">
         <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
           <X className="h-6 w-6" />
         </Button>
@@ -175,7 +169,11 @@ export default function AiCreatePage() {
         </div>
       </div>
       
-      <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
+      <div 
+        ref={scrollAreaRef}
+        className="overflow-y-auto"
+        style={{ height: 'calc(100vh - 168px)' }} // 100vh - header height (64px) - footer height (104px)
+      >
          <div className="p-4 space-y-6">
             {messages.map(msg => (
             <div key={msg.id} className={cn(
@@ -202,10 +200,9 @@ export default function AiCreatePage() {
             </div>
             ))}
         </div>
-      </ScrollArea>
+      </div>
       
-
-      <footer className="p-2 border-t bg-background shrink-0">
+      <footer className="p-2 border-t bg-background shrink-0 h-[104px]">
         <div className="bg-muted/50 rounded-xl p-2 space-y-2">
            <div className="flex items-center gap-2 px-1">
              <Globe className="h-5 w-5 text-gradient"/>
