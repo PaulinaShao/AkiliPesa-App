@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
@@ -11,23 +11,19 @@ import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
 import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { ProfileEditorModal } from '@/app/profile/components/ProfileEditorModal';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useRouter } from 'next/navigation';
 import RequireAuthRedirect from '@/components/RequireAuthRedirect';
 
 function UserProfilePage() {
   const { user: currentUser, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
-  const router = useRouter();
 
   const [showEditor, setShowEditor] = useState(false);
   
-  // Create a memoized reference to the user's document
   const userDocRef = useMemoFirebase(() => {
     if (!currentUser || !firestore) return null;
     return doc(firestore, 'users', currentUser.uid);
   }, [currentUser, firestore]);
 
-  // Use the useDoc hook to fetch the profile data
   const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
 
   const handleSaveProfile = async (updates: any) => {
