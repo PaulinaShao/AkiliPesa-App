@@ -174,36 +174,34 @@ export default function AiCreatePage() {
               </TabsList>
             </Tabs>
         </div>
-        <div className="relative flex-1">
-            <ScrollArea className="absolute inset-0" ref={scrollAreaRef}>
-                 <div className="p-4 space-y-6">
-                    {messages.map(msg => (
-                    <div key={msg.id} className={cn(
-                        "flex items-start gap-3 max-w-[85%]",
-                        msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
-                    )}>
-                        {msg.sender === 'ai' ? (
-                        <Avatar className="w-8 h-8 bg-gradient-tanzanite p-0.5">
-                            <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
-                                <Sparkles className="w-4 h-4 text-white" />
-                            </div>
-                        </Avatar>
-                        ) : (
-                        <FallbackAvatar src={msg.avatar} alt={msg.username} className="w-8 h-8" />
-                        )}
-                        <div className={cn(
-                        "rounded-2xl px-4 py-2.5 text-sm",
-                        msg.sender === 'user'
-                            ? 'bg-gradient-tanzanite text-primary-foreground rounded-br-none'
-                            : 'bg-secondary rounded-bl-none'
-                        )}>
-                        <p>{msg.text}</p>
+        <ScrollArea className="flex-1" ref={scrollAreaRef}>
+             <div className="p-4 space-y-6">
+                {messages.map(msg => (
+                <div key={msg.id} className={cn(
+                    "flex items-start gap-3 max-w-[85%]",
+                    msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
+                )}>
+                    {msg.sender === 'ai' ? (
+                    <Avatar className="w-8 h-8 bg-gradient-tanzanite p-0.5">
+                        <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
+                            <Sparkles className="w-4 h-4 text-white" />
                         </div>
+                    </Avatar>
+                    ) : (
+                    <FallbackAvatar src={msg.avatar} alt={msg.username} className="w-8 h-8" />
+                    )}
+                    <div className={cn(
+                    "rounded-2xl px-4 py-2.5 text-sm",
+                    msg.sender === 'user'
+                        ? 'bg-gradient-tanzanite text-primary-foreground rounded-br-none'
+                        : 'bg-secondary rounded-bl-none'
+                    )}>
+                    <p>{msg.text}</p>
                     </div>
-                    ))}
                 </div>
-            </ScrollArea>
-        </div>
+                ))}
+            </div>
+        </ScrollArea>
       </div>
 
       <footer className="p-2 border-t bg-background">
