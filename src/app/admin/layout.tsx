@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
@@ -24,7 +23,7 @@ export default function AdminLayout({
     }
   }, [user, isUserLoading, router, pathname]);
 
-  if (isUserLoading || user?.email !== 'blagridigital@gmail.com') {
+  if (isUserLoading || !user || user.email !== 'blagridigital@gmail.com') {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background dark">
             <p>Authenticating Admin...</p>

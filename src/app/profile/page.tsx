@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
@@ -13,7 +13,7 @@ import { ProfileEditorModal } from '@/app/profile/components/ProfileEditorModal'
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 
-function UserProfileContent() {
+export default function UserProfileContent() {
   const { user: currentUser, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -26,12 +26,6 @@ function UserProfileContent() {
   }, [currentUser?.uid, firestore]);
 
   const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
-
-  useEffect(() => {
-    if (!isUserLoading && !currentUser) {
-      router.replace('/auth/login?redirect=/profile');
-    }
-  }, [isUserLoading, currentUser, router]);
 
   const handleSaveProfile = async (updates: any) => {
     if (!currentUser || !firestore) return;
@@ -93,5 +87,3 @@ function UserProfileContent() {
     </div>
   );
 }
-
-export default UserProfileContent;
