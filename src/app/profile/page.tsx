@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
@@ -11,11 +11,13 @@ import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
 import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { ProfileEditorModal } from '@/app/profile/components/ProfileEditorModal';
 import { Skeleton } from '@/components/ui/skeleton';
-import RequireAuthRedirect from '@/components/RequireAuthRedirect';
+import { useRouter } from 'next/navigation';
+import { setPostLoginRedirect } from '@/lib/redirect';
 
-function UserProfilePage() {
+export default function UserProfilePage() {
   const { user: currentUser, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const [showEditor, setShowEditor] = useState(false);
   
@@ -26,6 +28,13 @@ function UserProfilePage() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
 
+  useEffect(() => {
+    if (!isUserLoading && !currentUser) {
+      setPostLoginRedirect('/profile');
+      router.replace('/auth/login');
+    }
+  }, [isUserLoading, currentUser, router]);
+
   const handleSaveProfile = async (updates: any) => {
     if (!currentUser || !firestore) return;
     const userRef = doc(firestore, 'users', currentUser.uid);
@@ -35,7 +44,7 @@ function UserProfilePage() {
   
   const isLoading = isUserLoading || isProfileLoading;
 
-  if (isLoading || !profile) {
+  if (isLoading || !profile || !currentUser) {
     return (
       <div className="dark">
         <Header isMuted={true} onToggleMute={() => {}} />
@@ -87,12 +96,4 @@ function UserProfilePage() {
       />
     </div>
   );
-}
-
-export default function ProfilePage() {
-    return (
-        <RequireAuthRedirect>
-            <UserProfilePage />
-        </RequireAuthRedirect>
-    )
 }

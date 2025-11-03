@@ -3,15 +3,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { doc } from 'firebase/firestore';
-import { useFirestore, useFirebaseUser } from '@/firebase';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { useMemoFirebase } from '@/firebase/use-memo-firebase';
-
-interface UserProfile {
-  role?: string;
-  email?: string;
-}
+import { useFirebaseUser } from '@/firebase';
 
 export default function AdminLayout({
   children,
@@ -21,32 +13,22 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, isUserLoading } = useFirebaseUser();
-  const firestore = useFirestore();
-
-  const userDocRef = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user?.uid, firestore]);
-
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
   useEffect(() => {
-    const isLoading = isUserLoading || isProfileLoading;
-    if (isLoading) return; 
+    if (isUserLoading) return; 
 
     if (!user) {
       router.replace(`/auth/login?redirect=${pathname}`); 
       return;
     }
     
-    // Using user.email directly as it's the most reliable source from the auth object itself.
     if (user.email !== 'blagridigital@gmail.com') {
       router.replace('/'); 
     }
 
-  }, [user, userProfile, isUserLoading, isProfileLoading, router, pathname]);
+  }, [user, isUserLoading, router, pathname]);
 
-  const isLoading = isUserLoading || isProfileLoading;
+  const isLoading = isUserLoading;
 
   if (isLoading || user?.email !== 'blagridigital@gmail.com') {
     return (
