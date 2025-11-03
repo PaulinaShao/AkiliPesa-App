@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -65,15 +66,6 @@ export default function AiCreatePage() {
   const currentUser = users.find(u => u.id === 'u1'); // Mock current user
 
   useEffect(() => {
-    if (session?.isActive) {
-      updateSession({ lastUpdated: Date.now() });
-      if (session.lastMessage) {
-        // Here you could restore chat history from the session
-      }
-    }
-  }, [session, updateSession]);
-
-  useEffect(() => {
     if (scrollAreaRef.current) {
         scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
@@ -91,7 +83,7 @@ export default function AiCreatePage() {
     };
 
     setMessages(prev => [...prev, userMessage]);
-    updateSession({ lastMessage: input });
+    updateSession({ lastMessage: input, lastUpdated: Date.now() });
     setInput('');
   };
   
@@ -172,7 +164,7 @@ export default function AiCreatePage() {
       <div 
         ref={scrollAreaRef}
         className="overflow-y-auto"
-        style={{ height: 'calc(100vh - 168px)' }} // 100vh - header height (64px) - footer height (104px)
+        style={{ height: 'calc(100vh - 168px)' }}
       >
          <div className="p-4 space-y-6">
             {messages.map(msg => (
