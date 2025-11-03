@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { UserAvatar } from '@/components/user-avatar';
+import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Avatar } from '@/components/ui/avatar';
 import { X, Phone, Video as VideoIcon, Sparkles, Globe, Paperclip, Mic, SendHorizonal } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -177,7 +177,7 @@ export default function AiCreatePage() {
                     </div>
                   </Avatar>
                 ) : (
-                  <UserAvatar src={msg.avatar} username={msg.username} className="w-8 h-8" />
+                  <FallbackAvatar src={msg.avatar} alt={msg.username} className="w-8 h-8" />
                 )}
                 <div className={cn(
                   "rounded-2xl px-4 py-2.5 text-sm",
