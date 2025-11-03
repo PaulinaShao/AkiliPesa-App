@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -30,8 +29,9 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
-  const handleSuccessfulLogin = (user: User) => {
-    router.replace('/auth/setup');
+  const handleSuccessfulLogin = (loggedInUser: User) => {
+    const redirectPath = getPostLoginRedirect('/profile');
+    router.replace(redirectPath);
   };
   
   useEffect(() => {

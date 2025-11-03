@@ -1,52 +1,39 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
 import { Header } from '@/components/header';
-import { ProfileQuickActions } from '@/app/profile/components/ProfileQuickActions';
 import { TrustScoreBadge } from '@/app/profile/components/TrustScoreBadge';
 import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
 import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
-import { ProfileEditorModal } from '@/app/profile/components/ProfileEditorModal';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useRouter } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 
-export default function UserProfilePage() {
-  const { user: currentUser, isUserLoading } = useFirebaseUser();
+export default function PublicProfilePage() {
   const firestore = useFirestore();
-  const router = useRouter();
+  const params = useParams();
+  const username = params.username as string;
 
-  const [showEditor, setShowEditor] = useState(false);
+  const userQuery = useMemoFirebase(() => {
+    if (!firestore || !username) return null;
+    return query(collection(firestore, 'users'), where('handle', '==', username), limit(1));
+  }, [firestore, username]);
 
-  // Redirect to login if not authenticated
+  const { data: users, isLoading: isProfileLoading } = useCollection<any>(userQuery);
+  const profile = users?.[0];
+  const profileId = profile?.id;
+
   useEffect(() => {
-    if (!isUserLoading && !currentUser) {
-      router.replace('/auth/login');
+    if (!isProfileLoading && (!users || users.length === 0)) {
+      notFound();
     }
-  }, [currentUser, isUserLoading, router]);
+  }, [isProfileLoading, users]);
   
-  // Create a memoized reference to the user's document
-  const userDocRef = useMemoFirebase(() => {
-    if (!currentUser || !firestore) return null;
-    return doc(firestore, 'users', currentUser.uid);
-  }, [currentUser, firestore]);
+  const isLoading = isProfileLoading;
 
-  // Use the useDoc hook to fetch the profile data
-  const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
-
-  const handleSaveProfile = async (updates: any) => {
-    if (!currentUser || !firestore) return;
-    const userRef = doc(firestore, 'users', currentUser.uid);
-    await updateDoc(userRef, { ...updates, updatedAt: new Date() });
-    setShowEditor(false);
-  };
-  
-  const isLoading = isUserLoading || isProfileLoading;
-
-  if (isLoading) {
+  if (isLoading || !profile) {
     return (
       <div className="dark">
         <Header isMuted={true} onToggleMute={() => {}} />
@@ -67,14 +54,6 @@ export default function UserProfilePage() {
     );
   }
 
-  if (!profile) {
-     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background dark">
-        <p>Loading profile...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="dark">
       <Header isMuted={true} onToggleMute={() => {}} />
@@ -88,22 +67,18 @@ export default function UserProfilePage() {
             bio: profile.bio || '',
             stats: profile.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 },
           }}
-          isOwnProfile={true}
-          onEditClick={() => setShowEditor(true)}
+          isOwnProfile={false} // Public profiles are not editable by default
+          onEditClick={() => {}}
         />
         
-        <TrustScoreBadge sellerId={profile.id} />
-        <BuyerTrustBadge buyerId={profile.id} />
-        <AkiliPointsBadge userId={profile.id} />
-        <ProfileQuickActions />
-        
+        {profileId && (
+          <>
+            <TrustScoreBadge sellerId={profileId} />
+            <BuyerTrustBadge buyerId={profileId} />
+            <AkiliPointsBadge userId={profileId} />
+          </>
+        )}
       </div>
-      <ProfileEditorModal
-          isOpen={showEditor}
-          onClose={() => setShowEditor(false)}
-          profile={profile}
-          onSave={handleSaveProfile}
-      />
     </div>
   );
 }
