@@ -153,7 +153,7 @@ export default function AiCreatePage() {
         onCancel={() => setShowAgentPicker(false)}
       />
 
-      <main className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         <div className="flex justify-center p-2 border-b">
            <Tabs defaultValue="ai" className="w-auto">
               <TabsList>
@@ -191,7 +191,7 @@ export default function AiCreatePage() {
             ))}
           </div>
         </ScrollArea>
-      </main>
+      </div>
 
       <footer className="p-2 border-t bg-background">
         <div className="bg-muted/50 rounded-xl p-2 space-y-2">

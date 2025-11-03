@@ -37,6 +37,10 @@ service cloud.firestore {
     match /users/{userId}/agents/{agentId} {
       allow read, write: if isOwner(userId) || isAdmin();
     }
+    
+    match /aiSessions/{userId} {
+      allow read, write: if isOwner(userId);
+    }
 
     // ─────────────────────────────
     // 📢 PUBLIC CONTENT
