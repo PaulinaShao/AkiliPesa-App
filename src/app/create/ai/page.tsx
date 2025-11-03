@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -164,7 +163,7 @@ export default function AiCreatePage() {
         onCancel={() => setShowAgentPicker(false)}
       />
 
-      <div className="border-b">
+      <div className="border-b shrink-0">
          <div className="flex justify-center p-2">
            <Tabs defaultValue="ai" className="w-auto">
               <TabsList>
@@ -176,7 +175,7 @@ export default function AiCreatePage() {
         </div>
       </div>
       
-      <ScrollArea className="flex-1 h-full" ref={scrollAreaRef}>
+      <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
          <div className="p-4 space-y-6">
             {messages.map(msg => (
             <div key={msg.id} className={cn(
@@ -206,7 +205,7 @@ export default function AiCreatePage() {
       </ScrollArea>
       
 
-      <footer className="p-2 border-t bg-background">
+      <footer className="p-2 border-t bg-background shrink-0">
         <div className="bg-muted/50 rounded-xl p-2 space-y-2">
            <div className="flex items-center gap-2 px-1">
              <Globe className="h-5 w-5 text-gradient"/>
