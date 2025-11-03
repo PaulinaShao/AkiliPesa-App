@@ -1,46 +1,36 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useFirebaseUser } from '@/firebase';
-import { setPostLoginRedirect } from '@/lib/redirect';
+import type { ReactNode } from 'react';
 
 interface RequireAuthRedirectProps {
   children: ReactNode;
 }
 
+/**
+ * DEPRECATED: This component's logic has been lifted into the root layout.
+ * It is no longer necessary and will be removed in a future cleanup.
+ * The root layout now handles the primary 'Authenticating...' state and
+ * individual pages are responsible for their own redirect logic if needed.
+ */
 export default function RequireAuthRedirect({ children }: RequireAuthRedirectProps) {
+  const { user, isUserLoading } = useFirebaseUser();
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isUserLoading } = useFirebaseUser();
 
-  useEffect(() => {
-    // Wait until the authentication state is fully resolved
-    if (isUserLoading) {
-      return;
-    }
-
-    // If auth state is resolved and there's no user, redirect to login
-    if (!user) {
-      const target = setPostLoginRedirect(pathname);
-      router.replace(`/auth/login?redirect=${encodeURIComponent(target)}`);
-    }
-  }, [user, isUserLoading, router, pathname]);
-
-  // While auth is loading, show a consistent loading state
-  if (isUserLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background dark">
-        <p>Authenticating...</p>
-      </div>
-    );
+  // The root layout now handles the global loading state.
+  // This component's main job is to redirect if, after loading, there's no user.
+  if (!isUserLoading && !user) {
+    router.replace(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
+    return null; // Render nothing while redirecting
   }
 
-  // If auth is resolved and there IS a user, render the protected content
+  // If a user exists, render the children. The loading state is handled by the parent layout.
   if (user) {
-    return <>{children}</>;
+     return <>{children}</>;
   }
 
-  // If auth is resolved and there is NO user, render null while redirecting
+  // If still loading, render nothing, as the root layout is showing the loading indicator.
   return null;
 }

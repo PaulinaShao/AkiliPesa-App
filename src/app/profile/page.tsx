@@ -11,11 +11,12 @@ import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
 import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { ProfileEditorModal } from '@/app/profile/components/ProfileEditorModal';
 import { Skeleton } from '@/components/ui/skeleton';
-import RequireAuthRedirect from '@/components/RequireAuthRedirect';
+import { useRouter } from 'next/navigation';
 
 function UserProfileContent() {
-  const { user: currentUser } = useFirebaseUser();
+  const { user: currentUser, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const [showEditor, setShowEditor] = useState(false);
   
@@ -26,6 +27,12 @@ function UserProfileContent() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
 
+  // If auth is not loading but there's no user, redirect to login
+  if (!isUserLoading && !currentUser) {
+    router.replace('/auth/login?redirect=/profile');
+    return null; 
+  }
+
   const handleSaveProfile = async (updates: any) => {
     if (!currentUser || !firestore) return;
     const userRef = doc(firestore, 'users', currentUser.uid);
@@ -33,7 +40,7 @@ function UserProfileContent() {
     setShowEditor(false);
   };
   
-  if (isProfileLoading || !profile || !currentUser) {
+  if (isUserLoading || isProfileLoading || !profile || !currentUser) {
     return (
       <div className="dark">
         <Header isMuted={true} onToggleMute={() => {}} />
@@ -87,11 +94,4 @@ function UserProfileContent() {
   );
 }
 
-
-export default function UserProfilePage() {
-    return (
-        <RequireAuthRedirect>
-            <UserProfileContent />
-        </RequireAuthRedirect>
-    )
-}
+export default UserProfileContent;

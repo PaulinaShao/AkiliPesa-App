@@ -3,13 +3,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, PlusSquare, User, Wallet, Inbox } from 'lucide-react';
+import { Home, Search, PlusSquare, User as UserIcon, Wallet, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
 import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Button } from '@/components/ui/button';
-import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import type { User } from 'firebase/auth';
 
 const mainNavLinks = [
   { href: '/', icon: Home, label: 'Home' },
@@ -17,17 +18,21 @@ const mainNavLinks = [
   { href: '/wallet', icon: Wallet, label: 'Wallet' },
   { href: '/create/ai', icon: PlusSquare, label: 'Create' },
   { href: '/inbox', icon: Inbox, label: 'Inbox' },
-  { href: '/profile', icon: User, label: 'Profile' },
+  { href: '/profile', icon: UserIcon, label: 'Profile' },
 ];
 
-export function SidebarNav() {
+interface SidebarNavProps {
+    user: User | null;
+    isLoading: boolean;
+}
+
+export function SidebarNav({ user, isLoading }: SidebarNavProps) {
   const pathname = usePathname();
-  const { user: authUser } = useFirebaseUser();
   const firestore = useFirestore();
 
   const userDocRef = useMemoFirebase(
-    () => (authUser ? doc(firestore, 'users', authUser.uid) : null),
-    [authUser, firestore]
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [user, firestore]
   );
   const { data: currentUserProfile } = useDoc<any>(userDocRef);
 
@@ -68,7 +73,7 @@ export function SidebarNav() {
         </ul>
       </nav>
 
-      {currentUserProfile ? (
+      {user && currentUserProfile ? (
         <div className="mt-auto">
           <Link href="/profile">
             <Button variant="outline" className="w-full justify-start h-14">
@@ -80,11 +85,11 @@ export function SidebarNav() {
             </Button>
           </Link>
         </div>
-      ) : authUser ? (
+      ) : isLoading ? (
          <div className="mt-auto">
-            <Button variant="outline" className="w-full justify-start h-14">
+            <Button variant="outline" className="w-full justify-start h-14" disabled>
                 <div className='text-left'>
-                  <p className='text-muted-foreground text-sm'>Loading profile...</p>
+                  <p className='text-muted-foreground text-sm'>Loading...</p>
               </div>
             </Button>
         </div>
