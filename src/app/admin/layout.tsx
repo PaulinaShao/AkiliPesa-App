@@ -26,7 +26,7 @@ export default function AdminLayout({
   const userDocRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
+  }, [user?.uid, firestore]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 

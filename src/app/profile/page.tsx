@@ -22,7 +22,7 @@ function UserProfilePage() {
   const userDocRef = useMemoFirebase(() => {
     if (!currentUser || !firestore) return null;
     return doc(firestore, 'users', currentUser.uid);
-  }, [currentUser, firestore]);
+  }, [currentUser?.uid, firestore]);
 
   const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
 
