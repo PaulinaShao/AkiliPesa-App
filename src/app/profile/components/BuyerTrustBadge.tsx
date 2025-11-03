@@ -32,7 +32,7 @@ export function BuyerTrustBadge({ buyerId }: { buyerId: string }) {
     return null; // Don't show if no score yet
   }
 
-  const { trustScore, level } = scoreData;
+  const { trustScore = 0, level = 'Bronze' } = scoreData || {};
 
   const scoreColor = trustScore >= 90 ? "text-green-400"
                    : trustScore >= 80 ? "text-primary"
