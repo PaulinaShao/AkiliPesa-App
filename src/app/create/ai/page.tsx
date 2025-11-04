@@ -9,13 +9,13 @@ import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Avatar } from '@/components/ui/avatar';
 import { X, Phone, Video as VideoIcon, Sparkles, Globe, Paperclip, Mic, SendHorizonal } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { users } from '@/lib/data';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useFirebaseUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { httpsCallable } from 'firebase/functions';
 import { AgentPicker } from '@/components/AgentPicker';
 import useSessionManager from '@/lib/sessionManager';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Message {
   id: string;
@@ -62,8 +62,6 @@ export default function AiCreatePage() {
   const [input, setInput] = useState('');
   const [showAgentPicker, setShowAgentPicker] = useState(false);
   const [callMode, setCallMode] = useState<'audio' | 'video' | null>(null);
-  
-  const currentUser = users.find(u => u.id === 'u1'); // Mock current user
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -72,14 +70,14 @@ export default function AiCreatePage() {
   }, [messages]);
 
   const handleSend = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !currentUserAuth) return;
 
     const userMessage: Message = {
       id: String(Date.now()),
       sender: 'user',
       text: input,
-      avatar: currentUser?.avatar,
-      username: currentUser?.username,
+      avatar: currentUserAuth?.photoURL || undefined,
+      username: currentUserAuth?.displayName || 'User',
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -161,11 +159,7 @@ export default function AiCreatePage() {
         </div>
       </div>
       
-      <div 
-        ref={scrollAreaRef}
-        className="overflow-y-auto"
-        style={{ height: 'calc(100vh - 168px)' }}
-      >
+       <ScrollArea className="flex-1" ref={scrollAreaRef}>
          <div className="p-4 space-y-6">
             {messages.map(msg => (
             <div key={msg.id} className={cn(
@@ -192,7 +186,7 @@ export default function AiCreatePage() {
             </div>
             ))}
         </div>
-      </div>
+      </ScrollArea>
       
       <footer className="p-2 border-t bg-background shrink-0 h-[104px]">
         <div className="bg-muted/50 rounded-xl p-2 space-y-2">
