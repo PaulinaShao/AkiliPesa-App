@@ -1,18 +1,19 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import type { Video, User } from '@/lib/definitions';
+import type { Post } from '@/lib/definitions';
 import { VideoPlayer } from '@/components/video-player';
 import { getSuggestedTopics } from '@/app/actions';
 import { SuggestedTopics } from '@/components/suggested-topics';
+import type { UserProfile } from 'docs/backend';
 
 interface VideoFeedProps {
-  videos: Video[];
-  users: User[];
+  posts: Post[];
+  users: UserProfile[];
   isMuted: boolean;
 }
 
-export function VideoFeed({ videos, users, isMuted }: VideoFeedProps) {
+export function VideoFeed({ posts, users, isMuted }: VideoFeedProps) {
   const [watchedTopics, setWatchedTopics] = useState<Set<string>>(new Set());
   const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -40,24 +41,29 @@ export function VideoFeed({ videos, users, isMuted }: VideoFeedProps) {
     }
   }, [watchedTopics]);
 
-  const getUserForVideo = (userId: string) => {
-    return users.find(u => u.id === userId)!;
+  const getUserForPost = (userId: string) => {
+    return users.find(u => u.uid === userId)!;
   };
 
   const handleClearSuggestions = () => {
     setShowSuggestions(false);
   }
 
-  const memoizedVideos = useMemo(() => videos.map(video => (
-    <div key={video.id} className="h-full w-full flex-shrink-0">
-      <VideoPlayer
-        video={video}
-        user={getUserForVideo(video.userId)}
-        onPlay={handlePlay}
-        isMuted={isMuted}
-      />
-    </div>
-  )), [videos, users, handlePlay, isMuted]);
+  const memoizedVideos = useMemo(() => posts.map(post => {
+    const user = getUserForPost(post.authorId);
+    if (!user) return null; // Skip rendering if user not found
+
+    return (
+      <div key={post.id} className="h-full w-full flex-shrink-0">
+        <VideoPlayer
+          post={post}
+          user={user}
+          onPlay={handlePlay}
+          isMuted={isMuted}
+        />
+      </div>
+    );
+  }), [posts, users, handlePlay, isMuted]);
 
   return (
     <div className="relative h-full w-full">

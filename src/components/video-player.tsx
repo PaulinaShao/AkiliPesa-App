@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { Video, User } from '@/lib/definitions';
+import type { Post } from '@/lib/definitions';
 import { useInView } from '@/lib/hooks';
 import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Button } from '@/components/ui/button';
@@ -23,16 +23,17 @@ import { useFirebase, useFirebaseUser } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { AgentPicker } from './AgentPicker';
+import type { UserProfile } from 'docs/backend';
 
 
 interface VideoPlayerProps {
-  video: Video;
-  user: User;
+  post: Post;
+  user: UserProfile;
   onPlay: (videoId: string, tags: string[]) => void;
   isMuted: boolean;
 }
 
-export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) {
+export function VideoPlayer({ post, user, onPlay, isMuted }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
   const { functions, user: currentUser } = useFirebase();
@@ -49,12 +50,12 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
     if (isInView) {
       videoRef.current?.play();
       setIsPlaying(true);
-      onPlay(video.id, video.tags);
+      onPlay(post.id, post.tags);
     } else {
       videoRef.current?.pause();
       setIsPlaying(false);
     }
-  }, [isInView, onPlay, video.id, video.tags]);
+  }, [isInView, onPlay, post.id, post.tags]);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -68,7 +69,7 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
     }
   };
   
-  const [likes, setLikes] = useState(video.likes);
+  const [likes, setLikes] = useState(post.likes);
   const [isLiked, setIsLiked] = useState(false);
 
   const handleLike = () => {
@@ -124,14 +125,13 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
     }
   };
 
-
-  const shortenedCaption = video.caption.split(' ').slice(0, 3).join(' ');
+  const shortenedCaption = post.caption.split(' ').slice(0, 3).join(' ');
 
   return (
     <div className="relative h-full w-full bg-black rounded-lg overflow-hidden snap-start">
       <video
         ref={videoRef}
-        src={video.videoUrl}
+        src={post.media.url}
         loop
         muted={isMuted}
         playsInline
@@ -159,16 +159,16 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
         >
           <div className="flex items-start gap-3 mb-2">
             <div className="relative">
-              <Link href={`/profile`}>
-                <FallbackAvatar src={user.avatar} alt={user.username} size={48} className="h-12 w-12 border-2 border-white" />
+              <Link href={`/${user.handle}`}>
+                <FallbackAvatar src={user.photoURL} alt={user.handle} size={48} className="h-12 w-12 border-2 border-white" />
               </Link>
               <button className="absolute -bottom-1 -right-1 bg-white rounded-full">
                 <PlusCircle className="h-5 w-5 text-primary fill-background" />
               </button>
             </div>
             <div className="pt-2">
-              <Link href={`/profile`}>
-                <h3 className="font-bold text-lg text-white">@{user.username}</h3>
+              <Link href={`/${user.handle}`}>
+                <h3 className="font-bold text-lg text-white">@{user.handle}</h3>
               </Link>
             </div>
           </div>
@@ -179,8 +179,8 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
           </div>
           
           <p className="text-sm text-white">
-            {isCaptionExpanded ? video.caption : shortenedCaption}
-            {video.caption.split(' ').length > 3 && (
+            {isCaptionExpanded ? post.caption : shortenedCaption}
+            {post.caption.split(' ').length > 3 && (
               <button onClick={() => setIsCaptionExpanded(!isCaptionExpanded)} className="font-semibold ml-1 hover:underline">
                 {isCaptionExpanded ? 'Less' : '... more'}
               </button>
@@ -213,26 +213,15 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
             <SheetTrigger asChild>
               <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
                 <MessageCircle size={32} />
-                <span className="text-sm font-bold">{video.comments.toLocaleString()}</span>
+                <span className="text-sm font-bold">{post.comments.toLocaleString()}</span>
               </button>
             </SheetTrigger>
             <SheetContent className="flex flex-col">
               <SheetHeader>
-                <SheetTitle>{video.comments} Comments</SheetTitle>
+                <SheetTitle>{post.comments} Comments</SheetTitle>
               </SheetHeader>
               <div className="flex-1 overflow-y-auto space-y-4 pr-4">
-                {allComments.filter(c => c.videoId === video.id).map(comment => {
-                  const commentUser = user; // In a real app, you'd find the actual comment user
-                  return (
-                    <div key={comment.id} className="flex gap-2">
-                      <FallbackAvatar src={commentUser.avatar} alt={commentUser.username} size={32}/>
-                      <div>
-                        <p className="font-bold text-sm">@{commentUser.username}</p>
-                        <p>{comment.text}</p>
-                      </div>
-                    </div>
-                  )
-                })}
+                {/* Comments would be fetched here */}
               </div>
               <div className="mt-auto p-2 border-t">
                 <Input placeholder="Add a comment..."/>
@@ -241,7 +230,7 @@ export function VideoPlayer({ video, user, onPlay, isMuted }: VideoPlayerProps) 
           </Sheet>
         <button className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
           <Share2 size={32} />
-          <span className="text-sm font-bold">{video.shares.toLocaleString()}</span>
+          <span className="text-sm font-bold">{post.shares.toLocaleString()}</span>
         </button>
          <p className="font-bold text-gradient">AkiliPesa</p>
       </div>

@@ -1,21 +1,7 @@
 
-export type User = {
+export type Post = {
   id: string;
-  username: string;
-  name: string;
-  avatar: string;
-  bio: string;
-  stats: {
-    followers: number;
-    following: number;
-    likes: number;
-    postsCount: number;
-  }
-};
-
-export type Video = {
-  id: string;
-  userId: string;
+  authorId: string;
   videoUrl: string;
   thumbnailUrl: string;
   caption: string;
@@ -23,6 +9,10 @@ export type Video = {
   likes: number;
   comments: number;
   shares: number;
+  media: {
+    url: string;
+    type: 'image' | 'video'
+  }
 };
 
 export type Comment = {
