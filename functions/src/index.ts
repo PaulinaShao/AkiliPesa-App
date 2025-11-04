@@ -643,6 +643,7 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
     // 1. User Profile
     const userRef = db.collection("users").doc(uid);
     const handle = (email?.split('@')[0] || `user_${uid.substring(0, 5)}`).toLowerCase().replace(/[^a-z0-9_]/g, '');
+
     batch.set(userRef, {
         uid,
         handle,
@@ -804,7 +805,7 @@ export const seeddemo = functions.https.onCall(async (_data, context) => {
     media: { url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4', type: 'video' },
     thumbnailUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerFun.jpg',
     caption: 'Having some fun with this demo video! #demo #akilipesa',
-    tags: ['demo', 'akilipesa'],
+    tags: ['demo', 'akilipesa', 'fun'],
     likes: 1337,
     comments: 42,
     shares: 12,
@@ -968,3 +969,5 @@ export { aiRouter } from "./ai/aiRouter";
 export { vendorOptimizer } from "./ai/vendorOptimizer";
 export { callSessionHandler } from "./ai/callSessionHandler";
 export { walletManager } from "./ai/walletManager";
+
+    
