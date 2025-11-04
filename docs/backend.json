@@ -7,293 +7,84 @@
       "type": "object",
       "properties": {
         "uid": { "type": "string", "description": "Unique identifier for the User entity." },
-        "phone": { "type": "string", "description": "The user's phone number." },
-        "email": { "type": "string", "description": "The user's email address.", "format": "email" },
-        "handle": { "type": "string", "description": "The user's chosen username handle." },
         "displayName": { "type": "string", "description": "The user's display name." },
-        "bio": { "type": "string", "description": "A short biography or description of the user." },
-        "photoURL": { "type": "string", "description": "URL of the user's profile picture.", "format": "uri" },
-        "wallet": {
-          "type": "object",
-          "properties": {
-            "balance": { "type": "number", "description": "The user's main wallet balance in TZS. Can also be used for trial credits." },
-            "escrow": { "type": "number", "description": "Funds held in escrow for pending transactions." },
-            "plan": {
-              "type": "object",
-              "properties": {
-                "id": { "type": "string", "description": "The ID of the user's current plan (e.g., 'trial', 'basic')." },
-                "credits": { "type": "number", "description": "Remaining credits in the user's plan." },
-                "expiry": { "type": "string", "format": "date-time", "description": "The expiry date of the current plan." }
-              }
-            },
-            "lastDeduction": { "type": "string", "format": "date-time", "description": "Timestamp of the last credit deduction." },
-            "lastTrialReset": { "type": "string", "format": "date-time", "description": "Timestamp of the last trial credit daily reset." }
-          }
-        },
-        "stats": {
-          "type": "object",
-          "properties": {
-            "following": { "type": "number" },
-            "followers": { "type": "number" },
-            "likes": { "type": "number" },
-            "postsCount": { "type": "number" }
-          }
-        },
+        "email": { "type": "string", "description": "The user's email address.", "format": "email" },
+        "plan": { "type": "string", "enum": ["free", "starter", "pro", "vip"], "description": "User's subscription plan." },
+        "wallet_balance": { "type": "number", "description": "The user's current wallet balance." },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "handle", "displayName"]
+      "required": ["uid", "displayName", "email", "plan"]
     },
-    "Post": {
-      "title": "Post",
-      "description": "Represents a media post created by a user.",
-      "type": "object",
-      "properties": {
-        "postId": { "type": "string" },
-        "authorId": { "type": "string" },
-        "caption": { "type": "string" },
-        "contentType": { "type": "string", "enum": ["Service", "Digital", "Physical"] },
-        "media": {
-          "type": "object",
-          "properties": {
-            "url": { "type": "string", "format": "uri" },
-            "type": { "type": "string", "enum": ["image", "video", "audio", "text"] }
-          }
+    "Wallet": {
+        "title": "User Wallet",
+        "description": "Represents a user's wallet.",
+        "type": "object",
+        "properties": {
+            "uid": { "type": "string" },
+            "balance": { "type": "number" },
+            "transactions": { "type": "array", "items": { "type": "object" } },
+            "last_updated": { "type": "string", "format": "date-time" }
         },
-        "pricing": {
-          "type": "object",
-          "properties": {
-            "price": { "type": "number" },
-            "commission": { "type": "number" }
-          }
+        "required": ["uid", "balance"]
+    },
+    "AiRequest": {
+        "title": "AI Request",
+        "description": "A record of a user's request to the AI orchestration engine.",
+        "type": "object",
+        "properties": {
+            "uid": { "type": "string" },
+            "type": { "type": "string", "enum": ["text", "image", "video", "audio", "call", "sign"] },
+            "input": { "type": "string" },
+            "options": { "type": "object" },
+            "vendor_used": { "type": "string" },
+            "cost": { "type": "number" },
+            "price_charged": { "type": "number" },
+            "status": { "type": "string", "enum": ["pending", "running", "success", "failed"] },
+            "output_url": { "type": "string", "format": "uri" },
+            "error": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "updatedAt": { "type": "string", "format": "date-time" }
         },
-        "agentId": { "type": "string" },
-        "allowCall": { "type": "boolean" },
-        "likes": { "type": "number" },
-        "comments": { "type": "number" },
-        "shares": { "type": "number" },
-        "visibility": { "type": "string", "enum": ["public", "followers"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "scheduledAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["postId", "authorId", "media", "createdAt"]
+        "required": ["uid", "type", "input", "status"]
     },
-    "Clone": {
-      "title": "Clone",
-      "description": "Represents a user's digital clone (face, body, or voice).",
-      "type": "object",
-      "properties": {
-        "cloneId": { "type": "string" },
-        "userId": { "type": "string" },
-        "type": { "type": "string", "enum": ["face", "fullbody", "voice"] },
-        "voiceModelUrl": { "type": "string", "format": "uri" },
-        "avatarUrl": { "type": "string", "format": "uri" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["cloneId", "userId", "type", "createdAt"]
-    },
-    "UserAgent": {
-      "title": "User Agent",
-      "description": "Represents an AI agent that can perform tasks for a user.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "avatarUrl": { "type": "string", "format": "uri" },
-        "specialty": { "type": "string" },
-        "pricePerSecondCredits": { "type": "number" },
-        "contentType": { "type": "string", "enum": ["service", "product"] },
-        "cloneId": { "type": "string" },
-        "status": { "type": "string", "enum": ["active", "paused"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "name", "specialty", "pricePerSecondCredits", "status", "createdAt"]
-    },
-    "Product": {
-      "title": "Product",
-      "description": "Represents a product or service sold by a user.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "ownerId": { "type": "string" },
-        "title": { "type": "string" },
-        "description": { "type": "string" },
-        "media": { "type": "string" },
-        "price": { "type": "number" },
-        "currency": { "type": "string" },
-        "inventory": { "type": "number" },
-        "assignedAgentIds": { "type": "array", "items": { "type": "string" } },
-        "metrics": {
-          "type": "object",
-          "properties": {
-            "views": { "type": "number" },
-            "shares": { "type": "number" },
-            "unitsSold": { "type": "number" },
-            "revenue": { "type": "number" }
-          }
+    "VendorMetric": {
+        "title": "Vendor Metric",
+        "description": "Performance and cost metrics for a single AI vendor.",
+        "type": "object",
+        "properties": {
+            "vendor_name": { "type": "string" },
+            "avg_cost": { "type": "number" },
+            "success_rate": { "type": "number" },
+            "latency_ms": { "type": "number" },
+            "last_used": { "type": "string", "format": "date-time" }
         },
-        "type": { "type": "string", "enum": ["physical", "digital", "service"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "ownerId", "title", "price", "currency", "type", "createdAt"]
+        "required": ["vendor_name"]
     },
-    "Order": {
-      "title": "Order",
-      "description": "Represents a customer's order for a product.",
-      "type": "object",
-      "properties": {
-        "orderId": { "type": "string" },
-        "productId": { "type": "string" },
-        "buyerId": { "type": "string" },
-        "sellerId": { "type": "string" },
-        "amount": { "type": "number" },
-        "quantity": { "type": "number" },
-        "status": { "type": "string", "enum": ["pending", "paid", "fulfilled", "cancelled", "refunded"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["orderId", "productId", "buyerId", "sellerId", "quantity", "amount", "status", "createdAt"]
-    },
-    "Payment": {
-      "title": "Payment",
-      "description": "Represents the financial transaction for an order.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "orderId": { "type": "string" },
-        "sellerId": { "type": "string" },
-        "amountGross": { "type": "number" },
-        "fees": {
-          "type": "object",
-          "properties": {
-            "platform": { "type": "number" },
-            "commission": { "type": "number" },
-            "taxes": { "type": "number" },
-            "transferFee": { "type": "number" }
-          }
+    "ProfitTracking": {
+        "title": "Profit Tracking Record",
+        "description": "A record of revenue, cost, and profit for a single transaction.",
+        "type": "object",
+        "properties": {
+            "uid": { "type": "string" },
+            "vendor": { "type": "string" },
+            "revenue": { "type": "number" },
+            "cost": { "type": "number" },
+            "profit": { "type": "number" },
+            "createdAt": { "type": "string", "format": "date-time" }
         },
-        "amountNet": { "type": "number" },
-        "breakdown": {
-            "type": "object",
-            "properties": {
-                "ownerShare": {"type": "number"},
-                "akilipesaShare": {"type": "number"},
-                "commissionShare": {"type": "number"}
-            }
+        "required": ["uid", "vendor", "revenue", "cost", "profit"]
+    },
+    "MemoryContext": {
+        "title": "User Memory Context",
+        "description": "Stores conversation history and context for a user.",
+        "type": "object",
+        "properties": {
+            "uid": { "type": "string" },
+            "context_data": { "type": "object" },
+            "last_interaction": { "type": "string", "format": "date-time" }
         },
-        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "orderId", "sellerId", "amountGross", "amountNet", "status", "createdAt"]
-    },
-    "Plan": {
-      "title": "Plan",
-      "description": "Describes a subscription plan for users.",
-      "type": "object",
-      "properties": {
-        "planId": { "type": "string" },
-        "name": { "type": "string" },
-        "price": { "type": "number" },
-        "credits": { "type": "number" },
-        "validityDays": { "type": "number" },
-        "features": { "type": "array", "items": { "type": "string" } },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["planId", "name", "price", "credits"]
-    },
-    "Call": {
-      "title": "Call",
-      "description": "Represents a real-time call session.",
-      "type": "object",
-      "properties": {
-        "callId": { "type": "string" },
-        "channelName": { "type": "string" },
-        "callerId": { "type": "string" },
-        "agentId": { "type": "string" },
-        "agentType": { "type": "string", "enum": ["admin", "user"] },
-        "mode": { "type": "string", "enum": ["audio", "video"] },
-        "status": { "type": "string", "enum": ["active", "ended"] },
-        "creditsUsed": { "type": "number" },
-        "pricePerSecondCredits": { "type": "number" },
-        "startedAt": { "type": "string", "format": "date-time" },
-        "endedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["callId", "channelName", "callerId", "agentId", "agentType", "mode", "status", "startedAt"]
-    },
-    "Transaction": {
-      "title": "Transaction",
-      "description": "A record of a financial transaction.",
-      "type": "object",
-      "properties": {
-        "txId": { "type": "string" },
-        "uid": { "type": "string" },
-        "amount": { "type": "number" },
-        "currency": { "type": "string" },
-        "type": { "type": "string", "enum": ["purchase", "deduction", "topup", "transfer"] },
-        "method": { "type": "string", "enum": ["wallet", "mobileMoney"] },
-        "description": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["txId", "uid", "amount", "currency", "type", "description", "createdAt"]
-    },
-    "AdminSettings": {
-      "title": "Admin Settings",
-      "description": "Stores global admin settings for the application.",
-      "type": "object",
-      "properties": {
-        "pricing": {
-          "type": "object",
-          "properties": {
-            "tzsPerCredit": { "type": "number" },
-            "defaultAdminPricePerSecondCredits": { "type": "number" }
-          }
-        },
-        "commissionModels": {
-          "type": "object",
-          "properties": {
-            "product": {
-              "type": "object",
-              "properties": {
-                "platform": { "type": "number" },
-                "creator": { "type": "number" }
-              }
-            },
-            "serviceAccess": {
-              "type": "object",
-              "properties": {
-                "platform": { "type": "number" },
-                "commission": { "type": "number" },
-                "creator": { "type": "number" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "AdminAgent": {
-      "title": "Admin Agent",
-      "description": "Represents an AI agent created by an administrator.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "avatarUrl": { "type": "string", "format": "uri" },
-        "status": { "type": "string", "enum": ["active", "paused", "archived"] },
-        "pricePerSecondCredits": { "type": "number" },
-        "backends": {
-          "type": "object",
-          "properties": {
-            "voice": { "type": "string" },
-            "video": { "type": "string" },
-            "music": { "type": "string" },
-            "movie": { "type": "string" },
-            "design": { "type": "string" }
-          }
-        },
-        "visibility": { "type": "string", "enum": ["admin-only", "public"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "name", "status", "pricePerSecondCredits", "visibility", "createdAt"]
+        "required": ["uid"]
     }
   },
   "auth": {
@@ -306,55 +97,29 @@
   "firestore": {
     "structure": [
       {
-        "path": "/users/{userId}",
+        "path": "/users/{uid}",
         "definition": { "schema": { "$ref": "#/entities/UserProfile" }, "description": "Stores user profiles." }
       },
       {
-        "path": "/posts/{postId}",
-        "definition": { "schema": { "$ref": "#/entities/Post" }, "description": "Stores all user posts." }
+        "path": "/wallet/{uid}",
+        "definition": { "schema": { "$ref": "#/entities/Wallet" }, "description": "Stores user wallet information." }
       },
       {
-        "path": "/users/{userId}/clones/{cloneId}",
-        "definition": { "schema": { "$ref": "#/entities/Clone" }, "description": "Stores user-specific digital clones." }
+        "path": "/ai_requests/{requestId}",
+        "definition": { "schema": { "$ref": "#/entities/AiRequest" }, "description": "Logs all AI requests." }
       },
       {
-        "path": "/users/{userId}/agents/{agentId}",
-        "definition": { "schema": { "$ref": "#/entities/UserAgent" }, "description": "Stores user-specific AI agents." }
+        "path": "/vendor_metrics/{vendorName}",
+        "definition": { "schema": { "$ref": "#/entities/VendorMetric" }, "description": "Aggregated metrics for AI vendors." }
       },
       {
-        "path": "/products/{productId}",
-        "definition": { "schema": { "$ref": "#/entities/Product" }, "description": "Stores all products and services." }
+        "path": "/profit_tracking/{transactionId}",
+        "definition": { "schema": { "$ref": "#/entities/ProfitTracking" }, "description": "Tracks profit on a per-request basis." }
       },
       {
-        "path": "/orders/{orderId}",
-        "definition": { "schema": { "$ref": "#/entities/Order" }, "description": "Stores all orders." }
-      },
-      {
-        "path": "/payments/{paymentId}",
-        "definition": { "schema": { "$ref": "#/entities/Payment" }, "description": "Stores all payment and commission data." }
-      },
-      {
-        "path": "/plans/{planId}",
-        "definition": { "schema": { "$ref": "#/entities/Plan" }, "description": "Stores available subscription plans."}
-      },
-      {
-        "path": "/calls/{callId}",
-        "definition": { "schema": { "$ref": "#/entities/Call" }, "description": "Stores active and past call sessions."}
-      },
-      {
-        "path": "/transactions/{txId}",
-        "definition": { "schema": { "$ref": "#/entities/Transaction" }, "description": "Stores a log of all financial transactions."}
-      },
-      {
-        "path": "/adminSettings/{settingId}",
-        "definition": { "schema": { "$ref": "#/entities/AdminSettings" }, "description": "Stores global admin settings." }
-      },
-      {
-        "path": "/adminAgents/{agentId}",
-        "definition": { "schema": { "$ref": "#/entities/AdminAgent" }, "description": "Stores admin-created AI agents." }
+        "path": "/memory_context/{uid}",
+        "definition": { "schema": { "$ref": "#/entities/MemoryContext" }, "description": "Stores long-term memory for user interactions." }
       }
     ]
   }
 }
-
-    

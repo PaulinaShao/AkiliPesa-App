@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
@@ -9,47 +10,20 @@ service firebase.storage {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    function isAdmin() {
-      return isSignedIn() &&
-        (request.auth.token.role == 'admin' || request.auth.token.admin == true);
+    
+    // Outputs are readable by the user who owns them.
+    // Writes should only come from Cloud Functions, which bypass these rules.
+    match /ai-outputs/{uid}/{requestId}/{fileName} {
+      allow read: if isOwner(uid);
+      allow write: if false;
     }
-
-    // ─────────────────────────────
-    // 📸 User Avatars (public read)
-    // ─────────────────────────────
-    match /avatars/{userId}/{fileName} {
-      allow read: if true; // public profile pictures
-      allow write: if isOwner(userId) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin();
+    
+    // Log files are private.
+    match /logs/{allPaths=**} {
+      allow read, write: if false;
     }
-
-    // ─────────────────────────────
-    // 🗣️ Voice Samples (private)
-    // ─────────────────────────────
-    match /voices/{userId}/{fileName} {
-      allow read, write, delete: if isOwner(userId) || isAdmin();
-    }
-
-    // ─────────────────────────────
-    // 🎥 Agent or AI Media Uploads (semi-public)
-    // ─────────────────────────────
-    match /agents/{userId}/{fileName} {
-      allow read: if true; // visible on feed
-      allow write, delete: if isOwner(userId) || isAdmin();
-    }
-
-    // ─────────────────────────────
-    // 🧠 AI or Post Media (Controlled Access)
-    // ─────────────────────────────
-    match /uploads/{userId}/{fileName} {
-      allow read: if true;
-      allow write, delete: if isOwner(userId) || isAdmin();
-    }
-
-    // ─────────────────────────────
-    // 🚫 Default Deny (Safety Net)
-    // ─────────────────────────────
+    
+    // Default deny all other paths.
     match /{allPaths=**} {
       allow read, write: if false;
     }
