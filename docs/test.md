@@ -1,17 +1,29 @@
-# Testing Checklist
+# How to Test Backend Functions
 
-Use the functions in `src/firebase/testFlows.ts` from your browser's developer console to test the backend functions.
+This document provides instructions for manually triggering backend Cloud Functions for testing purposes directly from your browser's developer console. The necessary test wrapper functions are located in `src/firebase/testFlows.ts`.
 
-✅ Run `testSignup()` → check Firestore `users/{uid}` for a new profile.
+## Steps to Call a Test Function
 
-✅ Run `testCreatePost()` → check Firestore `users/{uid}.stats.postsCount` has incremented.
-
-✅ Run `testOrderUpdate()` → check Firestore `payments` collection for a new payment record.
-
-✅ Run `testSeedDemo()` → check Firestore `posts` collection for a new post with a kitten image.
+1.  **Navigate** to your running application in your web browser (e.g., `http://localhost:3000`).
+2.  **Open** the Developer Console.
+    *   **Windows/Linux**: `F12` or `Ctrl+Shift+I`
+    *   **Mac**: `Cmd+Option+I`
+3.  **Copy and paste** the command for the function you want to test into the console.
+4.  **Press Enter** to execute the command.
+5.  **Check the console** for success (✅) or error (❌) messages.
 
 ---
 
-**Troubleshooting**
+## Available Test Functions
 
-If something fails, check the logs in your Firebase Console under the **Functions** section. Look for logs corresponding to the function that failed (e.g., `onusercreate`, `onpostcreate`).
+### `testSeedDemo()`
+
+Adds a single sample video post to the `posts` collection in Firestore. This is useful for populating the video feed when it's empty.
+
+**Console Command:**
+
+```javascript
+await import('./firebase/testFlows.ts').then(module => module.testSeedDemo());
+```
+
+After running, refresh the home page to see the new video.
