@@ -642,9 +642,10 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
 
     // 1. User Profile
     const userRef = db.collection("users").doc(uid);
+    const handle = (email?.split('@')[0] || `user_${uid.substring(0, 5)}`).toLowerCase().replace(/[^a-z0-9_]/g, '');
     batch.set(userRef, {
         uid,
-        handle: email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
+        handle,
         displayName: displayName || 'New User',
         email: email || null,
         phone: phoneNumber || null,
@@ -800,13 +801,14 @@ export const seeddemo = functions.https.onCall(async (_data, context) => {
 
   await db.collection('posts').add({
     authorId: uid,
-    media: { url: 'https://placekitten.com/200/200', type: 'image' },
-    caption: 'Hello AkiliPesa!',
+    media: { url: 'https://placekitten.com/400/800', type: 'video' },
+    thumbnailUrl: 'https://placekitten.com/400/800',
+    caption: 'Hello AkiliPesa! Check out this awesome kitten video. #kitten #demo',
+    tags: ['kitten', 'demo'],
+    likes: 1337,
+    comments: 42,
+    shares: 12,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    likes: 0,
-    comments: 0,
-    shares: 0,
-    visibility: 'public',
   });
 
   return { success: true, message: 'Demo data seeded.' };
