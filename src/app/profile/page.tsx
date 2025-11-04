@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebase, useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
 import { Header } from '@/components/header';
@@ -12,11 +12,15 @@ import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { ProfileEditorModal } from '@/app/profile/components/ProfileEditorModal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { httpsCallable } from 'firebase/functions';
+import { useToast } from '@/hooks/use-toast';
 
 export default function UserProfileContent() {
   const { user: currentUser, isUserLoading } = useFirebaseUser();
-  const firestore = useFirestore();
+  const { firestore, functions } = useFirebase();
   const router = useRouter();
+  const { toast } = useToast();
 
   const [showEditor, setShowEditor] = useState(false);
   
@@ -32,6 +36,21 @@ export default function UserProfileContent() {
     const userRef = doc(firestore, 'users', currentUser.uid);
     await updateDoc(userRef, { ...updates, updatedAt: new Date() });
     setShowEditor(false);
+  };
+  
+  const handleSeedDemo = async () => {
+    if (!functions) return;
+    const seedDemoCallable = httpsCallable(functions, 'seeddemo');
+    try {
+      toast({ title: 'Seeding...', description: 'Adding a sample video to your feed.' });
+      const result = await seedDemoCallable();
+      toast({ title: 'Success!', description: (result.data as any).message });
+      // Optional: force a refresh or use a state management to update the feed
+      router.refresh();
+    } catch (error) {
+      console.error("Error seeding demo data:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not add sample video.' });
+    }
   };
   
   if (isUserLoading || isProfileLoading || !profile || !currentUser) {
@@ -76,6 +95,12 @@ export default function UserProfileContent() {
         <BuyerTrustBadge buyerId={currentUser.uid} />
         <AkiliPointsBadge userId={currentUser.uid} />
         <ProfileQuickActions />
+        
+        <div className="mt-6">
+          <Button variant="outline" className="w-full" onClick={handleSeedDemo}>
+            Seed Demo Video
+          </Button>
+        </div>
         
       </div>
       <ProfileEditorModal

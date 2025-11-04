@@ -801,10 +801,10 @@ export const seeddemo = functions.https.onCall(async (_data, context) => {
 
   await db.collection('posts').add({
     authorId: uid,
-    media: { url: 'https://placekitten.com/400/800', type: 'video' },
-    thumbnailUrl: 'https://placekitten.com/400/800',
-    caption: 'Hello AkiliPesa! Check out this awesome kitten video. #kitten #demo',
-    tags: ['kitten', 'demo'],
+    media: { url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4', type: 'video' },
+    thumbnailUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerFun.jpg',
+    caption: 'Having some fun with this demo video! #demo #akilipesa',
+    tags: ['demo', 'akilipesa'],
     likes: 1337,
     comments: 42,
     shares: 12,
