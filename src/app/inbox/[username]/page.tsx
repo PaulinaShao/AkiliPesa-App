@@ -4,7 +4,6 @@
 import { FormEvent, useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ChevronLeft, Paperclip, Mic, Send, Phone, Video } from 'lucide-react';
-import { users, messages as allMessages } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import FallbackAvatar from '@/components/ui/FallbackAvatar';
@@ -12,53 +11,64 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/definitions';
 import { format } from 'date-fns';
-import { useFirebase, useFirebaseUser } from '@/firebase';
+import { useFirebase, useFirebaseUser, useCollection } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable, getFunctions } from 'firebase/functions';
 import { AgentPicker } from '@/components/AgentPicker';
+import { collection, query, where, limit, doc, getDocs, addDoc, serverTimestamp, orderBy, onSnapshot } from 'firebase/firestore';
+import type { UserProfile } from 'docs/backend';
 
 export default function ChatPage() {
     const router = useRouter();
     const params = useParams();
     const { username } = params;
-    const { functions, user: currentUserAuth } = useFirebase();
+    const { functions, user: currentUserAuth, firestore } = useFirebase();
     const { toast } = useToast();
 
-    const currentUser = users.find(u => u.id === 'u1');
-    const otherUser = users.find(u => u.username === username);
-    
-    const [messages, setMessages] = useState<Message[]>(
-        allMessages.filter(m => 
-            (m.senderId === currentUser?.id && m.receiverId === otherUser?.id) ||
-            (m.senderId === otherUser?.id && m.receiverId === currentUser?.id)
-        ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    );
+    const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
-    const [isClient, setIsClient] = useState(false);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const [showAgentPicker, setShowAgentPicker] = useState(false);
     const [callMode, setCallMode] = useState<'audio' | 'video' | null>(null);
 
     useEffect(() => {
-        setIsClient(true);
-    }, []);
+        if (!firestore || !username) return;
+        const q = query(collection(firestore, 'users'), where('handle', '==', username), limit(1));
+        getDocs(q).then(snapshot => {
+            if (!snapshot.empty) {
+                setOtherUser(snapshot.docs[0].data() as UserProfile);
+            } else {
+                notFound();
+            }
+        });
+    }, [firestore, username]);
 
     useEffect(() => {
-      if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-      }
+        if (!firestore || !currentUserAuth || !otherUser) return;
+
+        // Create a consistent channel ID
+        const channelId = [currentUserAuth.uid, otherUser.uid].sort().join('_');
+        const messagesRef = collection(firestore, 'chats', channelId, 'messages');
+        const q = query(messagesRef, orderBy('timestamp', 'asc'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
+            setMessages(msgs);
+        });
+
+        return () => unsubscribe();
+    }, [firestore, currentUserAuth, otherUser]);
+
+    useEffect(() => {
+        if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
     }, [messages]);
 
-    if (!currentUser || !otherUser) {
-        notFound();
-    }
-    
     const handleInitiateCall = (mode: 'audio' | 'video') => {
         if (!currentUserAuth) {
-            toast({
-                variant: "destructive",
-                title: "Login Required",
-            });
+            toast({ variant: "destructive", title: "Login Required" });
             router.push('/auth/login');
             return;
         }
@@ -75,42 +85,36 @@ export default function ChatPage() {
             const result = await getAgoraToken({ agentId: agent.id, agentType: agent.type, mode: callMode });
             const { token, channelName, callId, appId } = result.data as any;
 
-            const query = new URLSearchParams({
-                to: agent.id,
-                callId,
-                channelName,
-                token,
-                appId
-            }).toString();
-            
+            const query = new URLSearchParams({ to: agent.id, callId, channelName, token, appId }).toString();
             router.push(`/call/${callMode}?${query}`);
 
         } catch (error: any) {
             console.error('Error getting Agora token:', error);
-            toast({
-                variant: "destructive",
-                title: "Call Failed",
-                description: error.message || "Could not initiate the call.",
-            });
+            toast({ variant: "destructive", title: "Call Failed", description: error.message || "Could not initiate call." });
         }
     };
 
-
-    const handleSendMessage = (e: FormEvent) => {
+    const handleSendMessage = async (e: FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim()) return;
+        if (!newMessage.trim() || !currentUserAuth || !otherUser || !firestore) return;
 
-        const message: Message = {
-            id: `m${messages.length + 10}`,
-            senderId: currentUser.id,
-            receiverId: otherUser.id,
+        const channelId = [currentUserAuth.uid, otherUser.uid].sort().join('_');
+        const messagesRef = collection(firestore, 'chats', channelId, 'messages');
+
+        const messageData = {
+            senderId: currentUserAuth.uid,
+            receiverId: otherUser.uid,
             text: newMessage,
-            timestamp: new Date().toISOString()
+            timestamp: serverTimestamp()
         };
 
-        setMessages(prev => [...prev, message]);
         setNewMessage('');
+        await addDoc(messagesRef, messageData);
     };
+    
+    if (!otherUser) {
+        return <div className="flex h-screen items-center justify-center">Loading chat...</div>
+    }
 
     return (
         <div className="flex flex-col h-screen bg-muted/30 text-foreground overflow-x-hidden w-full max-w-full">
@@ -119,8 +123,8 @@ export default function ChatPage() {
                     <ChevronLeft className="h-6 w-6" />
                 </Button>
                 <div className="flex items-center gap-3 overflow-hidden">
-                    <FallbackAvatar src={otherUser.avatar} alt={otherUser.username} size={40} />
-                    <span className="font-bold text-lg truncate">{otherUser.username}</span>
+                    <FallbackAvatar src={otherUser.photoURL} alt={otherUser.handle} size={40} />
+                    <span className="font-bold text-lg truncate">{otherUser.handle}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon" onClick={() => handleInitiateCall('audio')}><Phone className="h-6 w-6 text-primary"/></Button>
@@ -138,20 +142,20 @@ export default function ChatPage() {
                 {messages.map(msg => (
                     <div key={msg.id} className={cn(
                         "flex items-end gap-2 max-w-[80%]",
-                        msg.senderId === currentUser.id ? "ml-auto flex-row-reverse" : "mr-auto"
+                        msg.senderId === currentUserAuth?.uid ? "ml-auto flex-row-reverse" : "mr-auto"
                     )}>
-                        <FallbackAvatar src={users.find(u => u.id === msg.senderId)?.avatar} alt={users.find(u => u.id === msg.senderId)?.username} size={32} />
+                        <FallbackAvatar src={msg.senderId === currentUserAuth?.uid ? currentUserAuth?.photoURL : otherUser.photoURL} alt="avatar" size={32} />
                         <div className={cn(
                             "rounded-2xl px-4 py-2",
-                            msg.senderId === currentUser.id ? "bg-primary text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"
+                            msg.senderId === currentUserAuth?.uid ? "bg-primary text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"
                         )}>
                             <p className="text-sm">{msg.text}</p>
-                            {isClient && (
+                            {msg.timestamp && (
                                 <p className={cn(
                                     "text-xs mt-1",
-                                    msg.senderId === currentUser.id ? "text-primary-foreground/70 text-right" : "text-muted-foreground"
+                                    msg.senderId === currentUserAuth?.uid ? "text-primary-foreground/70 text-right" : "text-muted-foreground"
                                 )}>
-                                    {format(new Date(msg.timestamp), 'h:mm a')}
+                                    {typeof msg.timestamp === 'string' ? format(new Date(msg.timestamp), 'h:mm a') : format((msg.timestamp as any).toDate(), 'h:mm a')}
                                 </p>
                             )}
                         </div>

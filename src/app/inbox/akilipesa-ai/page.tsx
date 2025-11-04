@@ -6,31 +6,30 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Sparkles, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
-import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Input } from '@/components/ui/input';
 import { Paperclip, Mic, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/definitions';
-import { users } from '@/lib/data';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { useFirebaseUser } from '@/firebase';
 
 export default function AkiliPesaAIChatPage() {
     const router = useRouter();
-    const currentUser = users.find(u => u.id === 'u1');
+    const { user: currentUser } = useFirebaseUser();
     const scrollAreaRef = useRef<HTMLDivElement>(null);
 
     const initialMessages: Message[] = [
         {
             id: 'ai-m1',
             senderId: 'akili-ai',
-            receiverId: currentUser?.id || 'u1',
+            receiverId: currentUser?.uid || 'u1',
             text: 'Hello! How can I help you create today? You can ask me to generate a video, create a song, design an ad, or even clone your voice.',
             timestamp: new Date(Date.now() - 2 * 60000).toISOString()
         },
         {
             id: 'user-m1',
-            senderId: currentUser?.id || 'u1',
+            senderId: currentUser?.uid || 'u1',
             receiverId: 'akili-ai',
             text: 'Create a 15-second video ad for a new coffee shop called "Zanzibar Beans". Show a beautiful sunrise over the ocean and fresh coffee brewing.',
             timestamp: new Date(Date.now() - 1 * 60000).toISOString()
@@ -68,7 +67,7 @@ export default function AkiliPesaAIChatPage() {
 
         const message: Message = {
             id: `m${messages.length + 10}`,
-            senderId: currentUser.id,
+            senderId: currentUser.uid,
             receiverId: 'akili-ai',
             text: newMessage,
             timestamp: new Date().toISOString()
@@ -82,7 +81,7 @@ export default function AkiliPesaAIChatPage() {
             const aiResponse: Message = {
                 id: `ai-m${messages.length + 2}`,
                 senderId: 'akili-ai',
-                receiverId: currentUser.id,
+                receiverId: currentUser.uid,
                 text: `Sure, I can create that video for you. Generating a 15-second ad for "Zanzibar Beans" now...`,
                 timestamp: new Date().toISOString()
             };
@@ -114,26 +113,28 @@ export default function AkiliPesaAIChatPage() {
                 {messages.map(msg => (
                     <div key={msg.id} className={cn(
                         "flex items-end gap-2 max-w-[80%]",
-                        msg.senderId === currentUser.id ? "ml-auto flex-row-reverse" : "mr-auto"
+                        msg.senderId === currentUser.uid ? "ml-auto flex-row-reverse" : "mr-auto"
                     )}>
-                        {msg.senderId !== currentUser.id ? (
+                        {msg.senderId !== currentUser.uid ? (
                             <Avatar className="w-8 h-8 bg-gradient-tanzanite p-0.5 self-start">
                                 <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
                                     <Sparkles className="w-4 h-4 text-white"/>
                                 </div>
                             </Avatar>
                         ) : (
-                           <FallbackAvatar src={currentUser.avatar} alt={currentUser.username} size={32} />
+                           <Avatar className="w-8 h-8">
+                                <img src={currentUser.photoURL || undefined} alt="User avatar" />
+                           </Avatar>
                         )}
                         <div className={cn(
                             "rounded-2xl px-4 py-2",
-                            msg.senderId === currentUser.id ? "bg-gradient-tanzanite text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"
+                            msg.senderId === currentUser.uid ? "bg-gradient-tanzanite text-primary-foreground rounded-br-none" : "bg-background rounded-bl-none"
                         )}>
                             <p className="text-sm">{msg.text}</p>
                             {isClient && (
                                 <p className={cn(
                                     "text-xs mt-1",
-                                    msg.senderId === currentUser.id ? "text-primary-foreground/70 text-right" : "text-muted-foreground"
+                                    msg.senderId === currentUser.uid ? "text-primary-foreground/70 text-right" : "text-muted-foreground"
                                 )}>
                                     {format(new Date(msg.timestamp), 'h:mm a')}
                                 </p>
