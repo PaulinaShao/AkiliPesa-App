@@ -19,6 +19,11 @@ export function VideoFeed({ posts, users, isMuted }: VideoFeedProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const handlePlay = useCallback(async (videoId: string, tags: string[]) => {
+    // Defensive check to ensure tags is an array before iterating
+    if (!Array.isArray(tags)) {
+      return;
+    }
+    
     const newTopics = new Set(watchedTopics);
     let changed = false;
     tags.forEach(tag => {

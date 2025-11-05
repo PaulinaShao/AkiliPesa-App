@@ -712,23 +712,36 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
     console.log(`✅ Smart bootstrap complete for ${email || uid}`);
 });
 
-// Post created → increment user post count
+// Post created → increment user post count and ensure tags field exists
 export const onpostcreate = functions.firestore
   .document('posts/{postId}')
-  .onCreate(async (snap) => {
+  .onCreate(async (snap, context) => {
     const post = snap.data();
     if (!post) return null;
+    const postRef = snap.ref;
 
     // Award points for creating a post
     await awardPoints(post.authorId, 10, "Created a new post");
-
-    return db
-      .collection('users')
-      .doc(post.authorId)
-      .update({
+    
+    const updates: {[key: string]: any} = {
         'stats.postsCount': admin.firestore.FieldValue.increment(1),
-      });
+    };
+
+    // Ensure the tags field exists
+    if (!post.tags) {
+        updates.tags = [];
+    }
+
+    // Update user stats and potentially the post itself
+    await db.collection('users').doc(post.authorId).update(updates);
+
+    if (!post.tags) {
+      return postRef.update({ tags: [] });
+    }
+
+    return null;
   });
+
 
 // Callable function to buy a plan
 export const buyPlan = functions.https.onCall(async (data, context) => {
