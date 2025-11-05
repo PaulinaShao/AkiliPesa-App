@@ -26,9 +26,10 @@ service cloud.firestore {
     // ─────────────────────────────
     
     // Users can read/write their own profile. Admins have full access.
+    // List is allowed for signed-in users to enable profile lookups by handle.
     match /users/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
-      allow list: if false;
+      allow list: if isSignedIn();
     }
     
     // Users can read/write their own clones and agents.
@@ -131,6 +132,11 @@ service cloud.firestore {
     match /followers/{fid} {
       allow read: if true;
       allow write: if isSignedIn();
+    }
+    
+    // Rule for chats
+    match /chats/{channelId}/messages/{messageId} {
+      allow read, write: if isSignedIn() && (request.auth.uid in channelId.split('_'));
     }
 
     // ─────────────────────────────
