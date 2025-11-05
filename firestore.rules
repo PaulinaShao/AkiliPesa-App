@@ -14,140 +14,59 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
     
-    function isAdmin() {
-      return isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.admin == true);
-    }
-    
-    function isAgent() {
-        return isSignedIn() && request.auth.token.role == 'agent';
+    function isFunction() {
+      // In a real environment, you might check for a specific claim.
+      // For now, we assume any server-side authenticated request is from a function.
+      return request.auth.token.firebase.sign_in_provider == 'custom';
     }
     
     // ─────────────────────────────
     // USER DATA RULES
     // ─────────────────────────────
     
-    // Users can read/write their own profile. Admins have full access.
-    // Explicitly deny listing all users.
-    match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-      allow list: if false;
+    // Users can read/write their own profile.
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
     }
     
-    // Users can read/write their own clones and agents.
-    match /users/{userId}/clones/{cloneId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-    }
-    match /users/{userId}/agents/{agentId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-    }
-
-    // Users can read/write their own AI sessions.
-    match /aiSessions/{userId} {
-      allow read, write: if isOwner(userId);
+    // Users can read their own wallet.
+    // Client cannot set balance above the existing balance.
+    match /wallet/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && request.resource.data.balance <= resource.data.balance;
     }
 
-    // Users can create AI requests and read their own.
+    // Users can read their own transactions.
+    match /transactions/{txId} {
+      allow read: if isOwner(resource.data.uid) || isOwner(resource.data.agentId);
+      allow create, update, delete: if false;
+    }
+    
+    // Users can create requests and read their own.
     match /ai_requests/{requestId} {
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow read: if isOwner(resource.data.uid);
-      allow update: if false; // Only backend can update
+      // Updates should only be from backend functions (e.g. status, output_url)
+      allow update: if false; 
     }
     
     // Users can read/write their own memory context.
     match /memory_context/{uid} {
       allow read, write: if isOwner(uid);
     }
-    
-    // Users can read/write messages in chat channels they are a part of.
-    match /chats/{channelId}/messages/{messageId} {
-      allow read, write: if isSignedIn() && channelId.split('_').includes(request.auth.uid);
-    }
 
     // ─────────────────────────────
-    // PUBLIC CONTENT RULES
+    // SERVER-ONLY RULES
     // ─────────────────────────────
 
-    // Anyone can read posts. Signed-in users can create/update/delete their own.
-    match /posts/{postId} {
-      allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isOwner(resource.data.authorId);
-    }
-    
-    // Anyone can read products. Only agents or admins can write.
-    match /products/{productId} {
-       allow read: if true;
-       allow write: if isAgent() || isAdmin();
-    }
-    
-    // Anyone can read plans. Only admins can write.
-    match /plans/{planId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    // Signed-in users can read admin agents. Only admins can write.
-    match /adminAgents/{id} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // ─────────────────────────────
-    // 🏆 TRUST & FINANCIALS
-    // ─────────────────────────────
-
-    // Users can read their own wallet. Only backend/admins can write.
-    match /wallets/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
-      allow write: if isAdmin(); // Prevent client-side balance modification
-    }
-
-    // Users can read their own transactions. Only backend/admins can write.
-    match /transactions/{txId} {
-      allow read: if isAdmin() || (isOwner(resource.data.uid)) || (resource.data.agentId != null && isOwner(resource.data.agentId));
-      allow write: if isAdmin();
-    }
-    
-    // Buyer/Seller can read their own orders. Only admins can write.
-    match /orders/{oid} {
-      allow read: if isAdmin() || (isSignedIn() && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId));
-      allow write: if isAdmin();
-    }
-
-    // Scores are public to signed-in users, but only writable by backend/admins.
-    match /trustScores/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-    match /buyerTrust/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-    match /akiliPoints/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // ─────────────────────────────
-    // SOCIAL & NOTIFICATIONS
-    // ─────────────────────────────
-    match /notifications/{nid} {
-      allow read, write: if isOwner(resource.data.userId) || isAdmin();
-    }
-
-    match /followers/{fid} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // ─────────────────────────────
-    // SERVER-ONLY RULES (No Client Access)
-    // ─────────────────────────────
+    // Vendor metrics are written and read by backend functions only.
     match /vendor_metrics/{vendorName} {
-      allow read, write: if false;
+      allow read, write: if false; // Assume functions access with admin privileges
     }
+    
+    // Profit tracking is written by backend functions only.
     match /profit_tracking/{transactionId} {
-      allow read, write: if false;
+      allow read, write: if false; // Assume functions access with admin privileges
     }
     
     // ─────────────────────────────
