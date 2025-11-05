@@ -1,4 +1,3 @@
-
 import { getConversations } from '@/lib/data';
 import { InboxClient } from './InboxClient';
 
