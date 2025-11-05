@@ -17,9 +17,9 @@ export const realtimePayoutManager = functions.firestore
     if (!after) return null;
 
     // 🔒 Prevent recursive triggers from our own updates
-    if (["wallets", "walletTransactions"].includes(collectionId)) return null;
+    if (["wallets", "transactions"].includes(collectionId)) return null;
 
-    const validSourceCollections = ["sales", "transactions", "escrow", "commissions"];
+    const validSourceCollections = ["sales", "escrow", "commissions"];
     if (!validSourceCollections.includes(collectionId)) return null;
 
     let targetUid = after.uid || after.sellerId || after.agentId || after.userId;
@@ -55,13 +55,6 @@ export const realtimePayoutManager = functions.firestore
       }
     }
 
-    // 4️⃣ Manual transaction credit
-    if (collectionId === "transactions" && after.type === "credit" && !before) { // Only on create
-      targetUid = after.uid;
-      amount = after.amount || 0;
-      reason = "Transaction Credit";
-    }
-
     if (!targetUid || amount <= 0) return null;
 
     await creditWallet(targetUid, amount, reason);
@@ -73,7 +66,7 @@ async function creditWallet(uid: string, amount: number, description: string) {
   if (!uid || !amount || amount <= 0) return;
 
   const walletRef = db.collection("wallets").doc(uid);
-  const txRef = db.collection("walletTransactions").doc(); // Use a different collection to avoid recursion
+  const txRef = db.collection("transactions").doc();
 
   // Ensure wallet exists before trying to increment
   const walletSnap = await walletRef.get();
@@ -97,13 +90,12 @@ async function creditWallet(uid: string, amount: number, description: string) {
   );
 
   batch.set(txRef, {
-    txId: txRef.id,
-    agentId: uid, // Use a consistent field name like agentId
+    uid,
     amount,
+    currency: 'TZS',
     type: "credit",
-    source: description.toLowerCase().replace(/ /g, '_'),
     description,
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   await batch.commit();

@@ -19,6 +19,7 @@ const transactionIcons: Record<string, JSX.Element> = {
   topup: <ArrowDownLeft className="h-5 w-5 text-green-400" />,
   transfer: <Send className="h-5 w-5 text-purple-400" />,
   credit: <ArrowDownLeft className="h-5 w-5 text-green-400" />,
+  debit: <ArrowUpRight className="h-5 w-5 text-red-400" />,
   'Completed Sale Payout': <ArrowDownLeft className="h-5 w-5 text-green-400" />,
   'Escrow Released': <ShieldCheck className="h-5 w-5 text-blue-400" />,
   'Commission Credit': <ArrowDownLeft className="h-5 w-5 text-green-400" />,
@@ -39,17 +40,13 @@ export default function WalletPage() {
 
   const transactionsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    try {
-      return query(
-        collection(firestore, "transactions"),
-        where("uid", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
-    } catch (err) {
-      console.error("Transaction query blocked by rules:", err);
-      return null;
-    }
+    return query(
+      collection(firestore, "transactions"),
+      where("uid", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
   }, [user, firestore]);
+
   const { data: transactions, isLoading: areTransactionsLoading } = useCollection<any>(transactionsQuery);
 
   const isLoading = isUserLoading || isWalletLoading || areTransactionsLoading;

@@ -38,7 +38,7 @@ service cloud.firestore {
 
     // Users can read their own transactions.
     match /transactions/{txId} {
-      allow read: if isOwner(resource.data.uid);
+      allow read: if isOwner(resource.data.uid) || isOwner(resource.data.agentId);
       allow create, update, delete: if false;
     }
     
