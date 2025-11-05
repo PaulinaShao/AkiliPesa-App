@@ -56,6 +56,23 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────
+    // PUBLIC CONTENT RULES
+    // ─────────────────────────────
+
+    // Anyone can read posts. Only authenticated users can create posts for themselves.
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.authorId);
+    }
+    
+    // Anyone can read products.
+    match /products/{productId} {
+       allow read: if true;
+       // Add create/update/delete rules as needed
+    }
+
+    // ─────────────────────────────
     // SERVER-ONLY RULES
     // ─────────────────────────────
 
