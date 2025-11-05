@@ -36,7 +36,7 @@ export async function getPostsAndUsers(): Promise<{ posts: Post[], users: UserPr
     const userSnapshots = await Promise.all(userPromises);
     userSnapshots.forEach(snapshot => {
         snapshot.forEach(doc => {
-            users.push({ ...doc.data() } as UserProfile);
+            users.push({ ...doc.data(), uid: doc.id } as UserProfile);
         });
     });
   }
@@ -46,37 +46,35 @@ export async function getPostsAndUsers(): Promise<{ posts: Post[], users: UserPr
 
 
 /**
- * Fetches all conversations and the necessary user data for the inbox.
+ * Fetches conversations for the inbox. This is a simplified simulation.
+ * In a real app, you would query a 'conversations' collection for the current user.
  */
 export async function getConversations(): Promise<{ conversations: Message[], users: UserProfile[] }> {
-  // In a real app, you would fetch conversations for the current user.
-  // For now, we simulate this by fetching a few conversations and users.
-  // This function is designed to replace the static data import.
+  // This function is simplified for the demo. It no longer fetches all users.
+  // The client will be responsible for fetching the user profiles it needs.
 
-  const usersCollection = collection(firestore, 'users');
-  // To avoid permission errors, we fetch a limited number of users instead of all of them
-  const usersQuery = query(usersCollection, where('email', '!=', ''));
-  const usersSnapshot = await getDocs(usersQuery);
-  const users: UserProfile[] = usersSnapshot.docs.map(doc => ({ ...doc.data() } as UserProfile));
-
-  // Simulating conversation data. Replace with real Firestore query.
+  // Simulate fetching a list of conversations for the current user.
+  // In a real app, this would be a Firestore query like:
+  // query(collection(firestore, 'users', currentUserId, 'conversations'))
   const simulatedConversations: Message[] = [
     {
       id: "convo-1",
-      senderId: users.length > 1 ? users[1].uid : "u2",
-      receiverId: users.length > 0 ? users[0].uid : "u1",
+      // These UIDs would come from your database. For the demo, we'll use placeholders.
+      senderId: "user-placeholder-2",
+      receiverId: "user-placeholder-1",
       text: "Hey, saw your latest video, great stuff!",
       timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
       unread: true
     },
     {
       id: "convo-2",
-      senderId: users.length > 0 ? users[0].uid : "u1",
-      receiverId: users.length > 2 ? users[2].uid : "u3",
+      senderId: "user-placeholder-1",
+      receiverId: "user-placeholder-3",
       text: "Let's collaborate on a project next week.",
       timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
     }
   ];
 
-  return { conversations: simulatedConversations, users };
+  // We return an empty user list. The client will fetch the profiles.
+  return { conversations: simulatedConversations, users: [] };
 }

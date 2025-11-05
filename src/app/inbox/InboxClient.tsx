@@ -9,22 +9,22 @@ import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Phone, Sparkles, Video, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
-import { useFirebase, useFirebaseUser } from '@/firebase';
+import { useEffect, useState, useMemo } from 'react';
+import { useFirebase, useFirebaseUser, useCollection } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { AgentPicker } from '@/components/AgentPicker';
 import type { Message } from '@/lib/definitions';
 import type { UserProfile } from 'docs/backend';
+import { collection, query, where, documentId } from 'firebase/firestore';
 
 interface InboxClientProps {
   initialConversations: Message[];
-  initialUsers: UserProfile[];
 }
 
-export function InboxClient({ initialConversations, initialUsers }: InboxClientProps) {
+export function InboxClient({ initialConversations }: InboxClientProps) {
     const router = useRouter();
-    const { functions, user: currentUserAuth } = useFirebase();
+    const { functions, user: currentUserAuth, firestore } = useFirebase();
     const { toast } = useToast();
 
     const [isClient, setIsClient] = useState(false);
@@ -35,6 +35,25 @@ export function InboxClient({ initialConversations, initialUsers }: InboxClientP
         setIsClient(true);
     }, []);
     
+    // Get all unique user IDs from the conversations to fetch their profiles
+    const userIdsInConversations = useMemo(() => {
+      const ids = new Set<string>();
+      if(currentUserAuth) ids.add(currentUserAuth.uid);
+      initialConversations.forEach(convo => {
+        ids.add(convo.senderId);
+        ids.add(convo.receiverId);
+      });
+      return Array.from(ids);
+    }, [initialConversations, currentUserAuth]);
+
+    const usersQuery = useMemo(() => {
+      if (!firestore || userIdsInConversations.length === 0) return null;
+      // Note: A real app might need to chunk this query if userIdsInConversations > 30
+      return query(collection(firestore, 'users'), where(documentId(), 'in', userIdsInConversations));
+    }, [firestore, userIdsInConversations]);
+
+    const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(usersQuery as any);
+
     const handleInitiateCall = (mode: 'audio' | 'video') => {
         if (!currentUserAuth) {
             toast({
@@ -51,7 +70,7 @@ export function InboxClient({ initialConversations, initialUsers }: InboxClientP
 
     const handleAgentSelect = async (agent: { id: string, type: 'admin' | 'user' }) => {
         setShowAgentPicker(false);
-        if (!callMode) return;
+        if (!callMode || !functions) return;
 
         try {
             const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
@@ -78,12 +97,18 @@ export function InboxClient({ initialConversations, initialUsers }: InboxClientP
         }
     };
     
-    // We get the current user from Firebase Auth, not a static list
-    const { user: firebaseUser } = useFirebaseUser();
-    const currentUser = initialUsers.find(u => u.uid === firebaseUser?.uid);
+    const currentUser = users?.find(u => u.uid === currentUserAuth?.uid);
 
     if (!isClient) {
         return null;
+    }
+
+    if (usersLoading) {
+        return (
+             <div className="flex h-screen w-full items-center justify-center bg-background dark">
+                <p>Loading Conversations...</p>
+            </div>
+        )
     }
 
     return (
@@ -125,7 +150,7 @@ export function InboxClient({ initialConversations, initialUsers }: InboxClientP
                 {/* User DMs List */}
                 <div className="border-t">
                     {initialConversations.map(convo => {
-                        const otherUser = initialUsers.find(u => u.uid === (convo.senderId === currentUser?.uid ? convo.receiverId : convo.senderId));
+                        const otherUser = users?.find(u => u.uid === (convo.senderId === currentUser?.uid ? convo.receiverId : convo.senderId));
                         if (!otherUser) return null;
 
                         const isUnread = convo.unread && convo.senderId !== currentUser?.uid;

@@ -27,8 +27,10 @@ service cloud.firestore {
     // ─────────────────────────────
     
     // Users can read/write their own profile. Admins have full access.
+    // Explicitly deny listing all users.
     match /users/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
+      allow list: if false;
     }
     
     // Users can read/write their own clones and agents.
@@ -54,6 +56,11 @@ service cloud.firestore {
     // Users can read/write their own memory context.
     match /memory_context/{uid} {
       allow read, write: if isOwner(uid);
+    }
+    
+    // Users can read/write messages in chat channels they are a part of.
+    match /chats/{channelId}/messages/{messageId} {
+      allow read, write: if isSignedIn() && channelId.split('_').includes(request.auth.uid);
     }
 
     // ─────────────────────────────
