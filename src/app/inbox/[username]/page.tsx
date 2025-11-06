@@ -13,10 +13,12 @@ import type { Message } from '@/lib/definitions';
 import { format } from 'date-fns';
 import { useFirebase, useFirebaseUser, useCollection } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { httpsCallable, getFunctions } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 import { AgentPicker } from '@/components/AgentPicker';
 import { collection, query, where, limit, doc, getDocs, addDoc, serverTimestamp, orderBy, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from 'docs/backend';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function ChatPage() {
     const router = useRouter();
@@ -37,7 +39,12 @@ export default function ChatPage() {
         const q = query(collection(firestore, 'users'), where('handle', '==', username), limit(1));
         getDocs(q).then(snapshot => {
             if (!snapshot.empty) {
-                setOtherUser(snapshot.docs[0].data() as UserProfile);
+                const userData = snapshot.docs[0].data() as UserProfile;
+                // Ensure the UID is present on the user object
+                if (!userData.uid) {
+                  userData.uid = snapshot.docs[0].id;
+                }
+                setOtherUser(userData);
             } else {
                 notFound();
             }
@@ -47,7 +54,6 @@ export default function ChatPage() {
     useEffect(() => {
         if (!firestore || !currentUserAuth || !otherUser) return;
 
-        // Create a consistent channel ID
         const channelId = [currentUserAuth.uid, otherUser.uid].sort().join('_');
         const messagesRef = collection(firestore, 'chats', channelId, 'messages');
         const q = query(messagesRef, orderBy('timestamp', 'asc'));
@@ -55,6 +61,13 @@ export default function ChatPage() {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
             setMessages(msgs);
+        },
+        (err) => {
+          const contextualError = new FirestorePermissionError({
+            operation: 'list',
+            path: messagesRef.path
+          });
+          errorEmitter.emit('permission-error', contextualError);
         });
 
         return () => unsubscribe();
@@ -78,15 +91,21 @@ export default function ChatPage() {
     
     const handleAgentSelect = async (agent: { id: string, type: 'admin' | 'user' }) => {
         setShowAgentPicker(false);
-        if (!callMode) return;
+        if (!callMode || !functions) return;
 
         try {
-            const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
-            const result = await getAgoraToken({ agentId: agent.id, agentType: agent.type, mode: callMode });
+            const callSessionHandler = httpsCallable(functions, 'callSessionHandler');
+            const result = await callSessionHandler({ agentId: agent.id, agentType: agent.type, mode: callMode });
             const { token, channelName, callId, appId } = result.data as any;
 
-            const query = new URLSearchParams({ to: agent.id, callId, channelName, token, appId }).toString();
-            router.push(`/call/${callMode}?${query}`);
+            const queryParams = new URLSearchParams({
+              agentId: agent.id,
+              callId,
+              channelName,
+              token,
+              appId,
+            }).toString();
+            router.push(`/call/${callMode}?${queryParams}`);
 
         } catch (error: any) {
             console.error('Error getting Agora token:', error);
@@ -109,7 +128,17 @@ export default function ChatPage() {
         };
 
         setNewMessage('');
-        await addDoc(messagesRef, messageData);
+        
+        // Non-blocking write with contextual error handling
+        addDoc(messagesRef, messageData)
+          .catch(error => {
+            const contextualError = new FirestorePermissionError({
+              path: messagesRef.path,
+              operation: 'create',
+              requestResourceData: messageData
+            });
+            errorEmitter.emit('permission-error', contextualError);
+          });
     };
     
     if (!otherUser) {
@@ -185,3 +214,5 @@ export default function ChatPage() {
         </div>
     );
 }
+
+    
