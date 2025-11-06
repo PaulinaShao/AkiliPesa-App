@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import { Avatar } from '@/components/ui/avatar';
-import { X, Phone, Video as VideoIcon, Sparkles, Globe, Paperclip, Mic, SendHorizonal } from 'lucide-react';
+import { X, Phone, Video as VideoIcon, Sparkles, Globe, Paperclip, Mic, SendHorizonal, Music, Film, Clapperboard, Mic2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirebase, useFirebaseUser } from '@/firebase';
@@ -26,7 +26,10 @@ interface Message {
 }
 
 const capabilities = [
-  "Create Video", "Create Song", "Design Ad", "Clone Voice"
+  { label: "Create Video", icon: Film },
+  { label: "Create Song", icon: Music },
+  { label: "Design Ad", icon: Clapperboard },
+  { label: "Clone Voice", icon: Mic2 }
 ]
 
 const GradientIcon = ({ icon: Icon, ...props }: { icon: React.ElementType, [key: string]: any }) => {
@@ -55,7 +58,7 @@ export default function AiCreatePage() {
     {
       id: '1',
       sender: 'ai',
-      text: "Hello! I'm your creative partner. Tell me what you'd like to make, or select a capability below to get started.",
+      text: "Hello! I'm your creative partner, ready to bring your ideas to life. What masterpiece shall we create today?",
       username: 'AkiliPesa AI'
     }
   ]);
@@ -104,8 +107,8 @@ export default function AiCreatePage() {
     if (!callMode || !functions) return;
 
     try {
-        const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
-        const result = await getAgoraToken({ agentId: agent.id, agentType: agent.type, mode: callMode });
+        const callSessionHandler = httpsCallable(functions, 'callSessionHandler');
+        const result = await callSessionHandler({ agentId: agent.id, agentType: agent.type, mode: callMode });
         const { token, channelName, callId, appId } = result.data as any;
 
         const query = new URLSearchParams({
@@ -188,21 +191,28 @@ export default function AiCreatePage() {
         </div>
       </ScrollArea>
       
-      <footer className="p-2 border-t bg-background shrink-0 h-[104px]">
+      <footer className="p-2 border-t bg-background shrink-0 h-auto">
         <div className="bg-muted/50 rounded-xl p-2 space-y-2">
-           <div className="flex items-center gap-2 px-1">
-             <Globe className="h-5 w-5 text-gradient"/>
-             <div className="flex-1 flex flex-wrap gap-2">
-                {capabilities.map(cap => (
-                    <Button key={cap} variant="outline" size="sm" className="h-7 text-xs bg-background" onClick={() => setInput(cap)}>{cap}</Button>
+           <div className="relative w-full">
+            <ScrollArea className="w-full whitespace-nowrap">
+              <div className="flex items-center gap-2 px-1 py-1">
+                 <Globe className="h-5 w-5 text-gradient flex-shrink-0"/>
+                 {capabilities.map(({label, icon: Icon}) => (
+                    <Button key={label} variant="outline" size="sm" className="h-8 rounded-full text-xs bg-background transition-all hover:bg-primary/10 hover:border-primary/50" onClick={() => setInput(label)}>
+                      <Icon className="mr-2 h-4 w-4 text-primary" />
+                      {label}
+                    </Button>
                 ))}
-             </div>
+              </div>
+              <div className="pointer-events-none absolute top-0 right-0 h-full w-8 bg-gradient-to-l from-muted/50 to-transparent"></div>
+            </ScrollArea>
            </div>
+
           <div className="relative flex items-center gap-2">
             <Textarea
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Start typing below..."
+              placeholder="Start typing your idea..."
               className="flex-1 bg-transparent border rounded-lg min-h-[40px] max-h-[120px] h-10 resize-none pr-24"
               rows={1}
               onKeyDown={(e) => {
@@ -224,3 +234,5 @@ export default function AiCreatePage() {
     </div>
   );
 }
+
+    
