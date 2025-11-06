@@ -26,7 +26,7 @@ service cloud.firestore {
     // ─────────────────────────────
     
     // Users can read/write their own profile. Admins have full access.
-    // List is allowed for signed-in users to enable profile lookups by handle.
+    // Signed-in users can list (query) to find other user profiles by handle.
     match /users/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
       allow list: if isSignedIn();
