@@ -1,29 +1,25 @@
+
 'use strict';
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
-import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall } from 'firebase-functions/v2/https';
-import { enforceTransactionUid } from "./enforceTransactionUid";
-import { realtimePayoutManager } from "./realtimePayoutManager";
-import { onVoiceUpload } from "./openvoiceTrigger";
 
 admin.initializeApp();
 const db = admin.firestore();
 
-// --- V2 Functions ---
-export { enforceTransactionUid, realtimePayoutManager, onVoiceUpload };
+// --- AI Orchestration ---
 export { aiRouter } from "./ai/aiRouter";
 export { vendorOptimizer } from "./ai/vendorOptimizer";
 export { callSessionHandler } from "./ai/callSessionHandler";
 export { walletManager } from "./ai/walletManager";
 
-/**
- * ────────────────────────────────────────────────────────────────
- *  INTERNAL PAYOUT HANDLER (Replaces Make.com)
- * ────────────────────────────────────────────────────────────────
- */
+// --- Existing Functions ---
+export { enforceTransactionUid } from "./enforceTransactionUid";
+export { realtimePayoutManager } from "./realtimePayoutManager";
+export { onVoiceUpload } from "./openvoiceTrigger";
+
 async function processPayout(agentId: string, amount: number, method: string, walletNumber: string, reqId: string) {
   try {
     const walletRef = db.collection("wallets").doc(agentId);
@@ -80,11 +76,6 @@ async function processPayout(agentId: string, amount: number, method: string, wa
   }
 }
 
-/**
- * ────────────────────────────────────────────────────────────────
- *  WITHDRAWAL APPROVAL WATCHER
- * ────────────────────────────────────────────────────────────────
- */
 export const onWithdrawalApproved = onDocumentUpdated("withdrawalRequests/{reqId}", async (event) => {
   if (!event.data) return;
   const before = event.data.before.data();
@@ -104,11 +95,6 @@ export const onWithdrawalApproved = onDocumentUpdated("withdrawalRequests/{reqId
   }
 });
 
-/**
- * ────────────────────────────────────────────────────────────────
- *  DAILY REVENUE AGGREGATOR
- * ────────────────────────────────────────────────────────────────
- */
 export const aggregateDailyRevenue = onSchedule("every day 00:00", async () => {
   const salesSnap = await db.collection("sales").get();
   const payoutsSnap = await db.collection("withdrawalRequests").get();
@@ -136,11 +122,6 @@ export const aggregateDailyRevenue = onSchedule("every day 00:00", async () => {
   console.log("✅ Daily revenue report generated.");
 });
 
-/**
- * ────────────────────────────────────────────────────────────────
- *  AGENT RANK UPDATE SCHEDULER
- * ────────────────────────────────────────────────────────────────
- */
 export const updateAgentRanks = onSchedule("every day 02:00", async () => {
   const snap = await db.collection("agentStats").get();
   const batch = db.batch();
@@ -158,11 +139,6 @@ export const updateAgentRanks = onSchedule("every day 02:00", async () => {
   console.log(`🏅 Agent ranks updated for ${snap.size} agents.`);
 });
 
-/**
- * ────────────────────────────────────────────────────────────────
- *  POINTS / REWARD SYSTEM
- * ────────────────────────────────────────────────────────────────
- */
 async function awardPoints(userId: string, points: number, reason: string) {
   if (!userId || !points || points <= 0) return;
   const ref = db.collection("akiliPoints").doc(userId);
@@ -257,8 +233,6 @@ export const redeemReward = onCall(async (req) => {
   });
 });
 
-// --- Phase 7, 8, 9, 10 Functions ---
-
 export const createEscrowOnOrder = onDocumentCreated("orders/{orderId}", async (event) => {
     const order = event.data?.data();
     if (!order) return;
@@ -276,6 +250,20 @@ export const createEscrowOnOrder = onDocumentCreated("orders/{orderId}", async (
         status: "paid" 
     });
 });
+
+async function verifyMediaWithAI(imageUrl: string, type: string) {
+  try {
+    console.log(`Verifying ${type} media: ${imageUrl}`);
+    const isSuspicious = imageUrl.includes("suspicious") || Math.random() < 0.1;
+    if (isSuspicious) {
+      return { verified: false, flags: ["ai_flag_suspicious_content"], confidence: 0.45, aiVendor: "Simulated_AI_Vision" };
+    }
+    return { verified: true, flags: [], confidence: 0.97, aiVendor: "Simulated_AI_Vision" };
+  } catch (err) {
+    console.error("AI verification error:", err);
+    return { verified: false, flags: ["ai_check_failed"], confidence: 0.1, aiVendor: "Simulated_AI_Vision" };
+  }
+}
 
 export const verifyAndReleaseEscrow = onDocumentUpdated("deliveryProofs/{id}", async (event) => {
     if (!event.data) return;
@@ -306,6 +294,55 @@ export const verifyAndReleaseEscrow = onDocumentUpdated("deliveryProofs/{id}", a
     }
 });
 
+async function updateTrustScore(sellerId: string) {
+    if (!sellerId) return;
+
+    const productsSnap = await db.collection("productVerification").where("sellerId", "==", sellerId).get();
+    const verified = productsSnap.docs.filter(d => d.data().status === "verified").length;
+    const flagged = productsSnap.docs.filter(d => d.data().status === "flagged").length;
+
+    const ordersSnap = await db.collection("orders").where("sellerId", "==", sellerId).get();
+    const onTime = ordersSnap.docs.filter(d => d.data().status === "completed").length;
+    const late = ordersSnap.docs.filter(d => d.data().status === "late" || d.data().status === "refund_requested").length;
+
+    const feedbacksSnap = await db.collection("feedback").where("sellerId", "==", sellerId).get();
+    const pos = feedbacksSnap.docs.filter(d => d.data().sentiment === "positive").length;
+    const neg = feedbacksSnap.docs.filter(d => d.data().sentiment === "negative").length;
+    
+    const baseScore = 70;
+    const score = Math.max(0, Math.min(100, baseScore + (verified * 0.2) - (flagged * 5) + (onTime * 0.5) - (late * 2) + (pos * 0.3) - (neg * 3)));
+    const level = score >= 90 ? "Platinum" : score >= 80 ? "Gold" : score >= 60 ? "Silver" : "Bronze";
+
+    const scoreData = { sellerId, trustScore: score, level, metrics: { verifiedListings: verified, flaggedListings: flagged, onTimeDeliveries: onTime, lateDeliveries: late, feedbackPositive: pos, feedbackNegative: neg }, lastUpdated: admin.firestore.FieldValue.serverTimestamp() };
+    
+    await db.collection("trustScores").doc(sellerId).set(scoreData, { merge: true });
+    await db.collection("trustHistory").add({ sellerId, trustScore: score, level, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+    console.log(`Updated trust score for seller ${sellerId} to ${score} (${level})`);
+}
+
+async function analyzeBehavior(buyerId: string) {
+    if (!buyerId) return;
+
+    const ordersSnap = await db.collection("orders").where("buyerId", "==", buyerId).get();
+    const onTime = ordersSnap.docs.filter(d => d.data().status === "completed").length;
+    const late = ordersSnap.docs.filter(d => d.data().status === "late").length;
+    const refunds = ordersSnap.docs.filter(d => d.data().status === "refund_requested" || d.data().status === "refunded").length;
+
+    const feedbacksSnap = await db.collection("feedback").where("buyerId", "==", buyerId).get();
+    const pos = feedbacksSnap.docs.filter(d => d.data().sentiment === "positive").length;
+    const neg = feedbacksSnap.docs.filter(d => d.data().sentiment === "negative").length;
+
+    const baseScore = 70;
+    const score = Math.max(0, Math.min(100, baseScore + (onTime * 0.3) - (late * 3) - (refunds * 5) + (pos * 0.5) - (neg * 3) ));
+    const level = score >= 90 ? "Platinum" : score >= 80 ? "Gold" : score >= 60 ? "Silver" : "Bronze";
+
+    const scoreData = { buyerId, trustScore: score, level, metrics: { onTimePayments: onTime, latePayments: late, refundsRequested: refunds, positiveFeedback: pos, negativeFeedback: neg }, lastUpdated: admin.firestore.FieldValue.serverTimestamp() };
+    await db.collection("buyerTrust").doc(buyerId).set(scoreData, { merge: true });
+    await db.collection("buyerHistory").add({ buyerId, trustScore: score, level, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+    console.log(`Updated buyer trust score for ${buyerId} to ${score} (${level})`);
+}
+
+
 export const onOrderStatusChange = onDocumentUpdated("orders/{orderId}", async (event) => {
     if (!event.data) return;
     const before = event.data.before.data();
@@ -335,20 +372,6 @@ export const onRefundRequest = onDocumentCreated("refunds/{id}", async (event) =
     await escrowRef.update({ status: "refund_pending" });
     await db.collection("orders").doc(escrow.orderId).update({ status: "refund_requested" });
 });
-
-async function verifyMediaWithAI(imageUrl: string, type: string) {
-  try {
-    console.log(`Verifying ${type} media: ${imageUrl}`);
-    const isSuspicious = imageUrl.includes("suspicious") || Math.random() < 0.1;
-    if (isSuspicious) {
-      return { verified: false, flags: ["ai_flag_suspicious_content"], confidence: 0.45, aiVendor: "Simulated_AI_Vision" };
-    }
-    return { verified: true, flags: [], confidence: 0.97, aiVendor: "Simulated_AI_Vision" };
-  } catch (err) {
-    console.error("AI verification error:", err);
-    return { verified: false, flags: ["ai_check_failed"], confidence: 0.1, aiVendor: "Simulated_AI_Vision" };
-  }
-}
 
 export const onProductCreatedVerify = onDocumentCreated("products/{productId}", async (event) => {
   const product = event.data?.data();
@@ -399,32 +422,6 @@ async function analyzeSentiment(feedbackText: string): Promise<string> {
     return "neutral";
 }
 
-async function updateTrustScore(sellerId: string) {
-    if (!sellerId) return;
-
-    const productsSnap = await db.collection("productVerification").where("sellerId", "==", sellerId).get();
-    const verified = productsSnap.docs.filter(d => d.data().status === "verified").length;
-    const flagged = productsSnap.docs.filter(d => d.data().status === "flagged").length;
-
-    const ordersSnap = await db.collection("orders").where("sellerId", "==", sellerId).get();
-    const onTime = ordersSnap.docs.filter(d => d.data().status === "completed").length;
-    const late = ordersSnap.docs.filter(d => d.data().status === "late" || d.data().status === "refund_requested").length;
-
-    const feedbacksSnap = await db.collection("feedback").where("sellerId", "==", sellerId).get();
-    const pos = feedbacksSnap.docs.filter(d => d.data().sentiment === "positive").length;
-    const neg = feedbacksSnap.docs.filter(d => d.data().sentiment === "negative").length;
-    
-    const baseScore = 70;
-    const score = Math.max(0, Math.min(100, baseScore + (verified * 0.2) - (flagged * 5) + (onTime * 0.5) - (late * 2) + (pos * 0.3) - (neg * 3)));
-    const level = score >= 90 ? "Platinum" : score >= 80 ? "Gold" : score >= 60 ? "Silver" : "Bronze";
-
-    const scoreData = { sellerId, trustScore: score, level, metrics: { verifiedListings: verified, flaggedListings: flagged, onTimeDeliveries: onTime, lateDeliveries: late, feedbackPositive: pos, feedbackNegative: neg }, lastUpdated: admin.firestore.FieldValue.serverTimestamp() };
-    
-    await db.collection("trustScores").doc(sellerId).set(scoreData, { merge: true });
-    await db.collection("trustHistory").add({ sellerId, trustScore: score, level, timestamp: admin.firestore.FieldValue.serverTimestamp() });
-    console.log(`Updated trust score for seller ${sellerId} to ${score} (${level})`);
-}
-
 export const onFeedbackCreated = onDocumentCreated("feedback/{id}", async (event) => {
     const feedback = event.data?.data();
     if (!feedback) return;
@@ -433,30 +430,7 @@ export const onFeedbackCreated = onDocumentCreated("feedback/{id}", async (event
     if(feedback.sellerId) { await updateTrustScore(feedback.sellerId); }
 });
 
-async function analyzeBehavior(buyerId: string) {
-    if (!buyerId) return;
-
-    const ordersSnap = await db.collection("orders").where("buyerId", "==", buyerId).get();
-    const onTime = ordersSnap.docs.filter(d => d.data().status === "completed").length;
-    const late = ordersSnap.docs.filter(d => d.data().status === "late").length;
-    const refunds = ordersSnap.docs.filter(d => d.data().status === "refund_requested" || d.data().status === "refunded").length;
-
-    const feedbacksSnap = await db.collection("feedback").where("buyerId", "==", buyerId).get();
-    const pos = feedbacksSnap.docs.filter(d => d.data().sentiment === "positive").length;
-    const neg = feedbacksSnap.docs.filter(d => d.data().sentiment === "negative").length;
-
-    const baseScore = 70;
-    const score = Math.max(0, Math.min(100, baseScore + (onTime * 0.3) - (late * 3) - (refunds * 5) + (pos * 0.5) - (neg * 3) ));
-    const level = score >= 90 ? "Platinum" : score >= 80 ? "Gold" : score >= 60 ? "Silver" : "Bronze";
-
-    const scoreData = { buyerId, trustScore: score, level, metrics: { onTimePayments: onTime, latePayments: late, refundsRequested: refunds, positiveFeedback: pos, negativeFeedback: neg }, lastUpdated: admin.firestore.FieldValue.serverTimestamp() };
-    await db.collection("buyerTrust").doc(buyerId).set(scoreData, { merge: true });
-    await db.collection("buyerHistory").add({ buyerId, trustScore: score, level, timestamp: admin.firestore.FieldValue.serverTimestamp() });
-    console.log(`Updated buyer trust score for ${buyerId} to ${score} (${level})`);
-}
-
-
-// --- V1 Functions ---
+// V1 Functions (to be migrated or confirmed as deprecated)
 
 export const onusercreate = functions.auth.user().onCreate(async (user) => {
     const { uid, email, displayName, photoURL, phoneNumber } = user;
@@ -467,8 +441,10 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
     batch.set(userRef, {
         uid, handle, displayName: displayName || 'New User', email: email || null, phone: phoneNumber || null, photoURL: photoURL || '',
         bio: '', createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        wallet: { balance: 10, escrow: 0, plan: { id: 'trial', credits: 10 }, lastDeduction: null, lastTrialReset: admin.firestore.FieldValue.serverTimestamp() },
+        plan: 'free',
+        wallet_balance: 10,
         stats: { followers: 0, following: 0, likes: 0, postsCount: 0 },
+        accessibility: { captions: false, highContrast: false, largeText: false, signPreferred: false }
     });
 
     batch.set(db.collection("akiliPoints").doc(uid), { userId: uid, totalPoints: 0, lifetimePoints: 0, redeemedPoints: 0, level: 'Bronze', lastEarnedAt: null });
@@ -485,25 +461,22 @@ export const onpostcreate = functions.firestore.document('posts/{postId}').onCre
     if (!post) return;
     const postRef = snap.ref;
     await awardPoints(post.authorId, 10, "Created a new post");
-    const userUpdate: { [key: string]: any } = { 'stats.postsCount': admin.firestore.FieldValue.increment(1) };
+    
     const postUpdate: { [key: string]: any } = {};
-
     if (!post.tags) {
       postUpdate.tags = [];
     }
-    
-    await db.collection('users').doc(post.authorId).update(userUpdate);
-
-    if (Object.keys(postUpdate).length > 0) {
+    if(Object.keys(postUpdate).length > 0) {
       await postRef.update(postUpdate);
     }
+    
+    await db.collection('users').doc(post.authorId).update({ 'stats.postsCount': admin.firestore.FieldValue.increment(1) });
   });
-
 
 export const buyPlan = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
   const { uid } = context.auth;
-  const { planId, method } = data;
+  const { planId } = data;
   const planRef = db.collection('plans').doc(planId);
   const planDoc = await planRef.get();
   if (!planDoc.exists) throw new functions.https.HttpsError('not-found', 'Plan not found');
@@ -511,17 +484,9 @@ export const buyPlan = functions.https.onCall(async (data, context) => {
   const userRef = db.collection('users').doc(uid);
 
   await db.runTransaction(async (t) => {
-    const userDoc = await t.get(userRef);
-    const wallet = userDoc.data()?.wallet || { balance: 0, plan: {} };
-    if (method === 'wallet') {
-      if (wallet.balance < plan.price) throw new functions.https.HttpsError('failed-precondition', 'Insufficient wallet balance');
-      t.update(userRef, {
-        'wallet.balance': admin.firestore.FieldValue.increment(-plan.price),
-        'wallet.plan': { id: planId, credits: admin.firestore.FieldValue.increment(plan.credits), expiry: admin.firestore.Timestamp.fromDate(new Date(Date.now() + plan.validityDays * 86400000)) },
-      });
-      const txRef = db.collection('transactions').doc();
-      t.set(txRef, { uid, amount: -plan.price, currency: 'TZS', type: 'purchase', method: 'wallet', description: `Plan purchase: ${plan.name}`, createdAt: admin.firestore.FieldValue.serverTimestamp() });
-    }
+    t.update(userRef, {
+      plan: plan.id,
+    });
   });
   return { success: true, plan: planId };
 });
@@ -543,118 +508,4 @@ export const seeddemo = functions.https.onCall(async (_data, context) => {
   });
 
   return { success: true, message: 'Demo data seeded.' };
-});
-
-export const resetTrialCredits = functions.pubsub.schedule("every day 00:00").onRun(async () => {
-    const usersRef = db.collection("users");
-    const snapshot = await usersRef.where("wallet.plan.id", "==", "trial").get();
-    if (snapshot.empty) return null;
-
-    const batch = db.batch();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    snapshot.docs.forEach(doc => {
-      const user = doc.data();
-      const lastReset = user.wallet.lastTrialReset?.toDate();
-      if (!lastReset || lastReset.getTime() < today.getTime()) {
-        const userRef = usersRef.doc(doc.id);
-        batch.update(userRef, { "wallet.balance": 10, "wallet.credits": 10, "wallet.lastTrialReset": admin.firestore.FieldValue.serverTimestamp() });
-      }
-    });
-
-    await batch.commit();
-    console.log(`Reset trial credits for ${snapshot.size} users.`);
-    return null;
-});
-
-export const getAgoraToken = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
-  const uid = context.auth.uid;
-  const { agentId, agentType, mode, channelName: requestedChannelName } = data as { agentId: string; agentType: 'admin'|'user'; mode: 'audio'|'video', channelName?: string };
-  if (!agentId || !agentType || !mode) throw new functions.https.HttpsError('invalid-argument', 'Missing fields');
-
-  const userRef = db.collection('users').doc(uid);
-  const userDoc = await userRef.get();
-  if (!userDoc.exists) throw new functions.https.HttpsError('not-found', 'User not found');
-  const wallet = (userDoc.data() as any).wallet || { balance: 0, credits: 0 };
-
-  let pricePerSecondCredits = 0.1;
-  if (agentType === 'admin') {
-    const a = await db.collection('adminAgents').doc(agentId).get();
-    if (!a.exists) throw new functions.https.HttpsError('not-found', 'Admin agent not found');
-    if ((a.data() as any).status !== 'active') throw new functions.https.HttpsError('failed-precondition', 'Agent inactive');
-    pricePerSecondCredits = (a.data() as any).pricePerSecondCredits ?? 0.1;
-  } else {
-     throw new functions.https.HttpsError('unimplemented', 'Calling user-created agents is not yet supported.');
-  }
-
-  if ((wallet.credits ?? 0) < pricePerSecondCredits) {
-    throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits. Please recharge.');
-  }
-
-  const channelName = requestedChannelName || `akili_${Date.now()}_${Math.floor(Math.random()*9999)}`;
-  const appId = functions.config().agora?.appid;
-  const appCert = functions.config().agora?.certificate;
-
-  if (!appId || !appCert) throw new functions.https.HttpsError('failed-precondition', 'Agora credentials are not configured.');
-
-  const expire = 3600;
-  const token = RtcTokenBuilder.buildTokenWithUid(appId, appCert, channelName, 0, RtcRole.PUBLISHER, expire);
-
-  const callRef = db.collection('calls').doc();
-  await callRef.set({
-    callId: callRef.id, channelName, callerId: uid, agentId, agentType, mode,
-    status: 'active', creditsUsed: 0, pricePerSecondCredits,
-    startedAt: admin.firestore.FieldValue.serverTimestamp()
-  });
-
-  return { token, channelName, callId: callRef.id, appId };
-});
-
-export const endCall = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
-  const uid = context.auth.uid;
-  const { callId, seconds } = data as { callId: string; seconds: number };
-  if (!callId || typeof seconds !== 'number') throw new functions.https.HttpsError('invalid-argument', 'Missing fields');
-
-  const callRef = db.collection('calls').doc(callId);
-  const snap = await callRef.get();
-  if (!snap.exists) throw new functions.https.HttpsError('not-found', 'Call not found');
-  const call = snap.data() as any;
-  if (call.callerId !== uid) throw new functions.https.HttpsError('permission-denied', 'Only caller can end the call');
-  
-  if (call.status === 'ended') return { ok: true, message: 'Call already ended.' };
-
-  const userRef = db.collection('users').doc(uid);
-
-  await db.runTransaction(async (t) => {
-    const u = await t.get(userRef);
-    if (!u.exists) throw new functions.https.HttpsError('not-found', 'User profile not found for billing.');
-    const creditsToCharge = Math.ceil(seconds) * (call.pricePerSecondCredits ?? 0.1);
-    
-    t.update(userRef, {
-        'wallet.credits': admin.firestore.FieldValue.increment(-creditsToCharge),
-        'wallet.lastDeduction': admin.firestore.FieldValue.serverTimestamp(),
-    });
-    
-    t.update(callRef, {
-      status: 'ended',
-      endedAt: admin.firestore.FieldValue.serverTimestamp(),
-      creditsUsed: creditsToCharge,
-    });
-
-    const txRef = db.collection('transactions').doc();
-    t.set(txRef, {
-      txId: txRef.id, uid, amount: -creditsToCharge, currency: 'credits', type: 'deduction', method: 'wallet',
-      description: `Call ${call.mode} with ${call.agentType}:${call.agentId}`,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  });
-
-  return { ok: true };
-});
-
-export const tickCalls = functions.pubsub.schedule('every 2 minutes').onRun(async () => {
-  return null;
 });

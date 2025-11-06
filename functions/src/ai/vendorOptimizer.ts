@@ -1,3 +1,4 @@
+
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 const db = admin.firestore();

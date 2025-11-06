@@ -1,3 +1,4 @@
+
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 
 export const walletManager = onDocumentUpdated("wallet/{uid}", async (event) => {
