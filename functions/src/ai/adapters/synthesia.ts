@@ -1,11 +1,8 @@
 import { VendorPayload, VendorResult } from "./types";
+const KEY = process.env.SYNTHESIA_API_KEY!;
 export async function run(p: VendorPayload): Promise<VendorResult> {
-  const key = process.env.SYNTHESIA_API_KEY;
-  if (!key) return { error: "Missing SYNTHESIA_API_KEY" };
   try {
-    const fakeUrl = `https://example.com/synthesia/${p.requestId}.mp4`;
-    return { outputUrl: fakeUrl };
-  } catch (e:any) {
-    return { error: e.message };
-  }
+    // Replace with Synthesia's official endpoint when available
+    return { error: "Synthesia endpoint not configured. Add API call here." };
+  } catch (e:any) { return { error: e.message }; }
 }

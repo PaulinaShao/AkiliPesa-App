@@ -1,11 +1,16 @@
 import { VendorPayload, VendorResult } from "./types";
+const URL = process.env.MUSICGEN_API_URL!;
 export async function run(p: VendorPayload): Promise<VendorResult> {
-  const url = process.env.MUSICGEN_API_URL; // your hosted inference
-  if (!url) return { error: "Missing MUSICGEN_API_URL" };
   try {
-    const fakeUrl = `https://example.com/musicgen/${p.requestId}.mp3`;
-    return { outputUrl: fakeUrl };
-  } catch (e:any) {
-    return { error: e.message };
-  }
+    if (!URL) return { error: "MusicGen self-hosted URL not configured."};
+    const res = await fetch(URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: p.input, duration: p.options?.duration ?? 8 })
+    });
+    const data = await res.json();
+    if (data?.audio_base64) return { outputUrl: `data:audio/wav;base64,${data.audio_base64}` };
+    if (data?.url) return { outputUrl: data.url };
+    return { error: "No audio returned from MusicGen endpoint" };
+  } catch (e:any) { return { error: e.message }; }
 }

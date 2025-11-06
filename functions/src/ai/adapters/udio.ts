@@ -1,11 +1,8 @@
 import { VendorPayload, VendorResult } from "./types";
+const KEY = process.env.UDIO_API_KEY!;
 export async function run(p: VendorPayload): Promise<VendorResult> {
-  const key = process.env.UDIO_API_KEY;
-  if (!key) return { error: "Missing UDIO_API_KEY" };
   try {
-    const fakeUrl = `https://example.com/udio/${p.requestId}.mp3`;
-    return { outputUrl: fakeUrl };
-  } catch (e:any) {
-    return { error: e.message };
-  }
+    // Replace with Udio's official endpoint when available
+    return { error: "Udio endpoint not configured. Add API call here." };
+  } catch (e:any) { return { error: e.message }; }
 }

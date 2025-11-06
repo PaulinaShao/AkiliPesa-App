@@ -1,56 +1,38 @@
-
 import { VendorPayload, VendorResult } from "./types";
+const KEY = process.env.RUNPOD_API_KEY!;
+const ENDPOINT = process.env.RUNPOD_OPENVOICE_ENDPOINT_ID!;
 
 export async function run(p: VendorPayload): Promise<VendorResult> {
-  const key = process.env.RUNPOD_API_KEY;
-  const endpoint = process.env.RUNPOD_OPENVOICE_ENDPOINT_ID;
-  if (!key) return { error: "Missing RUNPOD_API_KEY" };
-  if (!endpoint) return { error: "Missing RUNPOD_OPENVOICE_ENDPOINT_ID" };
-
+  if (!KEY) return { error: "Missing RUNPOD_API_KEY" };
+  if (!ENDPOINT) return { error: "Missing RUNPOD_OPENVOICE_ENDPOINT_ID" };
   try {
-    // Submit job
-    const jobRes = await fetch(`https://api.runpod.ai/v2/${endpoint}/run`, {
+    const job = await fetch(`https://api.runpod.ai/v2/${ENDPOINT}/run`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        input: {
-          text: p.input,
-          voice_id: "default", // or user-selected voice id
-        }
-      })
-    });
+      headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ input: { text: p.input, voice_id: p.options?.voiceId || "default" } })
+    }).then(r => r.json());
+    if (!job?.id) return { error: "RunPod job create failed" };
 
-    const job = await jobRes.json();
-    if (!job?.id) return { error: "RunPod job creation failed" };
-
-    // Poll
-    let state = "IN_PROGRESS";
-    let output = null;
-
-    while (state === "IN_PROGRESS" || state === "IN_QUEUE") { // Corrected polling state
+    let status = "IN_PROGRESS", output: any = null;
+    while (status === "IN_PROGRESS" || status === "IN_QUEUE") {
       await new Promise(r => setTimeout(r, 4000));
-      const poll = await fetch(`https://api.runpod.ai/v2/${endpoint}/status/${job.id}`, {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      const pollData = await poll.json();
-      state = pollData.status;
-      if (state === "COMPLETED") {
-        output = pollData.output;
-        break;
-      }
-      if (state === "FAILED") {
-        return { error: "RunPod job failed", meta: pollData.error };
-      }
+      const poll = await fetch(`https://api.runpod.ai/v2/${ENDPOINT}/status/${job.id}`, {
+        headers: { Authorization: `Bearer ${KEY}` }
+      }).then(r => r.json());
+      status = poll.status;
+      output = poll.output || null;
+      if (poll.status === 'FAILED') return { error: poll.error || "RunPod job failed" };
     }
-
-    if (!output?.audio_base64) return { error: "RunPod returned no audio" };
-
+    if (!output?.audio_base64) return { error: "No audio in output from RunPod" };
     return { outputUrl: `data:audio/wav;base64,${output.audio_base64}` };
-
   } catch (e: any) {
     return { error: e.message };
   }
+}
+
+export async function cloneVoice({ audioBase64, voiceName }:{ audioBase64: string; voiceName: string }) {
+  // Implement your endpoint’s clone route if provided; placeholder:
+  // This would typically be another RunPod job submission to a different input schema.
+  console.log(`Cloning voice ${voiceName} via RunPod (placeholder)`);
+  return { voiceId: `runpod_clone_${Date.now()}` };
 }

@@ -1,11 +1,8 @@
 import { VendorPayload, VendorResult } from "./types";
+const KEY = process.env.SUNO_API_KEY!;
 export async function run(p: VendorPayload): Promise<VendorResult> {
-  const key = process.env.SUNO_API_KEY;
-  if (!key) return { error: "Missing SUNO_API_KEY" };
   try {
-    const fakeUrl = `https://example.com/suno/${p.requestId}.mp3`;
-    return { outputUrl: fakeUrl };
-  } catch (e:any) {
-    return { error: e.message };
-  }
+    // Replace with Suno's official endpoint when available
+    return { error: "Suno endpoint not configured. Add API call here." };
+  } catch (e:any) { return { error: e.message }; }
 }

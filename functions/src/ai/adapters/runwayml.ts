@@ -1,45 +1,33 @@
-
 import { VendorPayload, VendorResult } from "./types";
+const KEY = process.env.RUNWAYML_API_KEY!;
 
 export async function run(p: VendorPayload): Promise<VendorResult> {
-  const key = process.env.RUNWAYML_API_KEY;
-  if (!key) return { error: "Missing RUNWAYML_API_KEY" };
-
+  if (!KEY) return { error: "Missing RUNWAYML_API_KEY" };
   try {
-    // 1) Create Task
-    const createRes = await fetch("https://api.runwayml.com/v1/tasks", {
+    const create = await fetch("https://api.runwayml.com/v1/tasks", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json"
-      },
+      headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        workflow: "gen2", // if using Gen-2
+        workflow: "gen2",
         prompt: p.input,
-        duration: 4, // video length seconds
-        aspect_ratio: "16:9"
+        duration: p.options?.duration ?? 4,
+        aspect_ratio: p.options?.aspect_ratio ?? "16:9"
       })
     });
+    const task = await create.json();
+    if (!task?.id) return { error: JSON.stringify(task) };
 
-    const task = await createRes.json();
-    if (!task?.id) return { error: "Failed to create Runway task" };
-
-    // 2) Poll until completed
-    let status = task.status;
-    let outputUrl = null;
+    let status = task.status, outputUrl = null;
     while (status !== "succeeded" && status !== "failed") {
       await new Promise(r => setTimeout(r, 5000));
       const poll = await fetch(`https://api.runwayml.com/v1/tasks/${task.id}`, {
-        headers: { Authorization: `Bearer ${key}` }
+        headers: { Authorization: `Bearer ${KEY}` }
       });
-      const pollData = await poll.json();
-      status = pollData.status;
-      outputUrl = pollData.output?.[0]?.url || null;
+      const data = await poll.json();
+      status = data.status;
+      outputUrl = data.output?.[0]?.url || null;
     }
-
-    if (status === "failed") return { error: "RunwayML generation failed" };
-
-    return { outputUrl };
+    return status === "failed" ? { error: "RunwayML generation failed" } : { outputUrl };
   } catch (e: any) {
     return { error: e.message };
   }

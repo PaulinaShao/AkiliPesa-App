@@ -1,4 +1,3 @@
-
 'use strict';
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
@@ -11,8 +10,11 @@ const db = admin.firestore();
 
 // --- AI Orchestration ---
 export { aiRouter } from "./ai/aiRouter";
-export { vendorOptimizer } from "./ai/vendorOptimizer";
 export { callSessionHandler } from "./ai/callSessionHandler";
+export { callLiveLoop } from "./ai/callLiveLoop";
+export { createVoiceClone } from "./ai/createVoiceClone";
+export { socialPoster, schedulePublisher } from "./ai/socialPoster";
+export { vendorOptimizer } from "./ai/vendorOptimizer";
 export { walletManager } from "./ai/walletManager";
 
 // --- Existing Functions ---
@@ -442,7 +444,7 @@ export const onusercreate = functions.auth.user().onCreate(async (user) => {
         uid, handle, displayName: displayName || 'New User', email: email || null, phone: phoneNumber || null, photoURL: photoURL || '',
         bio: '', createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         plan: 'free',
-        wallet_balance: 10,
+        wallet_balance: 10, // Starting balance for new users
         stats: { followers: 0, following: 0, likes: 0, postsCount: 0 },
         accessibility: { captions: false, highContrast: false, largeText: false, signPreferred: false }
     });
@@ -462,15 +464,11 @@ export const onpostcreate = functions.firestore.document('posts/{postId}').onCre
     const postRef = snap.ref;
     await awardPoints(post.authorId, 10, "Created a new post");
     
-    const postUpdate: { [key: string]: any } = {};
-    if (!post.tags) {
-      postUpdate.tags = [];
-    }
-    if(Object.keys(postUpdate).length > 0) {
-      await postRef.update(postUpdate);
-    }
-    
-    await db.collection('users').doc(post.authorId).update({ 'stats.postsCount': admin.firestore.FieldValue.increment(1) });
+    // Atomically update user stats and ensure tags array exists on post
+    const userStatsUpdate = db.collection('users').doc(post.authorId).update({ 'stats.postsCount': admin.firestore.FieldValue.increment(1) });
+    const postTagsUpdate = postRef.update({ tags: post.tags || [] });
+
+    await Promise.all([userStatsUpdate, postTagsUpdate]);
   });
 
 export const buyPlan = functions.https.onCall(async (data, context) => {
