@@ -136,7 +136,7 @@ service cloud.firestore {
     
     // Rule for chats
     match /chats/{channelId}/messages/{messageId} {
-      allow read, write: if isSignedIn() && (request.auth.uid in channelId.split('_'));
+      allow read, write: if isSignedIn() && request.auth.uid in channelId.split('_');
     }
 
     // ─────────────────────────────
