@@ -12,119 +12,190 @@ service cloud.firestore {
     function isOwner(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
-    
+
     function isAdmin() {
       return isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.admin == true);
     }
-    
+
     function isAgent() {
-        return isSignedIn() && request.auth.token.role == 'agent';
+      return isSignedIn() && request.auth.token.role == 'agent';
     }
-    
+
     // ─────────────────────────────
-    // USER DATA & SUBCOLLECTIONS
+    // USER PROFILES (Public Social Network Mode)
     // ─────────────────────────────
-    
-    // Users can read/write their own profile. Admins have full access.
-    // Signed-in users can list (query) to find other user profiles by handle.
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-      allow list: if isSignedIn();
+      allow read, list: if true; // Public profiles + feed lookup
+      allow write: if isOwner(userId) || isAdmin();
     }
-    
-    // Users can read/write their own clones and agents.
+
     match /users/{userId}/clones/{cloneId} {
       allow read, write: if isOwner(userId) || isAdmin();
     }
+
     match /users/{userId}/agents/{agentId} {
       allow read, write: if isOwner(userId) || isAdmin();
     }
 
-    // Users can read/write their own AI sessions.
-    match /aiSessions/{userId} {
-      allow read, write: if isOwner(userId);
+    // ─────────────────────────────
+    // AI SYSTEM
+    // ─────────────────────────────
+
+    match /aiSessions/{sessionId} {
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.userId;
     }
 
-    // Users can create AI requests and read their own.
     match /ai_requests/{requestId} {
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow read: if isOwner(resource.data.uid);
-      allow update: if false; // Only backend can update
+      allow read: if isSignedIn() && request.auth.uid == resource.data.uid;
+      allow update: if false; // Backend-only result write
     }
-    
-    // Users can read/write their own memory context.
+
     match /memory_context/{uid} {
       allow read, write: if isOwner(uid);
     }
 
     // ─────────────────────────────
-    // PUBLIC CONTENT RULES
+    // PUBLIC CONTENT FEEDS
     // ─────────────────────────────
 
-    // Anyone can read posts. Signed-in users can create/update/delete their own.
     match /posts/{postId} {
-      allow read: if true;
+      allow read, list: if true; // ✅ FIX: feed now works
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update, delete: if isOwner(resource.data.authorId);
     }
-    
-    // Anyone can read products. Only agents or admins can write.
+
     match /products/{productId} {
-       allow read: if true;
-       allow write: if isAgent() || isAdmin();
+      allow read: if true;
+      allow write: if isAgent() || isAdmin();
     }
-    
-    // Anyone can read plans. Only admins can write.
+
     match /plans/{planId} {
       allow read: if true;
       allow write: if isAdmin();
     }
-    
-    // Signed-in users can read admin agents. Only admins can write.
+
     match /adminAgents/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
     // ─────────────────────────────
-    // 🏆 TRUST & FINANCIALS
+    // FINANCIAL & EARNINGS SYSTEM
     // ─────────────────────────────
 
-    // Users can read their own wallet. Only backend/admins can write.
     match /wallets/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow write: if isAdmin(); // Prevent client-side balance modification
+      allow write: if isAdmin();
     }
 
-    // Users can read their own transactions. Only backend/admins can write.
     match /transactions/{txId} {
-      allow read: if isAdmin() || (isOwner(resource.data.uid)) || (resource.data.agentId != null && isOwner(resource.data.agentId));
-      allow write: if isAdmin();
-    }
-    
-    // Buyer/Seller can read their own orders. Only admins can write.
-    match /orders/{oid} {
-      allow read: if isAdmin() || (isSignedIn() && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId));
+      allow read: if isAdmin() || isOwner(resource.data.uid) || (resource.data.agentId != null && isOwner(resource.data.agentId));
       allow write: if isAdmin();
     }
 
-    // Scores are public to signed-in users, but only writable by backend/admins.
+    match /orders/{oid} {
+      allow read: if isAdmin()
+        || (isSignedIn() &&
+          (request.auth.uid == resource.data.buyerId ||
+           request.auth.uid == resource.data.sellerId));
+      allow write: if isAdmin();
+    }
+
+    match /escrow/{escrowId} {
+      allow read: if isAdmin()
+        || (isSignedIn() &&
+          (request.auth.uid == resource.data.buyerId ||
+           request.auth.uid == resource.data.sellerId));
+      allow write: if isAdmin(); // Backend releases funds only
+    }
+
+    match /withdrawalRequests/{reqId} {
+      allow create: if isSignedIn() && request.resource.data.agentId == request.auth.uid;
+      allow read: if isOwner(resource.data.agentId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /sales/{saleId} {
+      allow read: if isOwner(resource.data.agentId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /commissions/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /referrals/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /akiliPoints/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /rewardCatalog/{rewardId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /rewardHistory/{id} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────
+    // TRUST / VERIFICATION / FEEDBACK
+    // ─────────────────────────────
+
     match /trustScores/{uid} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+
     match /buyerTrust/{uid} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
-    match /akiliPoints/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
+
+    match /productVerification/{productId} {
+      allow read: if isOwner(resource.data.sellerId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /deliveryProofs/{id} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /feedback/{id} {
+      allow create: if isSignedIn();
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /orderTracking/{trackId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /trustHistory/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /buyerHistory/{id} {
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
     // ─────────────────────────────
     // SOCIAL & NOTIFICATIONS
     // ─────────────────────────────
+
     match /notifications/{nid} {
       allow read, write: if isOwner(resource.data.userId) || isAdmin();
     }
@@ -133,24 +204,33 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSignedIn();
     }
-    
-    // Rule for chats
+
     match /chats/{channelId}/messages/{messageId} {
       allow read, write: if isSignedIn() && request.auth.uid in channelId.split('_');
     }
 
     // ─────────────────────────────
-    // SERVER-ONLY RULES (No Client Access)
+    // STRICT BACKEND-ONLY (NO CLIENT ACCESS)
     // ─────────────────────────────
     match /vendor_metrics/{vendorName} {
       allow read, write: if false;
     }
+
     match /profit_tracking/{transactionId} {
       allow read, write: if false;
     }
-    
+
+    match /revenueReports/{date} {
+      allow read, write: if isAdmin();
+    }
+
+    match /agentStats/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
     // ─────────────────────────────
-    // GLOBAL DEFAULT (DENY)
+    // DEFAULT DENY
     // ─────────────────────────────
     match /{document=**} {
       allow read, write: if false;
