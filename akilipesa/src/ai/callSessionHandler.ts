@@ -4,6 +4,8 @@ import * as admin from "firebase-admin";
 import * as openai from "./vendor/openai";
 import * as runpod from "./vendor/runpod";
 import { getVoiceProfile, updateVoiceProfile } from "./voiceMemory";
+import { uploadTTSAudio } from "./storage";
+import fetch from "node-fetch";
 
 const db = admin.firestore();
 
@@ -16,7 +18,7 @@ const db = admin.firestore();
  *
  * It is designed to be stateless and resumable.
  */
-export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_API_KEY"] }, async (req) => {
+export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_API_KEY", "AGORA_APP_ID", "AGORA_APP_CERT"] }, async (req) => {
   if (!req.auth) throw new Error("Unauthenticated");
   const { sessionId, audioChunkB64 } = req.data;
   const { uid: userId } = req.auth;
@@ -32,6 +34,7 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
     throw new Error("Session is not active or does not exist.");
   }
   const sessionData = sessionSnap.data()!;
+  const channelName = sessionData.channelName;
 
   // 1. Speech-to-Text (STT) with RunPod Whisper
   const sttResult = await runpod.whisperSTT(audioChunkB64);
@@ -52,8 +55,16 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
     await updateVoiceProfile(userId, {
       currentVoiceId: voiceProfile.voiceHistory?.[0]?.voiceId || "akili_sw_warm_soft"
     });
-    // Maybe trigger a specific response here? For now, we'll let the normal flow handle it.
   }
+  
+  // Detect language usage patterns
+  const containsEnglish = /[a-zA-Z]/.test(userText);
+  let languageMode = containsEnglish ? "mix" : "sw";
+  
+  // Estimate speech speed → used for accent matching
+  const fastSpeech = userText.split(" ").length > 8;
+  let accent = fastSpeech ? "english_african" : "tanzania_standard";
+
 
   // 3. LLM Reasoning with OpenAI GPT-4o
   const gptResponse = await openai.getAiResponse({
@@ -62,6 +73,8 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
       lastEmotion: sessionData.lastEmotion,
       lastEnergy: sessionData.lastEnergy,
       lastPace: sessionData.lastPace,
+      languageMode,
+      accent,
     },
     memoryContext: { ...memoryData, voiceProfile },
   });
@@ -75,7 +88,7 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
   // 4. Text-to-Speech (TTS) with RunPod OpenVoice
   const ttsResult = await runpod.openVoiceTTS({
     text: reply_text,
-    voice_id: voiceProfile.currentVoiceId,
+    voice_id: voiceProfile.currentVoiceId || 'akili_sw_warm_soft',
     ...voice,
   });
 
@@ -90,13 +103,36 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
     });
     return { ok: false, error: "Failed to synthesize audio response." };
   }
+  const audioBuffer = Buffer.from(ttsResult.audio_b64, 'base64');
 
-  // 5. Update Session State & Voice Profile
+
+  // 5. Upload the AI's audio reply to Storage & get a signed URL
+  const { downloadUrl: ttsUrl } = await uploadTTSAudio(
+    audioBuffer,
+    sessionId,
+    "opus"
+  );
+  
+  // 6. Tell the AI Bot Publisher to *join and speak*
+  await fetch(process.env.AI_BOT_ENDPOINT + "/join-and-play", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      token: sessionData.agoraTokenForAI,
+      channelName,
+      botUid: "akili-bot",
+      ttsUrl,
+    }),
+  });
+
+
+  // 7. Update Session State & Voice Profile
   await sessionRef.update({
     lastEmotion: emotion,
     lastPace: voice.pace,
     lastEnergy: voice.energy,
     lastLanguage: voice.language,
+    preferredVoice: voice.accent, // Per prompt instructions
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   
@@ -107,10 +143,9 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
   });
 
 
-  // 6. Return audio to client
+  // 8. Return success (no audio payload needed as it's streamed by the bot)
   return {
     ok: true,
-    audio_b64: ttsResult.audio_b64,
     reply_text: reply_text,
     guidance_mode,
   };

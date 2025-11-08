@@ -8,15 +8,15 @@ export async function getVoiceProfile(uid: string) {
   if (!snap.exists) {
     // First-time default: warm Swahili
     const defaultProfile = {
-      currentVoiceId: "akili_sw_warm_soft",
-      personalitySignature: {
-        tone: "warm",
-        pace: "steady",
-        energy: "soft",
-        languagePreference: "sw",
-        accent: "tanzanian-neutral"
-      },
-      voiceHistory: [],
+      preferredVoice: "akili_soft_swahili",
+      accentStyle: "tanzania_standard",
+      languageMode: "sw_first",
+      avgSpeechSpeed: 1.0,
+      avgWarmth: 1.1,
+      avgEnergy: 0.9,
+      memoryNotes: "First interaction with user.",
+      emotionalHistory: [],
+      lastCallEndedFeeling: "neutral",
       lastAdaptedAt: admin.firestore.FieldValue.serverTimestamp()
     };
     await ref.set(defaultProfile);
