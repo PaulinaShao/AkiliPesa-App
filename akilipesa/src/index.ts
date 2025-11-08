@@ -11,6 +11,14 @@ import {setGlobalOptions} from "firebase-functions";
 
 setGlobalOptions({ maxInstances: 10 });
 
+// --- Core AI & Call Flows ---
+export { createAiCallSession } from "./ai/createAiCallSession";
+export { callSessionHandler } from "./ai/callSessionHandler";
+export { callLiveLoop } from "./ai/callLiveLoop";
+export { endAiCall } from "./ai/endAiCall";
+export { summarizeAiSession } from "./ai/summarizeSession";
+export { createVoiceClone } from "./ai/createVoiceClone";
+
+// --- Original AI Router & Adapters ---
 export { aiRouter, pollVideoJob } from "./ai/aiRouter";
-export { startAICall, onAudioChunk } from "./ai/callSession";
 export { getAgoraToken } from "./adapters/agora";
