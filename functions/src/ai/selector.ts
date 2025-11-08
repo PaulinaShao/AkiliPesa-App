@@ -72,7 +72,7 @@ export async function selectVendor({
     .filter(([_, v]) => v.supports.includes(requestType))
     .map(([name, base]) => {
       const m = metrics[name] || {};
-      const w = routingWeights[name] || 1.0;
+      const w = routingWeights?.[name] ?? 1.0;
       const quality = (base.quality + (m.qualityBoost || 0)) * w;
       const latency = m.latencyMs || base.latency;
       const cost = (m.costPerUnit || base.costPerUnit);

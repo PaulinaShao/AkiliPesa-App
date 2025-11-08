@@ -175,10 +175,11 @@ export const onReferralReward = onDocumentCreated("referrals/{refId}", async (ev
 export const onAIInteractionReward = onDocumentUpdated("aiSessions/{id}", async (event) => {
   const before = event.data?.before.data();
   const after = event.data?.after.data();
-  if (before?.isActive && !after?.isActive && after.duration > 60) {
-    const points = Math.floor(after.duration / 60) * 10;
-    await awardPoints(after.userId, points, "AI session engagement");
-  }
+  if (!before || !after) return;
+   if (before.isActive && !after.isActive && after.duration && after.duration > 60) {
+     const points = Math.floor(after.duration / 60) * 10;
+     if (after.userId) await awardPoints(after.userId, points, "AI session engagement");
+   }
 });
 
 export const redeemReward = onCall(async (req) => {
