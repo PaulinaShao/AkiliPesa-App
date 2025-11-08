@@ -4,7 +4,7 @@ import * as admin from "firebase-admin";
 import * as openai from "./vendor/openai";
 import * as runpod from "./vendor/runpod";
 import { getVoiceProfile, updateVoiceProfile } from "./voiceMemory";
-import { uploadTTSAudio } from "./storage";
+import { uploadTTSAudio, uploadBufferToStorage, getV4SignedReadUrl } from "./storage";
 import fetch from "node-fetch";
 
 const db = admin.firestore();
@@ -149,4 +149,39 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
     reply_text: reply_text,
     guidance_mode,
   };
+});
+
+/**
+ * Enqueue one TTS line for live playback in an Agora channel.
+ * The Cloud Run AI-bot listens to /ai_audio_queue and injects the audio.
+ */
+export const enqueueTTS = onCall({secrets: ["RUNPOD_API_KEY"]}, async (req) => {
+  const { channelName, text, voice } = req.data as { channelName: string; text: string; voice?: any };
+  if (!req.auth) throw new Error('Unauthenticated');
+
+  // 1) TTS via OpenVoice/RunPod (Buffer)
+  const audioBuffer = await runpod.synthesizeVoice(text, {
+    tone: voice?.tone ?? 'balanced',
+    pace: voice?.pace ?? 1.0,
+    energy: voice?.energy ?? 1.0,
+    language: voice?.language ?? 'sw',
+  });
+
+  // 2) Upload to Storage
+  const sessionId = req.auth.uid + '-' + Date.now();
+  const path = `ai-outputs/${req.auth.uid}/${sessionId}/line-${Date.now()}.opus`;
+  await uploadBufferToStorage({ bucketPath: path, buffer: audioBuffer, contentType: 'audio/ogg' });
+  const signedUrl = await getV4SignedReadUrl(path, 60);
+
+  // 3) Push to queue (Cloud Run bot listens here)
+  const queueRef = db.collection('ai_audio_queue').doc();
+  await queueRef.set({
+    channelName,
+    url: signedUrl,             // signed URL to OPUS file
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    status: 'pending',
+    type: 'tts',
+  });
+
+  return { ok: true, ttsUrl: signedUrl, queueId: queueRef.id };
 });

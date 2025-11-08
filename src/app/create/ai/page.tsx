@@ -15,7 +15,7 @@ import { httpsCallable } from 'firebase/functions';
 import { AgentPicker } from '@/components/AgentPicker';
 import useSessionManager from '@/lib/sessionManager';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CallAkili } from '@/components/CallAkili';
+import CallButtons from '@/app/call/CallButtons';
 
 interface Message {
   id: string;
@@ -189,7 +189,7 @@ export default function AiCreatePage() {
             </div>
             ))}
              <div className="pt-4">
-              <CallAkili />
+              <CallButtons />
             </div>
         </div>
       </ScrollArea>

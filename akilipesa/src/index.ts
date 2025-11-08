@@ -14,7 +14,7 @@ setGlobalOptions({ maxInstances: 10 });
 
 // --- Core AI & Call Flows ---
 export { createAiCallSession } from "./ai/createAiCallSession";
-export { callSessionHandler } from "./ai/callSessionHandler";
+export { callSessionHandler, enqueueTTS } from "./ai/callSessionHandler";
 export { callLiveLoop } from "./ai/callLiveLoop";
 export { endAiCall } from "./ai/endAiCall";
 export { summarizeAiSession } from "./ai/summarizeSession";

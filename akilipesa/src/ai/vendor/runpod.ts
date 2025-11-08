@@ -2,6 +2,8 @@
 import fetch from "node-fetch";
 
 const API_BASE = "https://api.runpod.ai/v2/";
+const OPENVOICE_ENDPOINT = process.env.OPENVOICE_ENDPOINT_ID || '<YOUR_RUNPOD_OPENVOICE_ENDPOINT>';
+
 
 function getHeaders() {
   const apiKey = process.env.RUNPOD_API_KEY;
@@ -51,8 +53,8 @@ export async function openVoiceTTS(params: {
   text: string;
   voice_id: string;
   tone: string;
-  pace: string;
-  energy: string;
+  pace: number;
+  energy: number;
   language: string;
 }): Promise<{ audio_b64?: string; error?: string }> {
   const endpointId = process.env.RUNPOD_OPENVOICE_ENDPOINT_ID;
@@ -85,4 +87,25 @@ export async function openVoiceTTS(params: {
   } catch (error: any) {
     return { error: error.message };
   }
+}
+
+export async function synthesizeVoice(text: string, voice: { tone:string; pace:number; energy:number; language:'sw'|'en'|'mix' }) {
+  const res = await fetch(`https://api.runpod.ai/v2/${OPENVOICE_ENDPOINT}/run`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RUNPOD_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      input: {
+        text,
+        voice_id: 'akili_base_voice',
+        tone: voice.tone,
+        pace: voice.pace,
+        energy: voice.energy,
+        language: voice.language,
+        format: 'opus48k'
+      }
+    })
+  });
+  const json = await res.json() as any;
+  if (!json?.output?.audio_b64) throw new Error('OpenVoice: missing audio_b64');
+  return Buffer.from(json.output.audio_b64, 'base64');
 }
