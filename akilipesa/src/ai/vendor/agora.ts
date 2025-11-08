@@ -1,38 +1,25 @@
 
 import { RtcTokenBuilder, RtcRole } from "agora-access-token";
 
-const TOKEN_EXPIRATION_IN_SECONDS = 3600; // 1 hour
+const AGORA_APP_ID = process.env.AGORA_APP_ID!;
+const AGORA_APP_CERT = process.env.AGORA_APP_CERT!;
 
-/**
- * Builds Agora RTC tokens for both a user and an AI agent.
- * @param channelName The name of the channel they will join.
- * @returns An object containing tokens for the user and the AI.
- */
-export function buildTokens(channelName: string) {
-  const appId = process.env.AGORA_APP_ID;
-  const appCertificate = process.env.AGORA_APP_CERT;
-
-  if (!appId || !appCertificate) {
-    throw new Error("AGORA_APP_ID and AGORA_APP_CERT must be set in environment variables.");
+export function createAgoraToken(uid: string, channelName: string) {
+  if (!AGORA_APP_ID || !AGORA_APP_CERT) {
+    throw new Error('Agora App ID or Certificate is not configured in environment variables.');
   }
-
-  const userToken = RtcTokenBuilder.buildTokenWithUid(
-    appId,
-    appCertificate,
+  const expire = Math.floor(Date.now() / 1000) + 3600;
+  return RtcTokenBuilder.buildTokenWithAccount(
+    AGORA_APP_ID,
+    AGORA_APP_CERT,
     channelName,
-    0, // UID for the user (0 allows Agora to assign one)
+    uid,
     RtcRole.PUBLISHER,
-    TOKEN_EXPIRATION_IN_SECONDS
+    expire
   );
+}
 
-  const aiToken = RtcTokenBuilder.buildTokenWithUid(
-    appId,
-    appCertificate,
-    channelName,
-    1, // A static, non-zero UID for the AI agent
-    RtcRole.PUBLISHER,
-    TOKEN_EXPIRATION_IN_SECONDS
-  );
-
-  return { userToken, aiToken };
+export async function publishAudioToAgora(channelName: string, audio: Buffer) {
+  console.log(`📡 (Stub) Sending audio to Agora: ${channelName} (${audio.length} bytes)`);
+  // Later — plug Agora media relay or server audio injector
 }
