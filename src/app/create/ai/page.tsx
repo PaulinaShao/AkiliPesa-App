@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -16,6 +15,7 @@ import { httpsCallable } from 'firebase/functions';
 import { AgentPicker } from '@/components/AgentPicker';
 import useSessionManager from '@/lib/sessionManager';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import CallPanel from '@/components/CallPanel';
 
 interface Message {
   id: string;
@@ -26,10 +26,10 @@ interface Message {
 }
 
 const capabilities = [
-  { label: "Create Video", icon: Film },
-  { label: "Create Song", icon: Music },
-  { label: "Design Ad", icon: Clapperboard },
-  { label: "Clone Voice", icon: Mic2 }
+  { label: "Create Video", icon: Film, prompt: "Create a video about " },
+  { label: "Create Song", icon: Music, prompt: "Create a song about " },
+  { label: "Design Ad", icon: Clapperboard, prompt: "Design an ad for " },
+  { label: "Clone Voice", icon: Mic2, prompt: "Clone a voice from a sample" }
 ]
 
 const GradientIcon = ({ icon: Icon, ...props }: { icon: React.ElementType, [key: string]: any }) => {
@@ -37,15 +37,15 @@ const GradientIcon = ({ icon: Icon, ...props }: { icon: React.ElementType, [key:
         <>
             <svg width="0" height="0" className="absolute">
                 <linearGradient id="tanzanite-icon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: 'var(--gradient-violet)' }} />
-                    <stop offset="50%" style={{ stopColor: 'var(--gradient-sapphire)' }} />
-                    <stop offset="100%" style={{ stopColor: 'var(--gradient-teal)' }} />
+                    <stop offset="0%" style={{ stopColor: 'hsl(var(--primary))' }} />
+                    <stop offset="100%" style={{ stopColor: 'hsl(var(--accent))' }} />
                 </linearGradient>
             </svg>
-            <Icon {...props} style={{ fill: 'url(#tanzanite-icon-gradient)', stroke: 'url(#tanzanite-icon-gradient)' }} />
+            <Icon {...props} style={{ stroke: 'url(#tanzanite-icon-gradient)' }} />
         </>
     );
 };
+
 
 export default function AiCreatePage() {
   const router = useRouter();
@@ -58,7 +58,7 @@ export default function AiCreatePage() {
     {
       id: '1',
       sender: 'ai',
-      text: "Hello! I'm your creative partner, ready to bring your ideas to life. What masterpiece shall we create today?",
+      text: "Hello! I'm Akili, your creative partner. What masterpiece shall we create today? A video, a song, a voice clone?",
       username: 'AkiliPesa AI'
     }
   ]);
@@ -170,7 +170,7 @@ export default function AiCreatePage() {
                 msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
             )}>
                 {msg.sender === 'ai' ? (
-                <Avatar className="w-8 h-8 bg-gradient-tanzanite p-0.5">
+                <Avatar className="w-8 h-8 bg-gradient-tanzanite p-0.5 shadow-lg shadow-primary/20">
                     <div className="bg-background rounded-full w-full h-full flex items-center justify-center">
                         <Sparkles className="w-4 h-4 text-white" />
                     </div>
@@ -179,7 +179,7 @@ export default function AiCreatePage() {
                 <FallbackAvatar src={msg.avatar} alt={msg.username} className="w-8 h-8" />
                 )}
                 <div className={cn(
-                "rounded-2xl px-4 py-2.5 text-sm",
+                "rounded-2xl px-4 py-2.5 text-sm shadow-md",
                 msg.sender === 'user'
                     ? 'bg-gradient-tanzanite text-primary-foreground rounded-br-none'
                     : 'bg-secondary rounded-bl-none'
@@ -188,6 +188,9 @@ export default function AiCreatePage() {
                 </div>
             </div>
             ))}
+             <div className="pt-4">
+              <CallPanel />
+            </div>
         </div>
       </ScrollArea>
       
@@ -197,8 +200,8 @@ export default function AiCreatePage() {
             <ScrollArea className="w-full whitespace-nowrap">
               <div className="flex items-center gap-2 px-1 py-1">
                  <Globe className="h-5 w-5 text-gradient flex-shrink-0"/>
-                 {capabilities.map(({label, icon: Icon}) => (
-                    <Button key={label} variant="outline" size="sm" className="h-8 rounded-full text-xs bg-background transition-all hover:bg-primary/10 hover:border-primary/50" onClick={() => setInput(label)}>
+                 {capabilities.map(({label, icon: Icon, prompt}) => (
+                    <Button key={label} variant="outline" size="sm" className="h-8 rounded-full text-xs bg-background transition-all hover:bg-primary/10 hover:border-primary/50" onClick={() => setInput(prompt || label)}>
                       <Icon className="mr-2 h-4 w-4 text-primary" />
                       {label}
                     </Button>
@@ -234,5 +237,3 @@ export default function AiCreatePage() {
     </div>
   );
 }
-
-    

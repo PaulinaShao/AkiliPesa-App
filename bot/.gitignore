@@ -1,9 +1,6 @@
 # dependencies
 node_modules/
 
-# build
-lib/
-
 # misc
 .DS_Store
 *.log

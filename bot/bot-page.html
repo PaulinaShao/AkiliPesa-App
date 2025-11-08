@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AkiliPesa AI Bot Publisher</title>
+  <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+</head>
+<body>
+<script>
+(async () => {
+  const url = new URL(location.href);
+  const appId = url.searchParams.get('appid');
+  const token = url.searchParams.get('token');
+  const channel = url.searchParams.get('channel');
+  const uid = url.searchParams.get('uid') || null;
+  const tts = url.searchParams.get('tts');
+
+  if (!appId || !token || !channel || !tts) {
+    console.error('Missing appId|token|channel|tts');
+    return;
+  }
+
+  const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+  const joinUid = await client.join(appId, channel, token, uid);
+
+  // Create an <audio> element that auto-plays the TTS URL
+  const audioEl = new Audio(tts);
+  audioEl.crossOrigin = 'anonymous';
+  audioEl.loop = false;
+  audioEl.autoplay = true;
+  await audioEl.play().catch(() => { /* ignored */ });
+
+  // Route it through Web Audio API → MediaStream → Agora custom track
+  const ctx = new AudioContext();
+  const source = ctx.createMediaElementSource(audioEl);
+  const dest = ctx.createMediaStreamDestination();
+  source.connect(dest);
+  source.connect(ctx.destination);
+
+  const track = await AgoraRTC.createCustomAudioTrack({
+    mediaStreamTrack: dest.stream.getAudioTracks()[0],
+  });
+
+  await client.publish([track]);
+  console.log('🤖 AI Bot published TTS into channel', channel);
+
+  // Auto-cleanup when audio ends
+  audioEl.addEventListener('ended', async () => {
+    try { await client.unpublish([track]); } catch (_) {}
+    try { track.close(); } catch (_) {}
+    try { await client.leave(); } catch (_) {}
+    console.log('🤖 AI Bot left channel after TTS end');
+  });
+})();
+</script>
+</body>
+</html>
