@@ -24,11 +24,11 @@ service cloud.firestore {
     // ─────────────────────────────
     // USER PROFILES (Public Social Network Mode)
     // ─────────────────────────────
-    match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-      allow list: if isSignedIn();
-    }
 
+    match /users/{userId} {
+      allow read, list: if true; // ✅ Public view + querying allowed
+      allow write: if isOwner(userId) || isAdmin();
+    }
     match /users/{userId}/clones/{cloneId} {
       allow read, write: if isOwner(userId) || isAdmin();
     }

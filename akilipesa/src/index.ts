@@ -21,5 +21,5 @@ export { summarizeAiSession } from "./ai/summarizeSession";
 export { createVoiceClone } from "./ai/createVoiceClone";
 
 // --- Original AI Router & Adapters ---
-export { aiRouter, pollVideoJob } from "./ai/aiRouter";
+export { aiRouter, pollVideoJob, createRtcToken } from "./ai/aiRouter";
 export { getAgoraToken } from "./adapters/agora";

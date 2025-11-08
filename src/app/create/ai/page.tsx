@@ -15,7 +15,9 @@ import { httpsCallable } from 'firebase/functions';
 import { AgentPicker } from '@/components/AgentPicker';
 import useSessionManager from '@/lib/sessionManager';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import CallButtons from '@/app/call/CallButtons';
+import dynamic from "next/dynamic";
+const CallPanel = dynamic(() => import("@/components/CallPanel"), { ssr: false });
+
 
 interface Message {
   id: string;
@@ -189,7 +191,7 @@ export default function AiCreatePage() {
             </div>
             ))}
              <div className="pt-4">
-              <CallButtons />
+              <CallPanel withVideo={false} />
             </div>
         </div>
       </ScrollArea>

@@ -1,54 +1,102 @@
-'use client';
+"use client";
+import { useEffect, useState, useRef } from "react";
+import { getAuth } from "firebase/auth";
+import { getRtcToken } from "@/lib/agoraApi";
+import { useAgoraCall } from "@/hooks/useAgoraCall";
+import { getApp } from "firebase/app";
+import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-import React, { useState } from 'react';
-import { useAgoraCall } from '@/hooks/useAgoraCall';
+type Props = {
+  channelPrefix?: string;     // e.g. "akili"
+  withVideo?: boolean;        // default false (voice first)
+};
 
-export default function CallPanel() {
-  const [sessionId, setSessionId] = useState<string>('');
-  const {
-    channelName, callId, isJoined, isPublishing, isMuted,
-    join, publishMic, toggleMute, leave, startAI
-  } = useAgoraCall({
-    mode: 'rtc',
-    codec: 'vp8',
-    role: 'host',
-    agentId: 'akili-admin',
-    agentType: 'admin',
-    callMode: 'audio',
-  });
+export default function CallPanel({ channelPrefix = "akili", withVideo = false }: Props) {
+  const { joined, muted, videoOn, localVideoContainerRef, setRemoteVideoEl, join, leave, toggleMute, toggleVideo } = useAgoraCall();
+  const remoteDivRef = useRef<HTMLDivElement | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [channel, setChannel] = useState<string>("");
 
-  const handleStart = async () => {
-    // Typically, you’d create an aiSessions/{id} doc and pass that id here.
-    const id = sessionId || `sess_${Date.now()}`;
-    setSessionId(id);
-    await join();
-    await publishMic();
-    await startAI(id); // tells Cloud Function to start the AI loop for this channel
-  };
+  useEffect(() => {
+    setRemoteVideoEl(remoteDivRef.current);
+  }, [setRemoteVideoEl]);
 
-  const handleStop = async () => {
+  async function handleStart() {
+    setLoading(true);
+    try {
+      const auth = getAuth();
+      if (!auth.currentUser) throw new Error("Please sign in");
+      const uid = auth.currentUser.uid;
+
+      // Make a unique channel for this session
+      const ch = `${channelPrefix}_${uid}_${Date.now().toString(36)}`;
+      setChannel(ch);
+
+      // Ask backend for token
+      const { appId, token } = await getRtcToken({ channel: ch, uid, role: "publisher", ttlSeconds: 3600 });
+
+      // (Optional) record a session doc your server functions can watch
+      const db = getFirestore(getApp());
+      await setDoc(doc(db, "aiSessions", uid), {
+        isActive: true,
+        channelName: ch,
+        startedAt: serverTimestamp(),
+      }, { merge: true });
+
+      // Join + publish mic (video optional)
+      await join(appId, ch, uid, token, withVideo);
+    } catch (e: any) {
+      console.error("Start call failed:", e);
+      alert(e.message || "Start call failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEnd() {
     await leave();
-  };
+  }
 
   return (
-    <div className="flex flex-col gap-2 p-4 rounded-xl border">
-      <div className="text-sm">Channel: <b>{channelName || '—'}</b> &nbsp; Call: <b>{callId || '—'}</b></div>
-
-      <div className="flex gap-2">
-        <button onClick={handleStart} disabled={isJoined} className="px-3 py-2 rounded bg-emerald-600 text-white disabled:opacity-50">
-          {isJoined ? 'In Call' : 'Start Call'}
-        </button>
-        <button onClick={toggleMute} disabled={!isJoined} className="px-3 py-2 rounded bg-zinc-700 text-white disabled:opacity-50">
-          {isMuted ? 'Unmute' : 'Mute'}
-        </button>
-        <button onClick={handleStop} disabled={!isJoined} className="px-3 py-2 rounded bg-rose-600 text-white disabled:opacity-50">
-          Stop Call
-        </button>
+    <div className="w-full max-w-3xl mx-auto p-4 rounded-2xl bg-neutral-900 text-white">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-lg font-semibold">AkiliPesa Live Call {channel ? `— ${channel}` : ""}</div>
+        <div className="text-sm opacity-75">{joined ? "Connected" : "Idle"}</div>
       </div>
 
-      <p className="text-xs text-zinc-500">
-        When you click <b>Start Call</b>, your mic is published and the server AI joins/publishes TTS into the same channel.
-      </p>
+      {/* Video surfaces (hidden if voice-only) */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="h-48 bg-black/60 rounded-xl flex items-center justify-center" ref={localVideoContainerRef}>
+          {!videoOn && <span className="text-xs opacity-60">Local video off</span>}
+        </div>
+        <div className="h-48 bg-black/40 rounded-xl flex items-center justify-center" ref={remoteDivRef}>
+          <span className="text-xs opacity-60">Remote</span>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        {!joined ? (
+          <button
+            onClick={handleStart}
+            disabled={loading}
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50"
+          >
+            {loading ? "Starting…" : "Start Call"}
+          </button>
+        ) : (
+          <>
+            <button onClick={toggleMute} className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500">
+              {muted ? "Unmute" : "Mute"}
+            </button>
+            <button onClick={toggleVideo} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">
+              {videoOn ? "Camera Off" : "Camera On"}
+            </button>
+            <button onClick={handleEnd} className="ml-auto px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500">
+              End Call
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

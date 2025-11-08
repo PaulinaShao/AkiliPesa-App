@@ -1,93 +1,131 @@
-'use client';
-import { useEffect, useRef, useState, useCallback } from 'react';
-import AgoraRTC, { IAgoraRTCClient, ILocalAudioTrack, IRemoteAudioTrack, IRemoteVideoTrack, IRemoteUser } from 'agora-rtc-sdk-ng';
-import { httpsCallable } from 'firebase/functions';
-import { useFirebase } from '@/firebase';
+import { useEffect, useRef, useState, useCallback } from "react";
+import type { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack, IRemoteAudioTrack, IRemoteVideoTrack } from "agora-rtc-sdk-ng";
+import AgoraRTC from "agora-rtc-sdk-ng";
 
-type RemoteUserMedia = {
-  uid: string;
-  audioTrack?: IRemoteAudioTrack | null;
-  videoTrack?: IRemoteVideoTrack | null;
+type Tracks = {
+  mic?: IMicrophoneAudioTrack;
+  cam?: ICameraVideoTrack;
 };
 
 export function useAgoraCall() {
-  const { functions } = useFirebase();
   const clientRef = useRef<IAgoraRTCClient | null>(null);
-  const micRef = useRef<ILocalAudioTrack | null>(null);
+  const localRef = useRef<Tracks>({});
   const [joined, setJoined] = useState(false);
-  const [channelName, setChannelName] = useState<string | null>(null);
-  const [remoteUsers, setRemoteUsers] = useState<RemoteUserMedia[]>([]);
-  const [callId, setCallId] = useState<string | null>(null);
-  const [appId, setAppId] = useState<string | null>(null);
+  const [muted, setMuted] = useState(true);
+  const [videoOn, setVideoOn] = useState(false);
 
-  // helpers
-  const addOrUpdateRemote = (user: IRemoteUser) => {
-    setRemoteUsers(prev => {
-      const idx = prev.findIndex(u => u.uid === String(user.uid));
-      const entry: RemoteUserMedia = {
-        uid: String(user.uid),
-        audioTrack: user.audioTrack ?? null,
-        videoTrack: user.videoTrack ?? null,
-      };
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = { ...next[idx], ...entry };
-        return next;
-      }
-      return [...prev, entry];
-    });
-  };
+  // DOM refs for rendering video
+  const localVideoContainerRef = useRef<HTMLDivElement | null>(null);
+  const [remoteVideoEl, setRemoteVideoEl] = useState<HTMLDivElement | null>(null);
 
-  const join = useCallback(async ({ agentId, agentType = 'admin', mode = 'audio' as 'audio'|'video' }) => {
-    if (joined || !functions) return;
-
-    const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
-    const { data } = await getAgoraToken({ agentId, agentType, mode }) as any;
-    const { token, channelName: ch, callId: cid, appId: aid } = data;
-    setChannelName(ch);
-    setCallId(cid);
-    setAppId(aid);
-
-    const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-    clientRef.current = client;
-
-    client.on('user-published', async (user, mediaType) => {
+  const attachRemoteHandlers = useCallback((client: IAgoraRTCClient) => {
+    client.on("user-published", async (user, mediaType) => {
       await client.subscribe(user, mediaType);
-      if (mediaType === 'audio' && user.audioTrack) user.audioTrack.play();
-      addOrUpdateRemote(user);
+      if (mediaType === "video") {
+        const vTrack = user.videoTrack as IRemoteVideoTrack;
+        if (remoteVideoEl) {
+          vTrack.play(remoteVideoEl);
+        }
+      }
+      if (mediaType === "audio") {
+        const aTrack = user.audioTrack as IRemoteAudioTrack;
+        aTrack.play();
+      }
     });
 
-    client.on('user-unpublished', (user) => addOrUpdateRemote(user));
-    client.on('user-left', (user) => {
-      setRemoteUsers(prev => prev.filter(u => u.uid !== String(user.uid)));
+    client.on("user-unpublished", (user, mediaType) => {
+      if (mediaType === "video" && remoteVideoEl) {
+        // the SDK stops rendering automatically when track is unpublished
+        remoteVideoEl.innerHTML = "";
+      }
     });
+  }, [remoteVideoEl]);
 
-    await client.join(aid, ch, token, null);
+  const join = useCallback(async (appId: string, channel: string, uid: string | number, token: string, withVideo = false) => {
+    if (!clientRef.current) {
+      const client = AgoraRTC.createClient({ codec: "vp8", mode: "rtc" });
+      clientRef.current = client;
+      attachRemoteHandlers(client);
+    }
+    const client = clientRef.current!;
+    await client.join(appId, channel, token, uid);
 
-    // mic
+    // Create audio track (mic)
     const mic = await AgoraRTC.createMicrophoneAudioTrack();
-    micRef.current = mic;
+    localRef.current.mic = mic;
+
+    // Publish mic muted by default (respect privacy)
     await client.publish([mic]);
+    await mic.setEnabled(false);
+    setMuted(true);
+
+    // Optional camera
+    if (withVideo) {
+      const cam = await AgoraRTC.createCameraVideoTrack();
+      localRef.current.cam = cam;
+      if (localVideoContainerRef.current) {
+        cam.play(localVideoContainerRef.current);
+      }
+      await client.publish([cam]);
+      setVideoOn(true);
+    }
 
     setJoined(true);
-    return { channelName: ch, callId: cid };
-  }, [joined, functions]);
+  }, [attachRemoteHandlers]);
 
   const leave = useCallback(async () => {
-    if (!clientRef.current) return;
-    if (micRef.current) {
-      micRef.current.stop();
-      micRef.current.close();
-      micRef.current = null;
-    }
-    await clientRef.current.leave();
-    clientRef.current.removeAllListeners();
-    clientRef.current = null;
+    const client = clientRef.current;
+    if (!client) return;
+
+    const { mic, cam } = localRef.current;
+    if (mic) { mic.stop(); mic.close(); }
+    if (cam) { cam.stop(); cam.close(); }
+
+    localRef.current = {};
+    await client.unpublish();
+    await client.leave();
+
+    if (localVideoContainerRef.current) localVideoContainerRef.current.innerHTML = "";
+    if (remoteVideoEl) remoteVideoEl.innerHTML = "";
     setJoined(false);
-    setChannelName(null);
-    setRemoteUsers([]);
-    setCallId(null);
+    setVideoOn(false);
+    setMuted(true);
+  }, [remoteVideoEl]);
+
+  const toggleMute = useCallback(async () => {
+    const mic = localRef.current.mic;
+    if (!mic) return;
+    const next = !muted;
+    await mic.setEnabled(!next ? true : false); // next=true means muted
+    setMuted(next);
+  }, [muted]);
+
+  const toggleVideo = useCallback(async () => {
+    const client = clientRef.current!;
+    let cam = localRef.current.cam;
+
+    if (cam) {
+      // turn OFF
+      cam.stop(); cam.close();
+      await client.unpublish([cam]);
+      localRef.current.cam = undefined;
+      setVideoOn(false);
+      if (localVideoContainerRef.current) localVideoContainerRef.current.innerHTML = "";
+      return;
+    }
+
+    // turn ON
+    cam = await AgoraRTC.createCameraVideoTrack();
+    localRef.current.cam = cam;
+    if (localVideoContainerRef.current) cam.play(localVideoContainerRef.current);
+    await client.publish([cam]);
+    setVideoOn(true);
   }, []);
 
-  return { joined, channelName, callId, remoteUsers, join, leave };
+  return {
+    joined, muted, videoOn,
+    localVideoContainerRef,
+    setRemoteVideoEl,
+    join, leave, toggleMute, toggleVideo,
+  };
 }
