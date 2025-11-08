@@ -1,3 +1,4 @@
+
 import { RtcTokenBuilder, RtcRole } from "agora-access-token";
 
 const TOKEN_EXPIRATION_IN_SECONDS = 3600; // 1 hour
