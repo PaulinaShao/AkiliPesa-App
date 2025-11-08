@@ -20,7 +20,8 @@ export const createAiCallSession = onCall({ secrets: ["AGORA_APP_ID", "AGORA_APP
     throw new Error("Invalid call mode specified. Must be 'audio' or 'video'.");
   }
 
-  const sessionId = db.collection("aiSessions").doc().id;
+  const sessionRef = db.collection("aiSessions").doc();
+  const sessionId = sessionRef.id;
   const channelName = `akili_${nanoid(12)}`;
 
   // Generate tokens for both the user and the AI agent to join the channel
@@ -41,9 +42,11 @@ export const createAiCallSession = onCall({ secrets: ["AGORA_APP_ID", "AGORA_APP
     lastLanguage: "en",
     lastEnergy: "medium",
     lastPace: "medium",
+    // Store the AI token securely for the backend bot to use
+    agoraTokenForAI: agoraTokens.aiToken,
   };
 
-  await db.collection("aiSessions").doc(sessionId).set(sessionData);
+  await sessionRef.set(sessionData);
 
   // For video mode, provide a placeholder for the AI's avatar video stream
   const aiAvatarStreamURL = mode === "video" ? "rtmp://ai-avatar.akilipesa.com/live/akili-avatar" : undefined;
@@ -51,8 +54,9 @@ export const createAiCallSession = onCall({ secrets: ["AGORA_APP_ID", "AGORA_APP
   return {
     sessionId,
     channelName,
-    agoraTokenForUser: agoraTokens.userToken,
-    agoraTokenForAI: agoraTokens.aiToken,
+    // Only return the user's token to the client
+    token: agoraTokens.userToken,
+    uid, // The user's own UID for joining the channel
     appId: process.env.AGORA_APP_ID,
     aiAvatarStreamURL,
   };
