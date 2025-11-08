@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirebaseUser, useFirestore } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -33,45 +33,54 @@ export default function useSessionManager(agentId?: string, mode: 'audio' | 'vid
       }
 
       const userSessionRef = doc(firestore, "aiSessions", user.uid);
-      const snapshot = await getDoc(userSessionRef);
+      
+      try {
+        const snapshot = await getDoc(userSessionRef);
 
-      if (snapshot.exists()) {
-        const data = snapshot.data() as SessionState;
-        sessionRef.current = data.sessionId;
-        setSession(data);
-      } else {
-        const newSessionId = `${user.uid}-${Date.now()}`;
-        const newSession: SessionState = {
-          sessionId: newSessionId,
-          agentId: agentId || 'akilipesa-ai',
-          mode,
-          isActive: true,
-          lastUpdated: Date.now(),
-        };
-        
-        const dataToSet = { ...newSession, createdAt: serverTimestamp() };
+        if (snapshot.exists()) {
+          const data = snapshot.data() as SessionState;
+          sessionRef.current = data.sessionId;
+          setSession(data);
+        } else {
+          const newSessionId = `${user.uid}-${Date.now()}`;
+          const newSession: SessionState = {
+            sessionId: newSessionId,
+            agentId: agentId || 'akilipesa-ai',
+            mode,
+            isActive: true,
+            lastUpdated: Date.now(),
+          };
+          
+          const dataToSet = { ...newSession, createdAt: serverTimestamp(), userId: user.uid };
 
-        // Use non-blocking write with contextual error handling
-        setDoc(userSessionRef, dataToSet).catch(error => {
-          const contextualError = new FirestorePermissionError({
+          // Use non-blocking write with contextual error handling
+          setDoc(userSessionRef, dataToSet).catch(error => {
+            const contextualError = new FirestorePermissionError({
+              path: userSessionRef.path,
+              operation: 'create',
+              requestResourceData: dataToSet
+            });
+            errorEmitter.emit('permission-error', contextualError);
+          });
+
+          sessionRef.current = newSession.sessionId;
+          setSession(newSession);
+        }
+      } catch (error) {
+         const contextualError = new FirestorePermissionError({
             path: userSessionRef.path,
-            operation: 'create',
-            requestResourceData: dataToSet
+            operation: 'get',
           });
           errorEmitter.emit('permission-error', contextualError);
-        });
-
-        sessionRef.current = newSession.sessionId;
-        setSession(newSession);
+      } finally {
+         setLoading(false);
       }
-
-      setLoading(false);
     };
 
     initSession();
   }, [user, isUserLoading, firestore, agentId, mode]);
 
-  const updateSession = async (updates: Partial<Omit<SessionState, 'sessionId'>>) => {
+  const updateSession = (updates: Partial<Omit<SessionState, 'sessionId'>>) => {
     if (!user || !sessionRef.current || !firestore) return;
 
     const updatesWithTimestamp = { ...updates, lastUpdated: Date.now() };
@@ -80,11 +89,11 @@ export default function useSessionManager(agentId?: string, mode: 'audio' | 'vid
     const ref = doc(firestore, 'aiSessions', user.uid);
     
     // Use non-blocking write with contextual error handling
-    setDoc(ref, updatesWithTimestamp, { merge: true }).catch(error => {
+    updateDoc(ref, updatesWithTimestamp).catch(error => {
         const contextualError = new FirestorePermissionError({
             path: ref.path,
             operation: 'update',
-            requestResourceData: fullSessionData
+            requestResourceData: updatesWithTimestamp
         });
         errorEmitter.emit('permission-error', contextualError);
     });
