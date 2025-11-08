@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "akilipesacustomize-70486-65934"
+    "default": "akilipesacustomize-70486-65934",
+    "akilipesa": "akilipesacustomize-70486-65934"
   },
   "targets": {},
   "etags": {}

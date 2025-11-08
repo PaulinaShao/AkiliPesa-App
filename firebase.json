@@ -1,17 +1,38 @@
 {
   "firestore": {
+    "database": "(default)",
+    "location": "us-central1",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
   "storage": {
     "rules": "storage.rules"
   },
-  "functions": {
-    "source": "functions/lib",
-    "runtime": "nodejs20",
-    "predeploy": [
-      "npm --prefix \"$RESOURCE_DIR/..\" install",
-      "npm --prefix \"$RESOURCE_DIR/..\" run build"
-    ]
-  }
+  "functions": [
+    {
+      "codebase": "default",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR/..\" install",
+        "npm --prefix \"$RESOURCE_DIR/..\" run build"
+      ],
+      "source": "functions/lib",
+      "runtime": "nodejs20"
+    },
+    {
+      "source": "akilipesa",
+      "codebase": "akilipesa",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
 }
