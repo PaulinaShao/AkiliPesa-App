@@ -25,8 +25,8 @@ service cloud.firestore {
     // USER PROFILES (Public Social Network Mode)
     // ─────────────────────────────
     match /users/{userId} {
-      allow read, list: if true; // Public profiles + feed lookup
-      allow write: if isOwner(userId) || isAdmin();
+      allow read, write: if isOwner(userId) || isAdmin();
+      allow list: if isSignedIn();
     }
 
     match /users/{userId}/clones/{cloneId} {
@@ -41,8 +41,8 @@ service cloud.firestore {
     // AI SYSTEM
     // ─────────────────────────────
 
-    match /aiSessions/{sessionId} {
-      allow read, write: if isSignedIn() && request.auth.uid == resource.data.userId;
+    match /aiSessions/{userId} {
+      allow read, write: if request.auth.uid == userId;
     }
 
     match /ai_requests/{requestId} {
