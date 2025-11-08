@@ -3,6 +3,7 @@ import { onCall } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as openai from "./vendor/openai";
 import * as runpod from "./vendor/runpod";
+import { getVoiceProfile, updateVoiceProfile } from "./voiceMemory";
 
 const db = admin.firestore();
 
@@ -18,6 +19,7 @@ const db = admin.firestore();
 export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_API_KEY"] }, async (req) => {
   if (!req.auth) throw new Error("Unauthenticated");
   const { sessionId, audioChunkB64 } = req.data;
+  const { uid: userId } = req.auth;
 
   if (!sessionId || !audioChunkB64) {
     throw new Error("Missing sessionId or audioChunkB64");
@@ -30,7 +32,6 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
     throw new Error("Session is not active or does not exist.");
   }
   const sessionData = sessionSnap.data()!;
-  const userId = sessionData.userId;
 
   // 1. Speech-to-Text (STT) with RunPod Whisper
   const sttResult = await runpod.whisperSTT(audioChunkB64);
@@ -39,11 +40,20 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
     return { ok: false, error: "Failed to understand audio." };
   }
   const userText = sttResult.text;
-
-  // 2. Get Memory and Real-time Context
+  
+  // 2. Load User Voice Profile & Memory
+  const voiceProfile = await getVoiceProfile(userId);
   const memoryRef = db.collection("memory_context").doc(userId);
   const memorySnap = await memoryRef.get();
   const memoryData = memorySnap.exists() ? memorySnap.data() : {};
+
+  // Handle "previous voice" request
+  if (userText.match(/(voice|sauti).*back|rudi|first/i)) {
+    await updateVoiceProfile(userId, {
+      currentVoiceId: voiceProfile.voiceHistory?.[0]?.voiceId || "akili_sw_warm_soft"
+    });
+    // Maybe trigger a specific response here? For now, we'll let the normal flow handle it.
+  }
 
   // 3. LLM Reasoning with OpenAI GPT-4o
   const gptResponse = await openai.getAiResponse({
@@ -53,7 +63,7 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
       lastEnergy: sessionData.lastEnergy,
       lastPace: sessionData.lastPace,
     },
-    memoryContext: memoryData,
+    memoryContext: { ...memoryData, voiceProfile },
   });
 
   if (gptResponse.error || !gptResponse.data) {
@@ -65,13 +75,12 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
   // 4. Text-to-Speech (TTS) with RunPod OpenVoice
   const ttsResult = await runpod.openVoiceTTS({
     text: reply_text,
-    voice_id: memoryData?.voiceProfile?.cloneId || "default", // Use user's clone or default
+    voice_id: voiceProfile.currentVoiceId,
     ...voice,
   });
 
   if (ttsResult.error || !ttsResult.audio_b64) {
     console.error("TTS failed:", ttsResult.error);
-    // Still update session with text response even if TTS fails
     await sessionRef.update({
       lastEmotion: emotion,
       lastPace: voice.pace,
@@ -82,7 +91,7 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
     return { ok: false, error: "Failed to synthesize audio response." };
   }
 
-  // 5. Update Session State
+  // 5. Update Session State & Voice Profile
   await sessionRef.update({
     lastEmotion: emotion,
     lastPace: voice.pace,
@@ -90,9 +99,15 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
     lastLanguage: voice.language,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+  
+  await updateVoiceProfile(userId, {
+    currentVoiceId: voice.tone + "_" + voice.accent,
+    personalitySignature: voice,
+    lastAdaptedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
 
   // 6. Return audio to client
-  // The client will receive this payload and publish the audio into the Agora channel.
   return {
     ok: true,
     audio_b64: ttsResult.audio_b64,
