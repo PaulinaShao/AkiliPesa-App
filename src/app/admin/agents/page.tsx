@@ -26,7 +26,7 @@ export default function AgentRanking() {
 
   useEffect(() => {
     if (isUserLoading) return;
-    if (!user || user.email !== "blagridigital@gmail.com") {
+    if (!user) {
       router.push("/auth/login");
       return;
     }
@@ -34,7 +34,7 @@ export default function AgentRanking() {
 
     const q = query(collection(firestore, "agentStats"), orderBy("totalRevenue", "desc"));
     const unsubscribe = onSnapshot(q, (snap) => {
-      const agentList: AgentStat[] = snap.docs.map((doc) => doc.data() as AgentStat);
+      const agentList: AgentStat[] = snap.docs.map((doc) => ({ agentId: doc.id, ...doc.data() } as AgentStat));
       setAgents(agentList);
     });
     return () => unsubscribe();
@@ -55,6 +55,7 @@ export default function AgentRanking() {
             <h1 className="text-2xl font-bold text-gradient">Agent Performance Leaderboard</h1>
              <div className='flex gap-2'>
                 <Button variant="outline" asChild><Link href="/admin/marketplace">Marketplace</Link></Button>
+                <Button variant="outline" asChild><Link href="/admin/earnings">Earnings</Link></Button>
                 <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
                 <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
                 <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>

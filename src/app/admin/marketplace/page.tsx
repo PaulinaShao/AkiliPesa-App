@@ -27,7 +27,7 @@ export default function MarketplaceAdmin() {
 
   useEffect(() => {
     if (isUserLoading) return;
-    if (!user || user.email !== "blagridigital@gmail.com") {
+    if (!user) {
       router.push("/auth/login");
       return;
     }
@@ -52,6 +52,7 @@ export default function MarketplaceAdmin() {
             <h1 className="text-2xl font-bold text-gradient">Marketplace & Escrow Admin</h1>
              <div className='flex gap-2'>
                 <Button variant="outline" asChild><Link href="/admin/agents">Agents</Link></Button>
+                <Button variant="outline" asChild><Link href="/admin/earnings">Earnings</Link></Button>
                 <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
                 <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
                 <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>

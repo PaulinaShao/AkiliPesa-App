@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -95,8 +96,9 @@ service cloud.firestore {
     }
 
     match /transactions/{txId} {
-      allow read: if isAdmin() || isOwner(resource.data.uid) || (resource.data.agentId != null && isOwner(resource.data.agentId));
-      allow write: if isAdmin();
+       allow read: if isAdmin() || (isSignedIn() && request.auth.uid in resource.data.participants);
+       allow create: if false; // Only backend can create transactions
+       allow update, delete: if false;
     }
 
     match /orders/{oid} {
@@ -221,7 +223,8 @@ service cloud.firestore {
     
     match /callHistory/{callId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
-      allow write: if isAdmin(); // Only backend can create/update
+      allow create: if isAdmin(); // Only backend can create
+      allow update, delete: if false;
     }
 
     match /callInvites/{userId} {

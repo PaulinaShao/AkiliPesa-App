@@ -24,16 +24,17 @@ export default function PublicProfilePage() {
   }, [firestore, username]);
 
   const { data: users, isLoading: isProfileLoading } = useCollection<any>(userQuery);
+  
+  useEffect(() => {
+    // This effect should only run once the loading is complete.
+    if (!isProfileLoading && (!users || users.length === 0)) {
+      notFound();
+    }
+  }, [isProfileLoading, users]); // Correct dependency array
+  
   const profile = users?.[0];
   const profileId = profile?.id;
   const isAgent = profile?.role === 'agent';
-
-  useEffect(() => {
-    if (isProfileLoading) return;
-    if (!users || users.length === 0) {
-      notFound();
-    }
-  }, [isProfileLoading, users]);
   
   const isLoading = isProfileLoading || !profile;
 

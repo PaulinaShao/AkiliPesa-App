@@ -195,6 +195,7 @@ export default function AdminSettingsPage() {
            <div className='flex gap-2'>
             <Button variant="outline" asChild><Link href="/admin/marketplace">Marketplace</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/agents">Agents</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/earnings">Earnings</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/sessions">Sessions</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/verification">Verification</Link></Button>

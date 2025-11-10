@@ -35,18 +35,18 @@ export default function AdminSessions() {
 
   useEffect(() => {
     if (isUserLoading) return;
-    if (!user || user.email !== "blagridigital@gmail.com") {
+    if (!user) {
       router.push("/auth/login");
       return;
     }
     if (!firestore) return;
 
-    const q = query(collection(firestore, "aiSessions"), orderBy("lastUpdated", "desc"));
+    const q = query(collection(firestore, "aiSessions"), orderBy("updatedAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       const list: SessionRecord[] = [];
       snap.forEach((docSnap) => {
         const d = docSnap.data();
-        const totalCost = (d.duration || 0) * (d.costPerSec || 0);
+        const totalCost = (d.durationSec || 0) * (d.costCredits || 0);
         list.push({ ...(d as any), id: docSnap.id, totalCost });
       });
       setSessions(list);
@@ -105,6 +105,7 @@ export default function AdminSessions() {
          <div className='flex gap-2'>
             <Button variant="outline" asChild><Link href="/admin/marketplace">Marketplace</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/agents">Agents</Link></Button>
+            <Button variant="outline" asChild><Link href="/admin/earnings">Earnings</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/revenue">Revenue</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/settings">Settings</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/verification">Verification</Link></Button>
@@ -215,7 +216,7 @@ export default function AdminSessions() {
                 key={s.id}
                 className="border-b transition-colors hover:bg-muted/50"
               >
-                <td className="px-4 py-3 font-mono text-xs">{s.sessionId.substring(0,12)}...</td>
+                <td className="px-4 py-3 font-mono text-xs">{s.sessionId?.substring(0,12)}...</td>
                 <td className="px-4 py-3">{s.agentId}</td>
                 <td className="px-4 py-3 capitalize">{s.mode}</td>
                 <td className="px-4 py-3">{s.vendor || "-"}</td>
