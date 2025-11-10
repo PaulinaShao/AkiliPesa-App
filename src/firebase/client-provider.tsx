@@ -4,6 +4,7 @@
 import React, { type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
+import { IncomingCallWatcher } from '@/components/IncomingCall';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -21,6 +22,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       functions={firebaseServices.functions}
     >
       {children}
+      <IncomingCallWatcher />
     </FirebaseProvider>
   );
 }

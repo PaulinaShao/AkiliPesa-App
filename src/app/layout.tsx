@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
 import AppLayout from '@/components/AppLayout';
+import { IncomingCallWatcher } from '@/components/IncomingCall';
 
 export const metadata: Metadata = {
   title: 'AkiliPesa',
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={cn('font-body antialiased w-full max-w-full overflow-x-hidden', inter.variable)}>
         <FirebaseClientProvider>
           <AppLayout>{children}</AppLayout>
+          <IncomingCallWatcher />
         </FirebaseClientProvider>
         <Toaster />
       </body>

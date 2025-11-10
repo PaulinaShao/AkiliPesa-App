@@ -8,16 +8,20 @@ const db = admin.firestore();
 
 /**
  * Creates an AI call session, generates Agora tokens, and returns credentials to the client.
+ * It also creates a call invite for the callee.
  */
 export const createAiCallSession = onCall({ secrets: ["AGORA_APP_ID", "AGORA_APP_CERT"] }, async (req) => {
   if (!req.auth) {
     throw new Error("Unauthenticated: User must be logged in to create a call session.");
   }
   const { uid } = req.auth;
-  const { mode = "audio" } = req.data as { mode: "audio" | "video" };
+  const { mode = "audio", agentId } = req.data as { mode: "audio" | "video", agentId: string };
 
   if (!["audio", "video"].includes(mode)) {
     throw new Error("Invalid call mode specified. Must be 'audio' or 'video'.");
+  }
+  if (!agentId) {
+    throw new Error("agentId is required to initiate a call.");
   }
 
   const sessionRef = db.collection("aiSessions").doc();
@@ -30,6 +34,7 @@ export const createAiCallSession = onCall({ secrets: ["AGORA_APP_ID", "AGORA_APP
   const sessionData = {
     sessionId,
     userId: uid,
+    agentId,
     isActive: true,
     mode,
     startedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -48,8 +53,17 @@ export const createAiCallSession = onCall({ secrets: ["AGORA_APP_ID", "AGORA_APP
 
   await sessionRef.set(sessionData);
 
-  // For video mode, provide a placeholder for the AI's avatar video stream
-  const aiAvatarStreamURL = mode === "video" ? "rtmp://ai-avatar.akilipesa.com/live/akili-avatar" : undefined;
+  // Create a call invite for the target agent
+  const inviteRef = db.collection("callInvites").doc(agentId);
+  await inviteRef.set({
+    callerId: uid,
+    callerName: req.auth.token.name || "A user",
+    channelName,
+    sessionId,
+    mode,
+    status: "ringing",
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
 
   return {
     sessionId,
@@ -58,6 +72,5 @@ export const createAiCallSession = onCall({ secrets: ["AGORA_APP_ID", "AGORA_APP
     token: agoraTokens.userToken,
     uid, // The user's own UID for joining the channel
     appId: process.env.AGORA_APP_ID,
-    aiAvatarStreamURL,
   };
 });
