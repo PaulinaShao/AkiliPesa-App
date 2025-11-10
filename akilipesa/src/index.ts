@@ -1,5 +1,4 @@
 
-
 /**
  * Import function triggers from their respective submodules:
  *
@@ -14,6 +13,9 @@ import * as admin from "firebase-admin";
 import { onUpdate, onDocumentWritten, onDocumentCreated } from "firebase-functions/v2/firestore";
 import { computeCallCost } from "./lib/callPricing";
 import { onBookingRequestCreate, onBookingStatusChange, onCallInvite } from "./notifications";
+import { onBookingStatusCreateIcs } from "./ics";
+import { callSessionHandler, joinExistingCall, inviteToCall, updateLayoutMode, endCallRoom } from "./calls";
+
 
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -29,6 +31,9 @@ export { callLiveLoop } from "./ai/callLiveLoop";
 export { endAiCall } from "./ai/endAiCall";
 export { summarizeAiSession } from "./ai/summarizeSession";
 export { onBookingStatusCreateIcs } from "./ics";
+
+// --- New Real-time Call Functions ---
+export { callSessionHandler, joinExistingCall, inviteToCall, updateLayoutMode, endCallRoom };
 
 
 // --- Original AI Router & Adapters ---

@@ -7,6 +7,9 @@ import { FirebaseClientProvider } from '@/firebase';
 import AppLayout from '@/components/AppLayout';
 import { IncomingCallWatcher } from '@/components/IncomingCall';
 import { PresenceWriter } from '@/firebase/presence';
+import { Button } from '@/components/ui/button';
+import { Bell } from 'lucide-react';
+import { enableWebPushAndSaveToken } from '@/firebase/notifications';
 
 export const metadata: Metadata = {
   title: 'AkiliPesa',
@@ -21,6 +24,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={cn('font-body antialiased w-full max-w-full overflow-x-hidden', inter.variable)}>
         <FirebaseClientProvider>
           <PresenceWriter />
+          <div className="fixed bottom-20 right-4 z-50">
+            <Button onClick={enableWebPushAndSaveToken} size="sm" variant="outline">
+                <Bell className="mr-2 h-4 w-4" /> Enable Notifications
+            </Button>
+          </div>
           <AppLayout>{children}</AppLayout>
           <IncomingCallWatcher />
         </FirebaseClientProvider>

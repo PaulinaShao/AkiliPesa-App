@@ -26,10 +26,16 @@ export const onBookingRequestCreate = onDocumentCreated("agentBookings/{agentId}
             title: "New Booking Request",
             body: `${userName} has requested a new booking.`,
         },
+        data: {
+            type: "booking_request",
+            agentId,
+            requestId: event.params.requestId,
+        }
     });
 });
 
 export const onBookingStatusChange = onDocumentUpdated("agentBookings/{agentId}/requests/{requestId}", async (event) => {
+    if(!event.data) return;
     const before = event.data?.before.data();
     const after = event.data?.after.data();
 
@@ -37,25 +43,32 @@ export const onBookingStatusChange = onDocumentUpdated("agentBookings/{agentId}/
 
     await sendNotification(after.userId, {
         notification: {
-            title: "Booking Status Updated",
+            title: `Booking ${after.status}`,
             body: `Your booking request has been ${after.status}.`,
         },
+        data: {
+            type: "booking_status_change",
+            status: after.status,
+            icsUrl: after.icsUrl || "",
+        }
     });
 });
 
-export const onCallInvite = onDocumentCreated("callInvites/{callId}", async (event) => {
+export const onCallInvite = onDocumentCreated("callInvites/{inviteId}", async (event) => {
     const invite = event.data?.data();
     if (!invite) return;
+
+    const inviterDoc = await admin.firestore().collection("users").doc(invite.inviterId).get();
+    const inviterName = inviterDoc.data()?.displayName || "Someone";
 
     await sendNotification(invite.calleeId, {
         notification: {
             title: "Incoming Call",
-            body: `${invite.callerName || "Someone"} is calling you.`,
+            body: `${inviterName} is calling you.`,
         },
         data: {
-            callId: event.params.callId,
-            channelName: invite.channelName,
-            mode: invite.mode,
+            type: "call_invite",
+            callId: invite.callId,
         },
     });
 });

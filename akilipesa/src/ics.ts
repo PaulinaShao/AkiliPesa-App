@@ -3,7 +3,7 @@ import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 
-const storage = admin.storage();
+const storage = admin.storage().bucket();
 
 function formatICSDate(date: Date): string {
     return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
@@ -49,9 +49,8 @@ export const onBookingStatusCreateIcs = onDocumentUpdated("agentBookings/{agentI
         "END:VCALENDAR"
     ].join("\r\n");
 
-    const bucket = storage.bucket();
     const filePath = `bookings/${agentId}/${reqId}.ics`;
-    const file = bucket.file(filePath);
+    const file = storage.file(filePath);
     
     await file.save(icsContent, { contentType: "text/calendar" });
 
@@ -60,22 +59,5 @@ export const onBookingStatusCreateIcs = onDocumentUpdated("agentBookings/{agentI
         expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    await event.data.after.ref.set({ icsUrl: signedUrl }, { merge: true });
-
-    // Send FCM notification (code from notifications.ts could be reused/refactored)
-     const userDoc = await admin.firestore().collection("users").doc(userId).get();
-     const tokens = userDoc.data()?.fcmTokens || [];
- 
-     if (tokens.length > 0) {
-         await admin.messaging().sendToDevice(tokens, {
-             notification: {
-                 title: "Booking Confirmed!",
-                 body: `Your booking with ${agentSnap.data()?.displayName} is confirmed.`,
-             },
-             data: {
-                 icsUrl: signedUrl,
-                 type: "booking_confirmed"
-             }
-         });
-     }
+    await event.data.after.ref.update({ icsUrl: signedUrl });
 });

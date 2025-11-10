@@ -16,7 +16,8 @@
     "node-fetch": "^3.3.2",
     "agora-access-token": "^2.0.4",
     "nanoid": "^5.0.7",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "agora-token": "^2.0.3"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

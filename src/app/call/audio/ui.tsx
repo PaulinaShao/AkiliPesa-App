@@ -3,34 +3,43 @@
 import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import RequireAuthRedirect from '@/components/RequireAuthRedirect';
-import { PhoneOff, Sparkles } from 'lucide-react';
+import { PhoneOff, Sparkles, Mic, MicOff, Users } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
-import useSessionManager from '@/lib/sessionManager';
 import useAgoraConnection from '@/lib/agoraConnection';
+import { useCallRoom } from '@/hooks/useCallRoom';
+import { Button } from '@/components/ui/button';
 
 function AudioCallUI() {
   const params = useSearchParams();
-  const agentId = params.get('agentId') || 'akilipesa-ai';
-  const callId = params.get('callId') ?? undefined;
+  const callId = params.get('callId');
+  const channelName = params.get('channelName');
+  const token = params.get('token');
+  const appId = params.get('appId');
 
-  const { session, loading: sessionLoading, updateSession } = useSessionManager(agentId, 'audio');
-  const { connected, publishAudio, leave } = useAgoraConnection(callId);
+  const { room, loading: roomLoading } = useCallRoom(callId!);
+  const { connected, publishAudio, leave } = useAgoraConnection(channelName);
+  
+  // State for local mute
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
-    if (connected && session?.isActive) {
+    if (connected && room?.mode === 'audio') {
       publishAudio();
-      updateSession({ lastUpdated: Date.now() });
     }
-  }, [connected, session, publishAudio, updateSession]);
+  }, [connected, room, publishAudio]);
 
   const end = async () => {
-    await updateSession({ isActive: false });
-    await leave();
+    await leave(callId!);
     window.history.back();
   };
 
+  const toggleMute = async () => {
+    // This is a local toggle example. Real implementation would update participant state in Firestore.
+    setIsMuted(!isMuted);
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] text-white">
+    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] text-white p-4">
       <div className="flex flex-col items-center text-center">
         <div className="rounded-full bg-gradient-to-tr from-[#4B0082] to-[#8F00FF] p-1.5 mb-6 shadow-2xl shadow-primary/30">
           <Avatar className="w-32 h-32 bg-background/80 p-1">
@@ -39,19 +48,35 @@ function AudioCallUI() {
             </div>
           </Avatar>
         </div>
-        <h2 className="text-3xl font-bold mb-2">Calling {agentId}</h2>
+        <h2 className="text-3xl font-bold mb-2">
+            {room ? `${room.roomType} Call` : 'Loading Call...'}
+        </h2>
         <p className="text-gray-400 mb-8 capitalize">
-          {sessionLoading ? 'Initializing Session…' : connected ? 'Connected' : 'Connecting…'}
+          {roomLoading ? 'Initializing Session…' : connected ? 'Connected' : 'Connecting…'}
         </p>
 
-        <button
-          className="bg-[#E63946] rounded-full w-20 h-20 flex items-center justify-center shadow-lg hover:bg-[#ff4d5e]"
-          onClick={end}
-        >
-          <PhoneOff size={36} />
-        </button>
+        <div className="my-8 flex flex-wrap justify-center gap-4">
+            {room?.participants.map(p => (
+                <div key={p.uid} className="flex flex-col items-center gap-2 text-xs">
+                    <Avatar className="w-16 h-16"><Users/></Avatar>
+                    <p>{p.uid.slice(0,6)}... ({p.role})</p>
+                </div>
+            ))}
+        </div>
 
-        <p className="text-xs text-muted-foreground mt-6">Session ID: {session?.sessionId}</p>
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" className="bg-white/10 rounded-full w-16 h-16" onClick={toggleMute}>
+                {isMuted ? <MicOff size={28}/> : <Mic size={28}/>}
+            </Button>
+            <Button className="bg-[#E63946] rounded-full w-20 h-20 flex items-center justify-center shadow-lg hover:bg-[#ff4d5e]" onClick={end}>
+              <PhoneOff size={36} />
+            </Button>
+             <Button variant="outline" size="icon" className="bg-white/10 rounded-full w-16 h-16">
+                <Users size={28}/>
+            </Button>
+        </div>
+
+        <p className="text-xs text-muted-foreground mt-6">Call ID: {callId}</p>
       </div>
     </div>
   );
