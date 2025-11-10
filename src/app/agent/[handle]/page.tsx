@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { MobileActionSheet } from '@/components/MobileActionSheet';
 import { useAgentRating } from '@/hooks/useAgentRating';
 import { RatingChip } from '@/components/RatingChip';
+import { BookingRequest } from '@/components/BookingRequest';
+import { AvailabilityCalendar } from '@/components/AvailabilityCalendar';
 
 async function getAgentData(handle: string): Promise<UserProfile | null> {
     const { firestore } = initializeFirebase();
@@ -142,45 +144,6 @@ function ReviewsSection({ agentId }: { agentId: string }) {
   );
 }
 
-function BookingRequest({ agentId }: { agentId: string }) {
-  const { user } = useFirebaseUser();
-  const firestore = useFirestore();
-  const [start, setStart] = useState<string>('');
-  const [end, setEnd] = useState<string>('');
-
-  async function submit() {
-    if (!user || !start || !end || !firestore) return;
-    
-    // Basic validation
-    if (new Date(end) <= new Date(start)) {
-        alert("End time must be after start time.");
-        return;
-    }
-    
-    await addDoc(collection(firestore, "agentBookings", agentId, "requests"), {
-      userId: user.uid,
-      start: new Date(start),
-      end: new Date(end),
-      status: "pending",
-      createdAt: serverTimestamp()
-    });
-    alert("Booking requested!");
-    setStart('');
-    setEnd('');
-  }
-
-  return (
-    <div className="rounded-xl border bg-card p-4 space-y-3 mt-4">
-      <h3 className="font-medium">Request a Time</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} placeholder="Start Time" />
-        <Input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} placeholder="End Time" />
-      </div>
-      <Button onClick={submit} className="w-full">Send Booking Request</Button>
-    </div>
-  );
-}
-
 
 export default function PublicAgentProfilePage() {
   const firestore = useFirestore();
@@ -233,7 +196,11 @@ export default function PublicAgentProfilePage() {
         
         <AgentProfilePanel agentId={profile.uid} />
 
-        <BookingRequest agentId={profile.uid} />
+        <div className="mt-4">
+            <h3 className="font-medium text-lg mb-2">Book a Session</h3>
+            <AvailabilityCalendar agentId={profile.uid} />
+            <BookingRequest agentId={profile.uid} />
+        </div>
         
         <ReviewsSection agentId={profile.uid} />
         

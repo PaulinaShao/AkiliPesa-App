@@ -26,8 +26,7 @@ export default function PublicProfilePage() {
   const { data: users, isLoading: isProfileLoading } = useCollection<any>(userQuery);
   
   useEffect(() => {
-    // Only check for notFound after loading is complete and the result is an empty array.
-    if (!isProfileLoading && users && users.length === 0) {
+    if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
   }, [isProfileLoading, users]);

@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -23,124 +23,69 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.seeddemo = exports.buyPlan = exports.onpostcreate = exports.onusercreate = exports.onOrderStatusChange = exports.verifyAndReleaseEscrow = exports.createEscrowOnOrder = exports.redeemReward = exports.onAIInteractionReward = exports.onReferralReward = exports.onProductSaleReward = exports.updateAgentRanks = exports.aggregateDailyRevenue = exports.onWithdrawalApproved = exports.onVoiceUpload = exports.realtimePayoutManager = exports.enforceTransactionUid = exports.walletManager = exports.vendorOptimizer = exports.schedulePublisher = exports.socialPoster = exports.createVoiceClone = exports.callLiveLoop = exports.callSessionHandler = exports.aiRouter = void 0;
+exports.onVoiceUpload = exports.seeddemo = exports.redeemReward = exports.buyPlan = exports.onpostcreate = exports.onusercreate = exports.onFeedbackCreated = exports.onOrderStatusChange = exports.onDeliveryProofAdded = exports.onProductCreatedVerify = exports.verifyAndReleaseEscrow = exports.createEscrowOnOrder = exports.onAIInteractionReward = exports.onReferralReward = exports.onProductSaleReward = exports.onWithdrawalApproved = exports.updateAgentRanks = exports.aggregateDailyRevenue = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
 const db = admin.firestore();
-// --- AI ORCHESTRATION (All remain 1st-Gen exports) ---
-var aiRouter_1 = require("./ai/aiRouter");
-Object.defineProperty(exports, "aiRouter", { enumerable: true, get: function () { return aiRouter_1.aiRouter; } });
-var callSessionHandler_1 = require("./ai/callSessionHandler");
-Object.defineProperty(exports, "callSessionHandler", { enumerable: true, get: function () { return callSessionHandler_1.callSessionHandler; } });
-var callLiveLoop_1 = require("./ai/callLiveLoop");
-Object.defineProperty(exports, "callLiveLoop", { enumerable: true, get: function () { return callLiveLoop_1.callLiveLoop; } });
-var createVoiceClone_1 = require("./ai/createVoiceClone");
-Object.defineProperty(exports, "createVoiceClone", { enumerable: true, get: function () { return createVoiceClone_1.createVoiceClone; } });
-var socialPoster_1 = require("./ai/socialPoster");
-Object.defineProperty(exports, "socialPoster", { enumerable: true, get: function () { return socialPoster_1.socialPoster; } });
-Object.defineProperty(exports, "schedulePublisher", { enumerable: true, get: function () { return socialPoster_1.schedulePublisher; } });
-var vendorOptimizer_1 = require("./ai/vendorOptimizer");
-Object.defineProperty(exports, "vendorOptimizer", { enumerable: true, get: function () { return vendorOptimizer_1.vendorOptimizer; } });
-var walletManager_1 = require("./ai/walletManager");
-Object.defineProperty(exports, "walletManager", { enumerable: true, get: function () { return walletManager_1.walletManager; } });
-// --- Support Modules ---
-var enforceTransactionUid_1 = require("./enforceTransactionUid");
-Object.defineProperty(exports, "enforceTransactionUid", { enumerable: true, get: function () { return enforceTransactionUid_1.enforceTransactionUid; } });
-var realtimePayoutManager_1 = require("./realtimePayoutManager");
-Object.defineProperty(exports, "realtimePayoutManager", { enumerable: true, get: function () { return realtimePayoutManager_1.realtimePayoutManager; } });
-var openvoiceTrigger_1 = require("./openvoiceTrigger");
-Object.defineProperty(exports, "onVoiceUpload", { enumerable: true, get: function () { return openvoiceTrigger_1.onVoiceUpload; } });
-// ---------------------- PAYOUT CORE ----------------------
+/** -------------------------------
+ *  INTERNAL HELPERS (unchanged)
+ *  ------------------------------- */
 async function processPayout(agentId, amount, method, walletNumber, reqId) {
     try {
         const walletRef = db.collection("wallets").doc(agentId);
         const walletSnap = await walletRef.get();
         if (!walletSnap.exists) {
+            console.warn(`⚠️ Wallet not found for agent ${agentId}`);
             await db.collection("withdrawalRequests").doc(reqId).update({
-                status: "failed", error: "Wallet not found"
+                status: "failed",
+                error: "Wallet not found",
             });
             return;
         }
         const wallet = walletSnap.data() || { balanceTZS: 0 };
         if (wallet.balanceTZS < amount) {
+            console.warn(`⚠️ Insufficient balance for agent ${agentId}`);
             await db.collection("withdrawalRequests").doc(reqId).update({
-                status: "failed", error: "Insufficient wallet balance"
+                status: "failed",
+                error: "Insufficient wallet balance",
             });
             return;
         }
         await db.runTransaction(async (t) => {
             const ref = db.collection("walletTransactions").doc();
-            t.update(walletRef, { balanceTZS: admin.firestore.FieldValue.increment(-amount) });
+            t.update(walletRef, {
+                balanceTZS: admin.firestore.FieldValue.increment(-amount),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
             t.set(ref, {
-                txId: ref.id, agentId, amount: -amount, type: "debit",
-                method, walletNumber, timestamp: admin.firestore.FieldValue.serverTimestamp()
+                txId: ref.id,
+                agentId,
+                amount: -amount,
+                type: "debit",
+                method,
+                walletNumber,
+                description: `Withdrawal payout via ${method}`,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
             });
             t.update(db.collection("withdrawalRequests").doc(reqId), {
-                status: "paid", paidAt: admin.firestore.FieldValue.serverTimestamp()
+                status: "paid",
+                paidAt: admin.firestore.FieldValue.serverTimestamp(),
             });
         });
+        console.log(`✅ Payout processed internally for ${reqId} (Agent: ${agentId})`);
     }
     catch (err) {
+        console.error(`❌ Error processing payout for ${reqId}:`, err);
         await db.collection("withdrawalRequests").doc(reqId).update({
-            status: "failed", error: err.message
+            status: "failed",
+            error: err.message,
         });
     }
 }
-// ✅ `withdrawalRequests` → payout trigger (1st Gen)
-exports.onWithdrawalApproved = functions.firestore
-    .document("withdrawalRequests/{reqId}")
-    .onUpdate(async (change, context) => {
-    const before = change.before.data();
-    const after = change.after.data();
-    if (before.status !== "approved" && after.status === "approved") {
-        await processPayout(after.agentId, after.amount, after.paymentMethod, after.walletNumber, context.params.reqId);
-    }
-});
-// ✅ Daily Revenue
-exports.aggregateDailyRevenue = functions.pubsub
-    .schedule("0 0 * * *")
-    .onRun(async () => {
-    let totalSales = 0, totalCommission = 0, totalPayouts = 0;
-    const salesSnap = await db.collection("sales").get();
-    const payoutsSnap = await db.collection("withdrawalRequests").get();
-    salesSnap.forEach(s => {
-        const d = s.data();
-        totalSales += d.amount || 0;
-        totalCommission += d.amount * (d.type === "product" ? 0.9 : 0.6);
-    });
-    payoutsSnap.forEach(p => { if (p.data().status === "paid")
-        totalPayouts += p.data().amount; });
-    await db.collection("revenueReports").doc(new Date().toISOString().split("T")[0]).set({
-        totalSales,
-        totalCommission,
-        totalPlatformFee: totalSales - totalCommission,
-        totalPayouts,
-        netProfit: totalSales - totalCommission,
-        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-});
-// ✅ Update Agent Ranks
-exports.updateAgentRanks = functions.pubsub
-    .schedule("0 2 * * *")
-    .onRun(async () => {
-    const snap = await db.collection("agentStats").get();
-    const batch = db.batch();
-    snap.forEach(doc => {
-        const d = doc.data();
-        let rank = "Bronze";
-        if (d.totalSales >= 50 && d.totalRevenue >= 800000)
-            rank = "Platinum";
-        else if (d.totalSales >= 25 && d.totalRevenue >= 300000)
-            rank = "Gold";
-        else if (d.totalSales >= 10 && d.totalRevenue >= 100000)
-            rank = "Silver";
-        batch.update(doc.ref, { rank });
-    });
-    await batch.commit();
-});
-// -------------------- REWARDS & POINTS --------------------
 async function awardPoints(userId, points, reason) {
+    if (!userId || !points || points <= 0)
+        return;
     const ref = db.collection("akiliPoints").doc(userId);
     await ref.set({
         userId,
@@ -149,56 +94,246 @@ async function awardPoints(userId, points, reason) {
         lastEarnedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
     return db.collection("rewardHistory").add({
-        userId, points, reason, type: "earned",
-        timestamp: admin.firestore.FieldValue.serverTimestamp(), isRead: false,
+        userId,
+        points,
+        reason,
+        type: "earned",
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        isRead: false,
     });
 }
-// ✅ Product sale reward
+async function verifyMediaWithAI(imageUrl, type) {
+    try {
+        console.log(`Verifying ${type} media: ${imageUrl}`);
+        const isSuspicious = imageUrl.includes("suspicious") || Math.random() < 0.1;
+        if (isSuspicious) {
+            return {
+                verified: false,
+                flags: ["ai_flag_suspicious_content"],
+                confidence: 0.45,
+                aiVendor: "Simulated_AI_Vision",
+            };
+        }
+        return {
+            verified: true,
+            flags: [],
+            confidence: 0.97,
+            aiVendor: "Simulated_AI_Vision",
+        };
+    }
+    catch (err) {
+        console.error("AI verification error:", err);
+        return {
+            verified: false,
+            flags: ["ai_check_failed"],
+            confidence: 0.1,
+            aiVendor: "Simulated_AI_Vision",
+        };
+    }
+}
+async function updateTrustScore(sellerId) {
+    if (!sellerId)
+        return;
+    const productsSnap = await db
+        .collection("productVerification")
+        .where("sellerId", "==", sellerId)
+        .get();
+    const verified = productsSnap.docs.filter((d) => d.data().status === "verified").length;
+    const flagged = productsSnap.docs.filter((d) => d.data().status === "flagged").length;
+    const ordersSnap = await db
+        .collection("orders")
+        .where("sellerId", "==", sellerId)
+        .get();
+    const onTime = ordersSnap.docs.filter((d) => d.data().status === "completed").length;
+    const late = ordersSnap.docs.filter((d) => d.data().status === "late" || d.data().status === "refund_requested").length;
+    const feedbacksSnap = await db
+        .collection("feedback")
+        .where("sellerId", "==", sellerId)
+        .get();
+    const pos = feedbacksSnap.docs.filter((d) => d.data().sentiment === "positive").length;
+    const neg = feedbacksSnap.docs.filter((d) => d.data().sentiment === "negative").length;
+    const baseScore = 70;
+    const score = Math.max(0, Math.min(100, baseScore +
+        verified * 0.2 -
+        flagged * 5 +
+        onTime * 0.5 -
+        late * 2 +
+        pos * 0.3 -
+        neg * 3));
+    const level = score >= 90 ? "Platinum" : score >= 80 ? "Gold" : score >= 60 ? "Silver" : "Bronze";
+    const scoreData = {
+        sellerId,
+        trustScore: score,
+        level,
+        metrics: {
+            verifiedListings: verified,
+            flaggedListings: flagged,
+            onTimeDeliveries: onTime,
+            lateDeliveries: late,
+            feedbackPositive: pos,
+            feedbackNegative: neg,
+        },
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    await db.collection("trustScores").doc(sellerId).set(scoreData, { merge: true });
+    await db.collection("trustHistory").add({
+        sellerId,
+        trustScore: score,
+        level,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    console.log(`Updated trust score for seller ${sellerId} to ${score} (${level})`);
+}
+async function analyzeBehavior(buyerId) {
+    if (!buyerId)
+        return;
+    const ordersSnap = await db
+        .collection("orders")
+        .where("buyerId", "==", buyerId)
+        .get();
+    const onTime = ordersSnap.docs.filter((d) => d.data().status === "completed").length;
+    const late = ordersSnap.docs.filter((d) => d.data().status === "late").length;
+    const refunds = ordersSnap.docs.filter((d) => d.data().status === "refund_requested" || d.data().status === "refunded").length;
+    const feedbacksSnap = await db
+        .collection("feedback")
+        .where("buyerId", "==", buyerId)
+        .get();
+    const pos = feedbacksSnap.docs.filter((d) => d.data().sentiment === "positive").length;
+    const neg = feedbacksSnap.docs.filter((d) => d.data().sentiment === "negative").length;
+    const baseScore = 70;
+    const score = Math.max(0, Math.min(100, baseScore + onTime * 0.3 - late * 3 - refunds * 5 + pos * 0.5 - neg * 3));
+    const level = score >= 90 ? "Platinum" : score >= 80 ? "Gold" : score >= 60 ? "Silver" : "Bronze";
+    const scoreData = {
+        buyerId,
+        trustScore: score,
+        level,
+        metrics: {
+            onTimePayments: onTime,
+            latePayments: late,
+            refundsRequested: refunds,
+            positiveFeedback: pos,
+            negativeFeedback: neg,
+        },
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    await db.collection("buyerTrust").doc(buyerId).set(scoreData, { merge: true });
+    await db.collection("buyerHistory").add({
+        buyerId,
+        trustScore: score,
+        level,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    console.log(`Updated buyer trust score for ${buyerId} to ${score} (${level})`);
+}
+/** -------------------------------
+ *  aggregateDailyRevenue
+ *  ------------------------------- */
+const scheduler_1 = require("firebase-functions/v2/scheduler");
+const logger = __importStar(require("firebase-functions/logger"));
+exports.aggregateDailyRevenue = (0, scheduler_1.onSchedule)("0 0 * * *", async (event) => {
+    logger.log("Running daily revenue aggregation...");
+    const salesSnap = await db.collection("sales").get();
+    const payoutsSnap = await db.collection("withdrawalRequests").get();
+    let totalSales = 0, totalCommission = 0, totalPayouts = 0;
+    salesSnap.forEach((doc) => {
+        const s = doc.data();
+        totalSales += s.amount || 0;
+        totalCommission += s.amount * (s.type === "product" ? 0.9 : 0.6);
+    });
+    payoutsSnap.forEach((p) => {
+        if (p.data().status === "paid")
+            totalPayouts += p.data().amount;
+    });
+    await db.collection("revenueReports")
+        .doc(new Date().toISOString().split("T")[0])
+        .set({
+        totalSales,
+        totalCommission,
+        totalPlatformFee: totalSales - totalCommission,
+        totalPayouts,
+        netProfit: totalSales - totalCommission,
+        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    console.log("✅ Daily revenue report generated.");
+});
+/** -------------------------------
+ *  updateAgentRanks v2
+ *  ------------------------------- */
+exports.updateAgentRanks = (0, scheduler_1.onSchedule)({
+    schedule: "0 2 * * *",
+    timeZone: "Africa/Dar_es_Salaam",
+}, async () => {
+    logger.log("🏅 Updating agent ranks...");
+    const snap = await db.collection("agentStats").get();
+    const batch = db.batch();
+    snap.forEach((doc) => {
+        const d = doc.data();
+        let rank = "Bronze";
+        if (d.totalSales >= 50 && d.totalRevenue >= 800000)
+            rank = "Platinum";
+        else if (d.totalSales >= 25 && d.totalRevenue >= 300000)
+            rank = "Gold";
+        else if (d.totalSales >= 10 && d.totalRevenue >= 100000)
+            rank = "Silver";
+        if (d.rank !== rank)
+            batch.update(doc.ref, { rank });
+    });
+    await batch.commit();
+    logger.log(`✅ Agent ranks updated for ${snap.size} agents.`);
+});
+/** -------------------------------
+ *  GEN1 FIRESTORE TRIGGERS (v1)
+ *  ------------------------------- */
+exports.onWithdrawalApproved = functions.firestore
+    .document("withdrawalRequests/{reqId}")
+    .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    if (!before || !after)
+        return;
+    if (before.status !== "approved" && after.status === "approved") {
+        const payload = {
+            requestId: context.params.reqId,
+            agentId: after.agentId,
+            amount: after.amount,
+            paymentMethod: after.paymentMethod,
+            walletNumber: after.walletNumber,
+        };
+        console.log(`Triggering internal payout for ${payload.requestId}`);
+        await processPayout(payload.agentId, payload.amount, payload.paymentMethod, payload.walletNumber, payload.requestId);
+    }
+});
 exports.onProductSaleReward = functions.firestore
     .document("sales/{saleId}")
     .onCreate(async (snap) => {
     const sale = snap.data();
-    if (sale)
-        await awardPoints(sale.agentId, Math.floor(sale.amount * 0.01), "Product sale reward");
+    if (!sale)
+        return;
+    const points = Math.floor((sale.amount || 0) * 0.01);
+    if (points > 0)
+        await awardPoints(sale.agentId, points, "Product sale reward");
 });
-// ✅ Referral reward
 exports.onReferralReward = functions.firestore
     .document("referrals/{refId}")
     .onCreate(async (snap) => {
     const ref = snap.data();
-    if (ref?.status === "converted")
+    if (ref && ref.status === "converted") {
         await awardPoints(ref.sharedBy, 50, "Referral conversion reward");
+    }
 });
-// ✅ AI session reward
 exports.onAIInteractionReward = functions.firestore
     .document("aiSessions/{id}")
     .onUpdate(async (change) => {
     const before = change.before.data();
     const after = change.after.data();
-    if (before.isActive && !after.isActive && after.duration > 60) {
-        await awardPoints(after.userId, Math.floor(after.duration / 60) * 10, "AI session engagement");
+    if (!before || !after)
+        return;
+    if (before.isActive && !after.isActive && after.duration && after.duration > 60) {
+        const points = Math.floor(after.duration / 60) * 10;
+        if (after.userId)
+            await awardPoints(after.userId, points, "AI session engagement");
     }
 });
-// ✅ Redeem rewards
-exports.redeemReward = functions.https.onCall(async (req, ctx) => {
-    if (!ctx.auth)
-        throw new functions.https.HttpsError("unauthenticated", "Login required.");
-    const userId = ctx.auth.uid;
-    const { rewardId } = req;
-    return db.runTransaction(async (t) => {
-        const rewardDoc = await t.get(db.collection("rewardCatalog").doc(rewardId));
-        const pointsDoc = await t.get(db.collection("akiliPoints").doc(userId));
-        if (!rewardDoc.exists)
-            throw new functions.https.HttpsError("not-found", "Reward not found.");
-        const reward = rewardDoc.data();
-        const points = pointsDoc.data()?.totalPoints || 0;
-        if (points < reward.costPoints)
-            throw new functions.https.HttpsError("failed-precondition", "Insufficient points.");
-        t.update(db.collection("akiliPoints").doc(userId), { totalPoints: admin.firestore.FieldValue.increment(-reward.costPoints) });
-        return { success: true, message: `${reward.title} redeemed successfully!` };
-    });
-});
-// ---------------------- ESCROW / VERIFICATION ----------------------
 exports.createEscrowOnOrder = functions.firestore
     .document("orders/{orderId}")
     .onCreate(async (snap, context) => {
@@ -212,64 +347,313 @@ exports.createEscrowOnOrder = functions.firestore
         sellerId: order.sellerId,
         amount: order.amount,
         status: "held",
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-    await snap.ref.update({ escrowId: escrowRef.id, status: "paid" });
+    await db
+        .collection("orders")
+        .doc(context.params.orderId)
+        .update({ escrowId: escrowRef.id, status: "paid" });
 });
 exports.verifyAndReleaseEscrow = functions.firestore
     .document("deliveryProofs/{id}")
-    .onUpdate(async (change) => {
+    .onUpdate(async (change, context) => {
+    const before = change.before.data();
     const after = change.after.data();
-    if (!after?.verified)
+    if (!before || !after)
+        return;
+    if (before.verified === true || after.verified !== true)
         return;
     const orderDoc = await db.collection("orders").doc(after.orderId).get();
     if (!orderDoc.exists)
         return;
-    await db.collection("escrow").doc(orderDoc.data().escrowId).update({
-        status: "released", releasedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-    await db.collection("orders").doc(after.orderId).update({ status: "completed" });
-});
-// ------------------------- TRUST SCORES -------------------------
-exports.onOrderStatusChange = functions.firestore
-    .document("orders/{orderId}")
-    .onUpdate(async (change) => {
-    const before = change.before.data();
-    const after = change.after.data();
-    if (before.status !== after.status) {
-        await db.collection("orderTracking").add({
-            orderId: change.after.id,
-            status: after.status,
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
+    const order = orderDoc.data();
+    const verificationDoc = await db
+        .collection("productVerification")
+        .doc(order.productId)
+        .get();
+    const verification = verificationDoc.data();
+    if (verification && verification.status !== "verified") {
+        console.log(`⚠️ Product ${order.productId} not verified, skipping escrow release for order ${after.orderId}`);
+        await db.collection("escrow").doc(order.escrowId).update({ status: "hold_for_review" });
+        return;
+    }
+    if (after.verified === true) {
+        await db.collection("escrow").doc(order.escrowId).update({
+            status: "released",
+            releasedAt: admin.firestore.FieldValue.serverTimestamp(),
+            verified: true,
         });
+        await db.collection("orders").doc(after.orderId).update({ status: "completed" });
     }
 });
-// ------------------------- USER EVENTS -------------------------
+exports.onProductCreatedVerify = functions.firestore
+    .document("products/{productId}")
+    .onCreate(async (snap, context) => {
+    const product = snap.data();
+    if (!product || !product.media)
+        return;
+    const result = await verifyMediaWithAI(product.media, "product");
+    await db
+        .collection("productVerification")
+        .doc(context.params.productId)
+        .set({
+        productId: context.params.productId,
+        sellerId: product.ownerId,
+        status: result.verified ? "verified" : "flagged",
+        confidenceScore: result.confidence,
+        flags: result.flags,
+        aiVendor: result.aiVendor,
+        checkedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    if (product.ownerId) {
+        await updateTrustScore(product.ownerId);
+    }
+});
+exports.onDeliveryProofAdded = functions.firestore
+    .document("deliveryProofs/{id}")
+    .onCreate(async (snap, context) => {
+    const proof = snap.data();
+    if (!proof || !proof.url)
+        return;
+    const result = await verifyMediaWithAI(proof.url, "delivery");
+    await db
+        .collection("deliveryProofs")
+        .doc(context.params.id)
+        .update({
+        verified: result.verified,
+        verificationFlags: result.flags,
+    });
+    if (!result.verified) {
+        await db.collection("mediaReports").add({
+            fileId: context.params.id,
+            orderId: proof.orderId,
+            detectedIssue: result.flags[0] || "ai_flagged",
+            severity: "high",
+            sourceUrl: proof.url,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await db.collection("orders").doc(proof.orderId).update({ status: "verification_failed" });
+    }
+});
+exports.onOrderStatusChange = functions.firestore
+    .document("orders/{orderId}")
+    .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    if (!before || !after)
+        return;
+    if (before.status !== after.status) {
+        await db.collection("orderTracking").add({
+            orderId: context.params.orderId,
+            status: after.status,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        if (after.sellerId) {
+            await updateTrustScore(after.sellerId);
+        }
+        if (after.buyerId) {
+            await analyzeBehavior(after.buyerId);
+        }
+    }
+});
+exports.onFeedbackCreated = functions.firestore
+    .document("feedback/{id}")
+    .onCreate(async (snap, context) => {
+    const feedback = snap.data();
+    if (!feedback)
+        return;
+    // naive sentiment example (as before)
+    const text = String(feedback.text || "").toLowerCase();
+    let sentiment = "neutral";
+    if (text.includes("great") || text.includes("excellent") || text.includes("love")) {
+        sentiment = "positive";
+    }
+    else if (text.includes("bad") ||
+        text.includes("disappointed") ||
+        text.includes("poor")) {
+        sentiment = "negative";
+    }
+    await db.collection("feedback").doc(context.params.id).update({ sentiment });
+    if (feedback.sellerId) {
+        await updateTrustScore(feedback.sellerId);
+    }
+});
+/** -------------------------------
+ *  GEN1 AUTH + CALLABLES (v1)
+ *  ------------------------------- */
 exports.onusercreate = functions.auth.user().onCreate(async (user) => {
-    const { uid, email, displayName, phoneNumber, photoURL } = user;
-    await db.collection("users").doc(uid).set({
-        uid, email, displayName: displayName || "New User", phone: phoneNumber || null, photoURL: photoURL || "",
+    const { uid, email, displayName, photoURL, phoneNumber } = user;
+    const batch = db.batch();
+    const userRef = db.collection("users").doc(uid);
+    const handle = (email?.split("@")[0] || `user_${uid.substring(0, 5)}`)
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, "");
+    batch.set(userRef, {
+        uid,
+        handle,
+        displayName: displayName || "New User",
+        email: email || null,
+        phone: phoneNumber || null,
+        photoURL: photoURL || "",
+        bio: "",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        plan: "free",
+        wallet_balance: 10,
+        stats: { followers: 0, following: 0, likes: 0, postsCount: 0 },
+        accessibility: {
+            captions: false,
+            highContrast: false,
+            largeText: false,
+            signPreferred: false,
+        },
+    });
+    batch.set(db.collection("akiliPoints").doc(uid), {
+        userId: uid,
+        totalPoints: 0,
+        lifetimePoints: 0,
+        redeemedPoints: 0,
+        level: "Bronze",
+        lastEarnedAt: null,
+    });
+    batch.set(db.collection("wallets").doc(uid), {
+        agentId: uid,
+        balanceTZS: 0,
+        earnedToday: 0,
+        totalEarnings: 0,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    batch.set(db.collection("referrals").doc(uid), {
+        uid,
+        refCode: uid.slice(0, 6).toUpperCase(),
+        referredBy: null,
+        totalReferrals: 0,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    batch.set(db.collection("commissions").doc(uid), {
+        uid,
+        totalEarnings: 0,
+        pending: 0,
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    console.log(`✅ Smart bootstrap complete for ${email || uid}`);
 });
 exports.onpostcreate = functions.firestore
     .document("posts/{postId}")
     .onCreate(async (snap) => {
     const post = snap.data();
-    if (post?.authorId)
-        await awardPoints(post.authorId, 10, "Created a new post");
+    if (!post)
+        return;
+    const postRef = snap.ref;
+    await awardPoints(post.authorId, 10, "Created a new post");
+    const userStatsUpdate = db
+        .collection("users")
+        .doc(post.authorId)
+        .update({
+        "stats.postsCount": admin.firestore.FieldValue.increment(1),
+    });
+    const postTagsUpdate = postRef.update({ tags: post.tags || [] });
+    await Promise.all([userStatsUpdate, postTagsUpdate]);
 });
-// ------------------------- PLANS -------------------------
-exports.buyPlan = functions.https.onCall(async (data, ctx) => {
-    if (!ctx.auth)
+exports.buyPlan = functions.https.onCall(async (data, context) => {
+    if (!context.auth)
         throw new functions.https.HttpsError("unauthenticated", "Login required.");
-    await db.collection("users").doc(ctx.auth.uid).update({ plan: data.planId });
-    return { success: true };
+    const { uid } = context.auth;
+    const { planId } = data || {};
+    if (!planId) {
+        throw new functions.https.HttpsError("invalid-argument", "Missing planId.");
+    }
+    const planRef = db.collection("plans").doc(String(planId));
+    const planDoc = await planRef.get();
+    if (!planDoc.exists)
+        throw new functions.https.HttpsError("not-found", "Plan not found");
+    const plan = planDoc.data();
+    const userRef = db.collection("users").doc(uid);
+    await db.runTransaction(async (t) => {
+        t.update(userRef, { plan: plan.id });
+    });
+    return { success: true, plan: planId };
 });
-// ------------------------- DEMO -------------------------
-exports.seeddemo = functions.https.onCall(async (_, ctx) => {
-    if (!ctx.auth)
-        throw new functions.https.HttpsError("unauthenticated", "Login required.");
-    return { success: true, message: "Demo seeded." };
+const https_1 = require("firebase-functions/v2/https");
+/***********************************************
+ *  redeemReward (v2 HTTPS Callable)
+ ***********************************************/
+exports.redeemReward = (0, https_1.onCall)(async (request) => {
+    const auth = request.auth;
+    const data = request.data;
+    if (!auth) {
+        throw new Error("User must be authenticated to redeem rewards.");
+    }
+    const userId = auth.uid;
+    const rewardId = data?.rewardId;
+    if (!rewardId) {
+        throw new Error("Missing rewardId.");
+    }
+    const rewardRef = db.collection("rewardCatalog").doc(String(rewardId));
+    const userPointsRef = db.collection("akiliPoints").doc(userId);
+    return db.runTransaction(async (t) => {
+        const rewardDoc = await t.get(rewardRef);
+        const userPointsDoc = await t.get(userPointsRef);
+        if (!rewardDoc.exists) {
+            throw new Error("Reward not found.");
+        }
+        const reward = rewardDoc.data();
+        const userPoints = userPointsDoc.data() || { totalPoints: 0 };
+        if (userPoints.totalPoints < reward.costPoints) {
+            throw new Error("Insufficient points.");
+        }
+        t.update(userPointsRef, {
+            totalPoints: admin.firestore.FieldValue.increment(-reward.costPoints),
+            redeemedPoints: admin.firestore.FieldValue.increment(reward.costPoints),
+        });
+        const historyRef = db.collection("rewardHistory").doc();
+        t.set(historyRef, {
+            userId,
+            rewardId,
+            points: reward.costPoints,
+            type: "redeem",
+            description: `Redeemed: ${reward.title}`,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        if (reward.type === "walletCredit" && reward.value > 0) {
+            const walletRef = db.collection("wallets").doc(userId);
+            t.set(walletRef, {
+                balanceTZS: admin.firestore.FieldValue.increment(reward.value),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+        return { success: true, message: `${reward.title} redeemed successfully!` };
+    });
 });
+/***********************************************
+ * seeddemo (v2 HTTPS Callable)
+ ***********************************************/
+exports.seeddemo = (0, https_1.onCall)(async (request) => {
+    const auth = request.auth;
+    if (!auth) {
+        throw new Error("The function must be called while authenticated.");
+    }
+    const uid = auth.uid;
+    await db.collection("posts").add({
+        authorId: uid,
+        media: {
+            url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+            type: "video",
+        },
+        thumbnailUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerFun.jpg",
+        caption: "Having some fun with this demo video! #demo #akilipesa",
+        tags: ["demo", "akilipesa", "fun"],
+        likes: 1337,
+        comments: 42,
+        shares: 12,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { success: true, message: "Demo data seeded." };
+});
+/***********************************************
+ *  VOICE CLONING UPLOAD → OPENVOICE WEBHOOK
+ ***********************************************/
+var openvoiceTrigger_1 = require("./openvoiceTrigger");
+Object.defineProperty(exports, "onVoiceUpload", { enumerable: true, get: function () { return openvoiceTrigger_1.onVoiceUpload; } });
 //# sourceMappingURL=index.js.map

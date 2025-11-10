@@ -33,7 +33,7 @@ export { summarizeAiSession } from "./ai/summarizeSession";
 export { onBookingStatusCreateIcs } from "./ics";
 
 // --- New Real-time Call Functions ---
-export { callSessionHandler, joinExistingCall, inviteToCall, updateLayoutMode, endCallRoom };
+export { joinExistingCall, inviteToCall, updateLayoutMode, endCallRoom };
 
 
 // --- Original AI Router & Adapters ---

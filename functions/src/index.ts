@@ -1,3 +1,5 @@
+  
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
@@ -259,47 +261,61 @@ async function analyzeBehavior(buyerId: string) {
 }
 
 /** -------------------------------
- *  GEN1 SCHEDULER (v1)
+ *  aggregateDailyRevenue
  *  ------------------------------- */
-export const aggregateDailyRevenue = functions.pubsub
-  .schedule("every day 00:00")
-  .timeZone("Africa/Dar_es_Salaam")
-  .onRun(async () => {
-    const salesSnap = await db.collection("sales").get();
-    const payoutsSnap = await db.collection("withdrawalRequests").get();
 
-    let totalSales = 0,
-      totalCommission = 0,
-      totalPayouts = 0;
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import * as logger from "firebase-functions/logger";
 
-    salesSnap.forEach((doc) => {
-      const s = doc.data();
-      totalSales += s.amount || 0;
-      totalCommission += s.amount * (s.type === "product" ? 0.9 : 0.6);
-    });
-    payoutsSnap.forEach((p) => {
-      if (p.data().status === "paid") totalPayouts += p.data().amount;
-    });
+export const aggregateDailyRevenue = onSchedule("0 0 * * *", async (event) => {
+  logger.log("Running daily revenue aggregation...");
 
-    await db
-      .collection("revenueReports")
-      .doc(new Date().toISOString().split("T")[0])
-      .set({
-        totalSales,
-        totalCommission,
-        totalPlatformFee: totalSales - totalCommission,
-        totalPayouts,
-        netProfit: totalSales - totalCommission,
-        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+  const salesSnap = await db.collection("sales").get();
+  const payoutsSnap = await db.collection("withdrawalRequests").get();
 
-    console.log("✅ Daily revenue report generated.");
+  let totalSales = 0,
+    totalCommission = 0,
+    totalPayouts = 0;
+
+  salesSnap.forEach((doc) => {
+    const s = doc.data();
+    totalSales += s.amount || 0;
+    totalCommission += s.amount * (s.type === "product" ? 0.9 : 0.6);
   });
 
-export const updateAgentRanks = functions.pubsub
-  .schedule("every day 02:00")
-  .timeZone("Africa/Dar_es_Salaam")
-  .onRun(async () => {
+  payoutsSnap.forEach((p) => {
+    if (p.data().status === "paid") totalPayouts += p.data().amount;
+  });
+
+  await db.collection("revenueReports")
+    .doc(new Date().toISOString().split("T")[0])
+    .set({
+      totalSales,
+      totalCommission,
+      totalPlatformFee: totalSales - totalCommission,
+      totalPayouts,
+      netProfit: totalSales - totalCommission,
+      generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+  console.log("✅ Daily revenue report generated.");
+});
+
+
+
+
+/** -------------------------------
+ *  updateAgentRanks v2
+ *  ------------------------------- */
+
+export const updateAgentRanks = onSchedule(
+  {
+    schedule: "0 2 * * *",
+    timeZone: "Africa/Dar_es_Salaam",
+  },
+  async () => {
+    logger.log("🏅 Updating agent ranks...");
+
     const snap = await db.collection("agentStats").get();
     const batch = db.batch();
 
@@ -309,12 +325,14 @@ export const updateAgentRanks = functions.pubsub
       if (d.totalSales >= 50 && d.totalRevenue >= 800000) rank = "Platinum";
       else if (d.totalSales >= 25 && d.totalRevenue >= 300000) rank = "Gold";
       else if (d.totalSales >= 10 && d.totalRevenue >= 100000) rank = "Silver";
-      if (d.rank !== rank) batch.update(db.collection("agentStats").doc(doc.id), { rank });
+      if (d.rank !== rank) batch.update(doc.ref, { rank });
     });
 
     await batch.commit();
-    console.log(`🏅 Agent ranks updated for ${snap.size} agents.`);
-  });
+    logger.log(`✅ Agent ranks updated for ${snap.size} agents.`);
+  }
+);
+
 
 /** -------------------------------
  *  GEN1 FIRESTORE TRIGGERS (v1)
@@ -650,17 +668,25 @@ export const buyPlan = functions.https.onCall(async (data, context) => {
   return { success: true, plan: planId };
 });
 
-export const redeemReward = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "User must be authenticated to redeem rewards."
-    );
+import { onCall } from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
+
+/***********************************************
+ *  redeemReward (v2 HTTPS Callable)
+ ***********************************************/
+export const redeemReward = onCall(async (request) => {
+  const auth = request.auth;
+  const data = request.data;
+
+  if (!auth) {
+    throw new Error("User must be authenticated to redeem rewards.");
   }
-  const userId = context.auth.uid;
+
+  const userId = auth.uid;
   const rewardId = data?.rewardId;
+
   if (!rewardId) {
-    throw new functions.https.HttpsError("invalid-argument", "Missing rewardId.");
+    throw new Error("Missing rewardId.");
   }
 
   const rewardRef = db.collection("rewardCatalog").doc(String(rewardId));
@@ -671,13 +697,14 @@ export const redeemReward = functions.https.onCall(async (data, context) => {
     const userPointsDoc = await t.get(userPointsRef);
 
     if (!rewardDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Reward not found.");
+      throw new Error("Reward not found.");
     }
+
     const reward = rewardDoc.data()!;
     const userPoints = userPointsDoc.data() || { totalPoints: 0 };
 
     if (userPoints.totalPoints < reward.costPoints) {
-      throw new functions.https.HttpsError("failed-precondition", "Insufficient points.");
+      throw new Error("Insufficient points.");
     }
 
     t.update(userPointsRef, {
@@ -711,14 +738,16 @@ export const redeemReward = functions.https.onCall(async (data, context) => {
   });
 });
 
-export const seeddemo = functions.https.onCall(async (_data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "The function must be called while authenticated."
-    );
+/***********************************************
+ * seeddemo (v2 HTTPS Callable)
+ ***********************************************/
+export const seeddemo = onCall(async (request) => {
+  const auth = request.auth;
+  if (!auth) {
+    throw new Error("The function must be called while authenticated.");
   }
-  const { uid } = context.auth;
+
+  const uid = auth.uid;
 
   await db.collection("posts").add({
     authorId: uid,
@@ -738,6 +767,8 @@ export const seeddemo = functions.https.onCall(async (_data, context) => {
 
   return { success: true, message: "Demo data seeded." };
 });
+
+
 /***********************************************
  *  VOICE CLONING UPLOAD → OPENVOICE WEBHOOK
  ***********************************************/
