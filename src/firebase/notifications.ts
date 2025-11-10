@@ -1,14 +1,15 @@
-
 'use client';
 
-import { getMessaging, getToken } from "firebase/messaging";
-import { useFirebase, useFirebaseUser } from "@/firebase";
-import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { getMessaging, getToken, Messaging } from "firebase/messaging";
+import { FirebaseApp } from "firebase/app";
+import { Firestore, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { User } from "firebase/auth";
 
-export async function enableWebPushAndSaveToken() {
-    const { firebaseApp, firestore } = useFirebase();
-    const { user } = useFirebaseUser();
-    
+export async function enableWebPushAndSaveToken(
+    firebaseApp: FirebaseApp,
+    firestore: Firestore,
+    user: User | null
+) {
     if (!firebaseApp || !firestore || !user) {
         console.error("Firebase not initialized or user not logged in.");
         alert("Please log in to enable notifications.");
