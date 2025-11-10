@@ -45,6 +45,7 @@
     "@react-three/fiber": "^8.16.8",
     "agora-rtc-sdk-ng": "^4.24.0",
     "agora-token": "^2.0.3",
+    "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
@@ -59,6 +60,7 @@
     "patch-package": "^8.0.0",
     "pixi.js": "^7.4.2",
     "react": "^18.3.1",
+    "react-chartjs-2": "^5.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.2",
@@ -70,6 +72,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/chart.js": "^2.9.41",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

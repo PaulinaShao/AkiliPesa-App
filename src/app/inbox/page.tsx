@@ -1,3 +1,5 @@
+'use client';
+export const dynamic = "force-dynamic";
 
 import { getConversations } from '@/lib/data';
 import { InboxClient } from './InboxClient';
