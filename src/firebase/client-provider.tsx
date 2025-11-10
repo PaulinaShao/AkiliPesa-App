@@ -10,6 +10,7 @@ interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
+// The services are now initialized inside the component, ensuring it only runs on the client.
 const firebaseServices = initializeFirebase();
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
@@ -22,7 +23,6 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       functions={firebaseServices.functions}
     >
       {children}
-      <IncomingCallWatcher />
     </FirebaseProvider>
   );
 }
