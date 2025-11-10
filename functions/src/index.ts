@@ -1,5 +1,3 @@
-  
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
@@ -669,7 +667,6 @@ export const buyPlan = functions.https.onCall(async (data, context) => {
 });
 
 import { onCall } from "firebase-functions/v2/https";
-import * as logger from "firebase-functions/logger";
 
 /***********************************************
  *  redeemReward (v2 HTTPS Callable)
@@ -739,15 +736,17 @@ export const redeemReward = onCall(async (request) => {
 });
 
 /***********************************************
- * seeddemo (v2 HTTPS Callable)
+ * seeddemo (back to v1)
  ***********************************************/
-export const seeddemo = onCall(async (request) => {
-  const auth = request.auth;
-  if (!auth) {
-    throw new Error("The function must be called while authenticated.");
+export const seeddemo = functions.https.onCall(async (_data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "The function must be called while authenticated."
+    );
   }
 
-  const uid = auth.uid;
+  const { uid } = context.auth;
 
   await db.collection("posts").add({
     authorId: uid,
@@ -767,7 +766,6 @@ export const seeddemo = onCall(async (request) => {
 
   return { success: true, message: "Demo data seeded." };
 });
-
 
 /***********************************************
  *  VOICE CLONING UPLOAD → OPENVOICE WEBHOOK

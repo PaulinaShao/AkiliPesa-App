@@ -16,7 +16,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.admin == true);
     }
-    
+
     function isAgent() {
       return isSignedIn() && request.auth.token.role == 'agent';
     }
@@ -30,13 +30,13 @@ service cloud.firestore {
     }
     
     match /agentAvailability/{agentId} {
-        allow read: if true;
-        allow write: if isOwner(agentId) || isAdmin();
+      allow read: if true;
+      allow write: if isOwner(agentId) || isAdmin();
     }
 
     match /agentPricing/{agentId} {
-        allow read: if true;
-        allow write: if isOwner(agentId) || isAdmin();
+      allow read: if true;
+      allow write: if isOwner(agentId) || isAdmin();
     }
 
     // ─────────────────────────────
@@ -51,64 +51,87 @@ service cloud.firestore {
     match /agentBookings/{agentId}/requests/{requestId} {
       allow read: if isOwner(agentId) || isOwner(resource.data.userId);
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      // Allow owner or admin to update status
-      allow update: if (isOwner(agentId) || isAdmin()) && !("userId" in request.resource.data); 
+
+      // Allow agent owner or admin to update booking status only
+      allow update: if (isOwner(agentId) || isAdmin()) && !("userId" in request.resource.data);
+
       allow delete: if isAdmin();
     }
 
     // ─────────────────────────────
-    // REAL-TIME CALLING
+    // REAL-TIME CALLING (UI CALL BUTTONS)
     // ─────────────────────────────
     match /callRooms/{callId} {
       function isParticipant(uid) {
         return uid in resource.data.participants;
       }
-      
+
       allow read: if isSignedIn() && isParticipant(request.auth.uid);
-      allow create: if false; // Only backend
-      // Allow host to change layout, participants to change their own state
+      allow create: if false; // Backend only creates rooms
       allow update: if isSignedIn() && (
-        (isOwner(resource.data.hostId) && !("participants" in request.resource.data)) || // Host updates layout
-        (isParticipant(request.auth.uid) && request.resource.data.participants[request.auth.uid] == resource.data.participants[request.auth.uid]) // Participant updates self
+        (isOwner(resource.data.hostId) && !("participants" in request.resource.data)) ||
+        (isParticipant(request.auth.uid))
       );
       allow delete: if isOwner(resource.data.hostId) || isAdmin();
     }
-    
+
     match /callInvites/{inviteId} {
-      allow read, write: if isSignedIn(); // Simplified for now
+      allow read, write: if isSignedIn();
+    }
+
+    // NEW: Call Session signalling (Agora / Zego token exchange + join info)
+    match /callSessions/{sessionId} {
+      allow create, read, update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     // ─────────────────────────────
-    // FINANCIAL & EARNINGS SYSTEM
+    // POINTS + REWARD STORE
+    // ─────────────────────────────
+    match /akiliPoints/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /rewardHistory/{historyId} {
+      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow write: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+
+    // ─────────────────────────────
+    // FINANCIAL / WALLET / ESCROW
     // ─────────────────────────────
     match /wallets/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow write: if false; // Backend only
+      allow write: if false; // Backend controlled only
     }
 
     match /transactions/{txId} {
-       allow read: if isAdmin() || (isSignedIn() && request.auth.uid in resource.data.participants);
-       allow create, update, delete: if false; // Backend only
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid in resource.data.participants);
+      allow create, update, delete: if false; // Backend only
     }
 
     // ─────────────────────────────
-    // ALL OTHER COLLECTIONS (PREVIOUSLY DEFINED)
+    // AI REQUESTS + POSTS + NOTIFICATIONS
     // ─────────────────────────────
     match /ai_requests/{requestId} {
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow read: if isSignedIn() && request.auth.uid == resource.data.uid;
     }
-    
+
     match /posts/{postId} {
       allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update, delete: if isOwner(resource.data.authorId);
     }
-    
+
     match /notifications/{nid} {
       allow read, write: if isOwner(resource.data.userId) || isAdmin();
     }
-    
+
+    // ─────────────────────────────
+    // DENY ANYTHING NOT EXPLICITLY ALLOWED
+    // ─────────────────────────────
     match /{path=**} {
       allow read, write: if false;
     }

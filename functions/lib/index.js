@@ -627,14 +627,13 @@ exports.redeemReward = (0, https_1.onCall)(async (request) => {
     });
 });
 /***********************************************
- * seeddemo (v2 HTTPS Callable)
+ * seeddemo (back to v1)
  ***********************************************/
-exports.seeddemo = (0, https_1.onCall)(async (request) => {
-    const auth = request.auth;
-    if (!auth) {
-        throw new Error("The function must be called while authenticated.");
+exports.seeddemo = functions.https.onCall(async (_data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
-    const uid = auth.uid;
+    const { uid } = context.auth;
     await db.collection("posts").add({
         authorId: uid,
         media: {

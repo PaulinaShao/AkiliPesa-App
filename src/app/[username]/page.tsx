@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -25,8 +26,7 @@ export default function PublicProfilePage() {
   const { data: users, isLoading: isProfileLoading } = useCollection<any>(userQuery);
   
   useEffect(() => {
-    // Only run the check *after* loading is complete and we have a definitive result.
-    if (!isProfileLoading && (!users || users.length === 0)) {
+    if (!isProfileLoading && users && users.length === 0) {
       notFound();
     }
   }, [isProfileLoading, users]);
