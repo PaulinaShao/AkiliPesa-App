@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useFirebaseUser } from '@/firebase';
-import { collection, query, where, limit, getDocs, addDoc, serverTimestamp, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Header } from '@/components/header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notFound, useParams } from 'next/navigation';
@@ -15,6 +15,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Star } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { MobileActionSheet } from '@/components/MobileActionSheet';
+import { useAgentRating } from '@/hooks/useAgentRating';
+import { RatingChip } from '@/components/RatingChip';
 
 async function getAgentData(handle: string): Promise<UserProfile | null> {
     const { firestore } = initializeFirebase();
@@ -37,18 +40,27 @@ export async function generateMetadata({ params }: { params: { handle: string } 
     };
   }
 
+  const title = `${agent.displayName || agent.handle} | AkiliPesa Agent`;
+  const description = agent.bio || `Connect with ${agent.displayName} on AkiliPesa for expert advice and services.`;
+
   return {
-    title: `${agent.displayName || agent.handle} | AkiliPesa Agent`,
-    description: agent.bio || `Connect with ${agent.displayName} on AkiliPesa for expert advice and services.`,
+    title,
+    description,
     openGraph: {
-      title: `${agent.displayName || agent.handle} | AkiliPesa Agent`,
-      description: agent.bio || `Connect with ${agent.displayName} on AkiliPesa for expert advice and services.`,
+      title,
+      description,
       images: [{ url: agent.photoURL || '/assets/default-avatar-tanzanite.svg' }],
       type: "profile",
       profile: {
           username: agent.handle
       }
-    }
+    },
+    twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [agent.photoURL || '/assets/default-avatar-tanzanite.svg'],
+    },
   };
 }
 
@@ -183,7 +195,7 @@ export default function PublicAgentProfilePage() {
   const { data: users, isLoading: isProfileLoading } = useCollection<UserProfile>(userQuery);
   
   useEffect(() => {
-    if (!isProfileLoading && users && users.length === 0) {
+    if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
   }, [isProfileLoading, users]);
@@ -213,6 +225,9 @@ export default function PublicAgentProfilePage() {
           <FallbackAvatar src={profile.photoURL} alt={profile.handle} size={96} />
           <h1 className="text-2xl font-bold mt-4">@{profile.handle}</h1>
           <p className="text-muted-foreground">{profile.displayName}</p>
+          <div className="my-2">
+            <RatingChip agentId={profile.uid} />
+          </div>
           <p className="text-sm max-w-md mt-2">{profile.bio}</p>
         </header>
         
@@ -223,6 +238,7 @@ export default function PublicAgentProfilePage() {
         <ReviewsSection agentId={profile.uid} />
         
       </div>
+       <MobileActionSheet agentId={profile.uid} />
     </div>
   );
 }

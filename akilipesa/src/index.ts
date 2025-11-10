@@ -28,6 +28,7 @@ export { callSessionHandler, enqueueTTS } from "./ai/callSessionHandler";
 export { callLiveLoop } from "./ai/callLiveLoop";
 export { endAiCall } from "./ai/endAiCall";
 export { summarizeAiSession } from "./ai/summarizeSession";
+export { onBookingStatusCreateIcs } from "./ics";
 
 
 // --- Original AI Router & Adapters ---
