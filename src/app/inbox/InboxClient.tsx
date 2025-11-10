@@ -10,7 +10,7 @@ import { Phone, Sparkles, Video, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo } from 'react';
-import { useFirebase, useFirebaseUser, useCollection } from '@/firebase';
+import { useFirebase, useFirebaseUser, useCollection, useMemoFirebase } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { AgentPicker } from '@/components/AgentPicker';
@@ -46,7 +46,7 @@ export function InboxClient({ initialConversations }: InboxClientProps) {
       return Array.from(ids);
     }, [initialConversations, currentUserAuth]);
 
-    const usersQuery = useMemo(() => {
+    const usersQuery = useMemoFirebase(() => {
       if (!firestore || userIdsInConversations.length === 0) return null;
       // Note: A real app might need to chunk this query if userIdsInConversations > 30
       return query(collection(firestore, 'users'), where(documentId(), 'in', userIdsInConversations));
