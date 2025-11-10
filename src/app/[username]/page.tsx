@@ -26,11 +26,10 @@ export default function PublicProfilePage() {
   const { data: users, isLoading: isProfileLoading } = useCollection<any>(userQuery);
   
   useEffect(() => {
-    // This effect should only run once the loading is complete.
     if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
-  }, [isProfileLoading, users]); // Correct dependency array
+  }, [isProfileLoading, users]);
   
   const profile = users?.[0];
   const profileId = profile?.id;
