@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onVoiceUpload = exports.seeddemo = exports.redeemReward = exports.buyPlan = exports.onpostcreate = exports.onusercreate = exports.onFeedbackCreated = exports.onOrderStatusChange = exports.onDeliveryProofAdded = exports.onProductCreatedVerify = exports.verifyAndReleaseEscrow = exports.createEscrowOnOrder = exports.onAIInteractionReward = exports.onReferralReward = exports.onProductSaleReward = exports.onWithdrawalApproved = exports.updateAgentRanks = exports.aggregateDailyRevenue = void 0;
+exports.onVoiceUpload = exports.socialPoster2 = exports.callLiveLoop2 = exports.vendorOptimizer2 = exports.schedulePublisher2 = exports.callSessionHandler2 = exports.aiRouter2 = exports.createVoiceCloneV2 = exports.seeddemo = exports.redeemReward = exports.buyPlan = exports.onpostcreate = exports.onusercreate = exports.onFeedbackCreated = exports.onOrderStatusChange = exports.onDeliveryProofAdded = exports.onProductCreatedVerify = exports.verifyAndReleaseEscrow = exports.createEscrowOnOrder = exports.onAIInteractionReward = exports.onReferralReward = exports.onProductSaleReward = exports.onWithdrawalApproved = exports.updateAgentRanks = exports.aggregateDailyRevenue = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
@@ -653,6 +653,181 @@ exports.seeddemo = functions.https.onCall(async (_data, context) => {
 /***********************************************
  *  VOICE CLONING UPLOAD → OPENVOICE WEBHOOK
  ***********************************************/
-var openvoiceTrigger_1 = require("./openvoiceTrigger");
-Object.defineProperty(exports, "onVoiceUpload", { enumerable: true, get: function () { return openvoiceTrigger_1.onVoiceUpload; } });
+exports.createVoiceCloneV2 = functions.https.onRequest(async (req, res) => {
+    try {
+        const userId = req.query.userId || req.body.userId;
+        const fileUrl = req.query.fileUrl || req.body.fileUrl;
+        if (!userId || !fileUrl) {
+            res.status(400).json({ error: "Missing userId or fileUrl" });
+            return;
+        }
+        await db.collection("voiceClones").doc(String(userId)).set({
+            fileUrl,
+            status: "processing",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        res.json({ success: true, message: "Voice clone job queued." });
+        return;
+    }
+    catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+        return;
+    }
+});
+/***********************************************
+ * aiRouter (Gen-1 HTTP)
+ * Handles chat requests to AI / Agents
+ ***********************************************/
+exports.aiRouter2 = functions.https.onRequest(async (req, res) => {
+    try {
+        res.json({ ok: true, route: "AI router live" });
+        return;
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+        return;
+    }
+});
+/***********************************************
+ * callSessionHandler (Gen-1 HTTP)
+ * Creates or updates a call session in Firestore.
+ ***********************************************/
+exports.callSessionHandler2 = functions.https.onRequest(async (req, res) => {
+    try {
+        const { callId, userId } = req.body;
+        if (!callId || !userId) {
+            res.status(400).json({ error: "Missing callId or userId" });
+            return;
+        }
+        await db.collection("callSessions").doc(callId).set({
+            lastHeartbeat: admin.firestore.FieldValue.serverTimestamp(),
+            [`participants.${userId}.active`]: true,
+        }, { merge: true });
+        res.json({ ok: true });
+        return;
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+        return;
+    }
+});
+/***********************************************
+ * schedulePublisher (Gen-1 Scheduled)
+ * Publishes posts that were scheduled future.
+ ***********************************************/
+exports.schedulePublisher2 = functions.pubsub
+    .schedule("every 10 minutes")
+    .timeZone("Africa/Dar_es_Salaam")
+    .onRun(async () => {
+    const now = admin.firestore.Timestamp.now();
+    const snap = await db.collection("scheduledPosts")
+        .where("publishAt", "<=", now)
+        .where("status", "==", "pending")
+        .get();
+    for (const doc of snap.docs) {
+        const post = doc.data();
+        await db.collection("posts").add({
+            authorId: post.authorId,
+            media: post.media,
+            caption: post.caption,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await doc.ref.update({ status: "posted" });
+    }
+    return null;
+});
+/***********************************************
+ * vendorOptimizer (Gen-1 Scheduled)
+ * Recalculates vendor performance metrics daily.
+ ***********************************************/
+exports.vendorOptimizer2 = functions.pubsub
+    .schedule("every day 03:00")
+    .timeZone("Africa/Dar_es_Salaam")
+    .onRun(async () => {
+    const vendors = await db.collection("users")
+        .where("plan", "in", ["pro", "business", "enterprise"])
+        .get();
+    vendors.forEach(async (v) => {
+        const vendorId = v.id;
+        const scoreRef = db.collection("trustScores").doc(vendorId);
+        await scoreRef.set({
+            lastOptimized: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    });
+    return null;
+});
+/***********************************************
+ * callLiveLoop (Gen-1 HTTP)
+ * Used by front-end every 20-40s to keep call alive.
+ ***********************************************/
+exports.callLiveLoop2 = functions.https.onRequest(async (req, res) => {
+    try {
+        const { callId, userId } = req.body;
+        if (!callId || !userId) {
+            res.status(400).json({ error: "Missing callId or userId" });
+            return;
+        }
+        await db.collection("callSessions").doc(callId).update({
+            [`participants.${userId}.lastSeen`]: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        res.json({ ok: true });
+        return;
+    }
+    catch (err) {
+        console.error("callLiveLoop error:", err);
+        res.status(500).json({ error: err.message });
+        return;
+    }
+});
+/***********************************************
+ * socialPoster (Gen-1 HTTP)
+ * Posts automated or AI-generated content.
+ ***********************************************/
+exports.socialPoster2 = functions.https.onRequest(async (req, res) => {
+    try {
+        const { authorId, caption, media } = req.body;
+        if (!authorId || !caption || !media?.url) {
+            res.status(400).json({ error: "Missing fields." });
+            return;
+        }
+        await db.collection("posts").add({
+            authorId,
+            caption,
+            media,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            autoGenerated: true,
+        });
+        res.json({ success: true });
+        return;
+    }
+    catch (error) {
+        console.error("socialPoster error:", error);
+        res.status(500).json({ error: error.message });
+        return;
+    }
+});
+// --- OpenVoice upload trigger (1st Gen, same name) ---
+exports.onVoiceUpload = functions.storage.object().onFinalize(async (object) => {
+    try {
+        const filePath = object.name || "";
+        if (!filePath.startsWith("voice-uploads/"))
+            return; // only react to our folder
+        // Expected path: voice-uploads/{uid}/{filename}
+        const [, uid = "unknown"] = filePath.split("/");
+        await db.collection("voiceUploads").add({
+            uid,
+            bucket: object.bucket,
+            name: filePath,
+            size: object.size ? Number(object.size) : 0,
+            contentType: object.contentType || "",
+            status: "queued", // your worker picks this up
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`onVoiceUpload queued job for ${filePath}`);
+    }
+    catch (err) {
+        console.error("onVoiceUpload error:", err);
+    }
+});
 //# sourceMappingURL=index.js.map

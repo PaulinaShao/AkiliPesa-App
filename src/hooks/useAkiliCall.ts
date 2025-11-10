@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -36,8 +37,8 @@ export function useAkiliCall() {
     await client.publish([track]);
 
     // Tell Firebase to start the AI loop
-    const callSessionHandler = httpsCallable(functions, "callSessionHandler");
-    await callSessionHandler({ sessionId });
+    const callSessionHandler2 = httpsCallable(functions, "callSessionHandler2");
+    await callSessionHandler2({ sessionId });
 
     setInCall(true);
     setLoading(false);
