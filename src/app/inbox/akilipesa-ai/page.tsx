@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, FormEvent, useEffect, useRef } from 'react';
@@ -11,13 +10,14 @@ import { Paperclip, Mic, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/definitions';
 import { format } from 'date-fns';
-import Link from 'next/link';
 import { useFirebaseUser } from '@/firebase';
+import { useInitiateCall } from '@/hooks/useInitiateCall';
 
 export default function AkiliPesaAIChatPage() {
     const router = useRouter();
     const { user: currentUser } = useFirebaseUser();
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const { initiateCall } = useInitiateCall();
 
     const initialMessages: Message[] = [
         {
@@ -50,15 +50,22 @@ export default function AkiliPesaAIChatPage() {
         }
     }, [messages]);
 
+    const handleCall = (mode: 'audio' | 'video') => {
+        initiateCall({
+            mode,
+            agentId: 'akilipesa-ai',
+            agentType: 'admin'
+        });
+    };
 
     if (!currentUser) {
-        return <div>Loading...</div>; // Or some other loading state
+        return <div>Loading...</div>;
     }
     
     const aiUser = {
         id: 'akili-ai',
         username: 'AkiliPesa AI',
-        avatar: '', // No avatar, will use fallback
+        avatar: '',
     }
 
     const handleSendMessage = (e: FormEvent) => {
@@ -76,7 +83,6 @@ export default function AkiliPesaAIChatPage() {
         setMessages(prev => [...prev, message]);
         setNewMessage('');
 
-        // Simulate AI response
         setTimeout(() => {
             const aiResponse: Message = {
                 id: `ai-m${messages.length + 2}`,
@@ -104,8 +110,8 @@ export default function AkiliPesaAIChatPage() {
                     <span className="font-bold text-lg">{aiUser.username}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <Button asChild variant="ghost" size="icon"><Link href="/call/audio?to=AkiliPesa%20AI"><Phone className="h-6 w-6 text-primary"/></Link></Button>
-                    <Button asChild variant="ghost" size="icon"><Link href="/call/video?to=AkiliPesa%20AI"><Video className="h-6 w-6 text-primary"/></Link></Button>
+                    <Button onClick={() => handleCall('audio')} variant="ghost" size="icon"><Phone className="h-6 w-6 text-primary"/></Button>
+                    <Button onClick={() => handleCall('video')} variant="ghost" size="icon"><Video className="h-6 w-6 text-primary"/></Button>
                 </div>
             </header>
 

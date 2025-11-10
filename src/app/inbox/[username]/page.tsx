@@ -1,4 +1,3 @@
-
 'use client';
 
 import { FormEvent, useState, useEffect, useRef } from 'react';
@@ -11,36 +10,33 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/definitions';
 import { format } from 'date-fns';
-import { useFirebase, useFirebaseUser, useCollection } from '@/firebase';
+import { useFirebase, useFirebaseUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { httpsCallable } from 'firebase/functions';
-import { AgentPicker } from '@/components/AgentPicker';
-import { collection, query, where, limit, doc, getDocs, addDoc, serverTimestamp, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, addDoc, serverTimestamp, orderBy, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from 'docs/backend';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useInitiateCall } from '@/hooks/useInitiateCall';
 
 export default function ChatPage() {
     const router = useRouter();
     const params = useParams();
     const { username } = params;
-    const { functions, user: currentUserAuth, firestore } = useFirebase();
+    const { user: currentUserAuth, firestore } = useFirebase();
     const { toast } = useToast();
+    const { initiateCall } = useInitiateCall();
 
     const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const scrollAreaRef = useRef<HTMLDivElement>(null);
-    const [showAgentPicker, setShowAgentPicker] = useState(false);
-    const [callMode, setCallMode] = useState<'audio' | 'video' | null>(null);
-
+    
     useEffect(() => {
         if (!firestore || !username) return;
         const q = query(collection(firestore, 'users'), where('handle', '==', username), limit(1));
         getDocs(q).then(snapshot => {
             if (!snapshot.empty) {
                 const userData = snapshot.docs[0].data() as UserProfile;
-                // Ensure the UID is present on the user object
                 if (!userData.uid) {
                   userData.uid = snapshot.docs[0].id;
                 }
@@ -79,38 +75,13 @@ export default function ChatPage() {
         }
     }, [messages]);
 
-    const handleInitiateCall = (mode: 'audio' | 'video') => {
-        if (!currentUserAuth) {
-            toast({ variant: "destructive", title: "Login Required" });
-            router.push('/auth/login');
-            return;
-        }
-        setCallMode(mode);
-        setShowAgentPicker(true);
-    };
-    
-    const handleAgentSelect = async (agent: { id: string, type: 'admin' | 'user' }) => {
-        setShowAgentPicker(false);
-        if (!callMode || !functions) return;
-
-        try {
-            const callSessionHandler = httpsCallable(functions, 'callSessionHandler');
-            const result = await callSessionHandler({ agentId: agent.id, agentType: agent.type, mode: callMode });
-            const { token, channelName, callId, appId } = result.data as any;
-
-            const queryParams = new URLSearchParams({
-              agentId: agent.id,
-              callId,
-              channelName,
-              token,
-              appId,
-            }).toString();
-            router.push(`/call/${callMode}?${queryParams}`);
-
-        } catch (error: any) {
-            console.error('Error getting Agora token:', error);
-            toast({ variant: "destructive", title: "Call Failed", description: error.message || "Could not initiate call." });
-        }
+    const handleCall = (mode: 'audio' | 'video') => {
+        if (!otherUser) return;
+        initiateCall({
+            mode,
+            agentId: otherUser.uid,
+            agentType: 'user'
+        });
     };
 
     const handleSendMessage = async (e: FormEvent) => {
@@ -129,7 +100,6 @@ export default function ChatPage() {
 
         setNewMessage('');
         
-        // Non-blocking write with contextual error handling
         addDoc(messagesRef, messageData)
           .catch(error => {
             const contextualError = new FirestorePermissionError({
@@ -156,16 +126,10 @@ export default function ChatPage() {
                     <span className="font-bold text-lg truncate">{otherUser.handle}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => handleInitiateCall('audio')}><Phone className="h-6 w-6 text-primary"/></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleInitiateCall('video')}><Video className="h-6 w-6 text-primary"/></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleCall('audio')}><Phone className="h-6 w-6 text-primary"/></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleCall('video')}><Video className="h-6 w-6 text-primary"/></Button>
                 </div>
             </header>
-            
-             <AgentPicker
-                show={showAgentPicker}
-                onSelect={handleAgentSelect}
-                onCancel={() => setShowAgentPicker(false)}
-            />
 
             <main ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map(msg => (
@@ -214,5 +178,3 @@ export default function ChatPage() {
         </div>
     );
 }
-
-    

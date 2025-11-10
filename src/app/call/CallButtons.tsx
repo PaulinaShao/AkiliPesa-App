@@ -1,26 +1,45 @@
 'use client';
-import { useAgoraCall } from '@/hooks/useAgoraCall';
 
-export default function CallButtons() {
-  const { joined, join, leave } = useAgoraCall();
+import { useMemo } from 'react';
+import Link from 'next/link';
+import { Phone, Video } from 'lucide-react';
+
+type Props = {
+  agentId?: string;
+  callId?: string;
+  className?: string;
+  labelAudio?: string;
+  labelVideo?: string;
+};
+
+export default function CallButtons({
+  agentId = 'akilipesa-ai',
+  callId,
+  className,
+  labelAudio = 'Audio',
+  labelVideo = 'Video',
+}: Props) {
+  const qs = useMemo(() => {
+    const p = new URLSearchParams();
+    p.set('agentId', agentId);
+    if (callId) p.set('callId', callId);
+    return p.toString();
+  }, [agentId, callId]);
 
   return (
-    <div className="flex gap-3">
-      {!joined ? (
-        <button
-          className="rounded-xl px-4 py-2 bg-blue-600 text-white"
-          onClick={() => join({ agentId: 'akili_core', agentType: 'admin', mode: 'audio' })}
-        >
-          Start Call
-        </button>
-      ) : (
-        <button
-          className="rounded-xl px-4 py-2 bg-rose-600 text-white"
-          onClick={leave}
-        >
-          End Call
-        </button>
-      )}
+    <div className={className ?? 'flex gap-2'}>
+      <Link
+        href={`/call/audio?${qs}`}
+        className="inline-flex items-center rounded-lg px-3 py-2 bg-primary text-white hover:opacity-90 transition"
+      >
+        <Phone className="mr-2 h-4 w-4" /> {labelAudio}
+      </Link>
+      <Link
+        href={`/call/video?${qs}`}
+        className="inline-flex items-center rounded-lg px-3 py-2 bg-secondary text-white hover:opacity-90 transition"
+      >
+        <Video className="mr-2 h-4 w-4" /> {labelVideo}
+      </Link>
     </div>
   );
 }

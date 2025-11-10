@@ -1,6 +1,13 @@
-import PhoneLoginUI from "./ui";
+'use client';
+export const dynamic = 'force-dynamic';
 
-export const dynamic = "force-dynamic";
-export default function PhoneLoginPage() {
-  return <PhoneLoginUI />;
+import { Suspense } from 'react';
+import PhoneUI from './ui';
+
+export default function PhonePage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading…</div>}>
+      <PhoneUI />
+    </Suspense>
+  );
 }

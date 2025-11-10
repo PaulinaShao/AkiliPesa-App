@@ -1,60 +1,110 @@
-
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from 'agora-rtc-sdk-ng';
-import { useFirebase } from '@/firebase';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import AgoraRTC, {
+  IAgoraRTCClient,
+  ICameraVideoTrack,
+  IMicrophoneAudioTrack,
+  IRemoteVideoTrack,
+  IRemoteAudioTrack,
+  IRemoteUser,
+} from 'agora-rtc-sdk-ng';
 import { httpsCallable } from 'firebase/functions';
+import { useFirebase } from '@/firebase';
 
-export default function useAgoraConnection(channelName: string | null) {
+type TokenResponse = { appId: string; token: string };
+export type UseAgora = {
+  client: IAgoraRTCClient | null;
+  connected: boolean;
+  publishVideo: () => Promise<ICameraVideoTrack | null>;
+  publishAudio: () => Promise<IMicrophoneAudioTrack | null>;
+  localVideoTrack: ICameraVideoTrack | null;
+  leave: () => Promise<void>;
+};
+
+/**
+ * Safe on Next 15: returns an inert stub on the server and the real
+ * client implementation on the browser.
+ */
+export default function useAgoraConnection(channelName?: string | null): UseAgora {
+  // SSR stub
+  if (typeof window === 'undefined') {
+    return {
+      client: null,
+      connected: false,
+      publishVideo: async () => null,
+      publishAudio: async () => null,
+      localVideoTrack: null,
+      leave: async () => {},
+    };
+  }
+
   const { functions } = useFirebase();
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
   const [connected, setConnected] = useState(false);
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
-  const [localAudioTrack, setLocalAudioTrack] = useState<IMicrophoneAudioTrack | null>(null);
+  const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
 
-  const channelRef = useRef(channelName);
-  channelRef.current = channelName;
+  const channelRef = useRef<string | null>(channelName ?? null);
+  channelRef.current = channelName ?? null;
 
+  // Create client once
+  const rtcClient = useMemo(() => {
+    const c = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+    setClient(c);
+    return c;
+  }, []);
+
+  // Join/subscribe lifecycle
   useEffect(() => {
-    if (!channelName || !functions) return;
+    if (!functions || !rtcClient || !channelRef.current) return;
 
-    const agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-    setClient(agoraClient);
+    let mounted = true;
+    const activeClient = rtcClient;
 
     const init = async () => {
       try {
         const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
-        // A real app might use a more persistent UID, but for this hook, a random one is fine.
-        const uid = Math.floor(Math.random() * 10000);
-        const { data } = await getAgoraToken({ channelName, uid, role: 'publisher' });
-        
-        const { appId, token } = data as { appId: string, token: string };
+        const uid = Math.floor(Math.random() * 10_000);
 
-        await agoraClient.join(appId, channelName, token, uid);
+        const { data } = await getAgoraToken({
+          channelName: channelRef.current,
+          uid,
+          role: 'publisher',
+        });
+
+        const { appId, token } = data as TokenResponse;
+
+        await activeClient.join(appId, channelRef.current!, token, uid);
+        if (!mounted) return;
+
         setConnected(true);
 
-        agoraClient.on('user-published', async (user, mediaType) => {
-          await agoraClient.subscribe(user, mediaType);
+        activeClient.on('user-published', async (user: IRemoteUser, mediaType) => {
+          await activeClient.subscribe(user, mediaType);
           if (mediaType === 'video') {
-            user.videoTrack?.play(`remote-player-${user.uid}`);
+            // You can create a DOM container on demand, or rely on a known id:
+            const elId = `remote-player-${user.uid}`;
+            let el = document.getElementById(elId);
+            if (!el) {
+              el = document.createElement('div');
+              el.id = elId;
+              el.style.width = '100%';
+              el.style.height = '100%';
+              document.body.appendChild(el); // or mount inside your call UI container
+            }
+            (user.videoTrack as IRemoteVideoTrack | null)?.play(elId);
           }
           if (mediaType === 'audio') {
-            user.audioTrack?.play();
+            (user.audioTrack as IRemoteAudioTrack | null)?.play();
           }
         });
-        
-        agoraClient.on('connection-state-change', (curState, prevState) => {
-            console.log(`Connection state changed from ${prevState} to ${curState}`);
-            if (curState === 'CONNECTED') {
-                setConnected(true);
-            } else if (curState === 'DISCONNECTED' || curState === 'RECONNECTING') {
-                setConnected(false);
-            }
-        });
 
-      } catch (error) {
-        console.error('Failed to join Agora channel', error);
+        activeClient.on('connection-state-change', (cur) => {
+          setConnected(cur === 'CONNECTED');
+        });
+      } catch (e) {
+        console.error('[Agora] join failed:', e);
         setConnected(false);
       }
     };
@@ -62,31 +112,58 @@ export default function useAgoraConnection(channelName: string | null) {
     init();
 
     return () => {
-      localVideoTrack?.close();
-      localAudioTrack?.close();
-      agoraClient.leave();
+      mounted = false;
+      // Cleanup handles in leave() below; we still ensure tracks are closed.
+      (async () => {
+        try {
+          // Close local tracks if any
+          localVideoTrack?.close();
+          localAudioTrackRef.current?.close();
+          // Leave if still joined
+          if (activeClient.connectionState !== 'DISCONNECTED') {
+            await activeClient.leave();
+          }
+        } catch (_) {}
+      })();
     };
-  }, [channelName, functions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [functions, rtcClient, channelRef.current]);
 
-  const publishVideo = async () => {
-    if (client && !localVideoTrack) {
-      const track = await AgoraRTC.createCameraVideoTrack();
-      setLocalVideoTrack(track);
-      await client.publish(track);
-      return track;
+  const publishVideo = useCallback(async () => {
+    if (!client) return null;
+    if (localVideoTrack) return localVideoTrack;
+    const track = await AgoraRTC.createCameraVideoTrack();
+    setLocalVideoTrack(track);
+    await client.publish(track);
+    return track;
+  }, [client, localVideoTrack]);
+
+  const publishAudio = useCallback(async () => {
+    if (!client) return null;
+    if (localAudioTrackRef.current) return localAudioTrackRef.current;
+    const track = await AgoraRTC.createMicrophoneAudioTrack();
+    localAudioTrackRef.current = track;
+    await client.publish(track);
+    return track;
+  }, [client]);
+
+  const leave = useCallback(async () => {
+    try {
+      localVideoTrack?.stop();
+      localVideoTrack?.close();
+      setLocalVideoTrack(null);
+      localAudioTrackRef.current?.close();
+      localAudioTrackRef.current = null;
+
+      if (client && client.connectionState !== 'DISCONNECTED') {
+        await client.unpublish();
+        await client.leave();
+      }
+      setConnected(false);
+    } catch (e) {
+      console.warn('[Agora] leave error:', e);
     }
-    return localVideoTrack;
-  };
+  }, [client, localVideoTrack]);
 
-  const publishAudio = async () => {
-    if (client && !localAudioTrack) {
-      const track = await AgoraRTC.createMicrophoneAudioTrack();
-      setLocalAudioTrack(track);
-      await client.publish(track);
-      return track;
-    }
-    return localAudioTrack;
-  };
-
-  return { client, connected, publishVideo, publishAudio, localVideoTrack };
+  return { client, connected, publishVideo, publishAudio, localVideoTrack, leave };
 }

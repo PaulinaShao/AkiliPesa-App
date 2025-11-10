@@ -1,5 +1,5 @@
 
-import { collection, getDocs, getFirestore, query, where, documentId } from 'firebase/firestore';
+import { collection, getDocs, getFirestore, query, where, documentId, Timestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase/server-init';
 import type { Post, Message } from './definitions';
 import type { UserProfile } from 'docs/backend';
@@ -8,13 +8,34 @@ import type { UserProfile } from 'docs/backend';
 const { firestore } = initializeFirebase();
 
 /**
+ * Converts Firestore Timestamps in an object to ISO strings.
+ * @param obj The object to process.
+ * @returns A new object with Timestamps converted to strings.
+ */
+function convertTimestamps<T extends object>(obj: T): any {
+    const newObj: any = {};
+    for (const key in obj) {
+        const value = (obj as any)[key];
+        if (value instanceof Timestamp) {
+            newObj[key] = value.toDate().toISOString();
+        } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+            newObj[key] = convertTimestamps(value);
+        } else {
+            newObj[key] = value;
+        }
+    }
+    return newObj;
+}
+
+
+/**
  * Fetches all posts and their corresponding author profiles from Firestore.
  * This function is designed to run on the server.
  */
 export async function getPostsAndUsers(): Promise<{ posts: Post[], users: UserProfile[] }> {
   const postsCollection = collection(firestore, 'posts');
   const postsSnapshot = await getDocs(postsCollection);
-  const posts: Post[] = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+  const posts: Post[] = postsSnapshot.docs.map(doc => convertTimestamps({ id: doc.id, ...doc.data() } as Post));
 
   const authorIds = [...new Set(posts.map(post => post.authorId).filter(id => !!id))];
 
@@ -36,7 +57,7 @@ export async function getPostsAndUsers(): Promise<{ posts: Post[], users: UserPr
     const userSnapshots = await Promise.all(userPromises);
     userSnapshots.forEach(snapshot => {
         snapshot.forEach(doc => {
-            users.push({ ...doc.data(), uid: doc.id } as UserProfile);
+            users.push(convertTimestamps({ ...doc.data(), uid: doc.id } as UserProfile));
         });
     });
   }

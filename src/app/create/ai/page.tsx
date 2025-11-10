@@ -11,11 +11,10 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirebase, useFirebaseUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { httpsCallable } from 'firebase/functions';
-import { AgentPicker } from '@/components/AgentPicker';
 import useSessionManager from '@/lib/sessionManager';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import dynamic from "next/dynamic";
+import { useInitiateCall } from '@/hooks/useInitiateCall';
 const CallPanel = dynamic(() => import("@/components/CallPanel"), { ssr: false });
 
 
@@ -51,10 +50,11 @@ const GradientIcon = ({ icon: Icon, ...props }: { icon: React.ElementType, [key:
 
 export default function AiCreatePage() {
   const router = useRouter();
-  const { functions, user: currentUserAuth } = useFirebase();
+  const { user: currentUserAuth } = useFirebase();
   const { toast } = useToast();
   const { session, updateSession } = useSessionManager('akilipesa-ai', 'chat');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { initiateCall } = useInitiateCall();
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -65,8 +65,6 @@ export default function AiCreatePage() {
     }
   ]);
   const [input, setInput] = useState('');
-  const [showAgentPicker, setShowAgentPicker] = useState(false);
-  const [callMode, setCallMode] = useState<'audio' | 'video' | null>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -90,48 +88,14 @@ export default function AiCreatePage() {
     setInput('');
   };
   
-  const handleInitiateCall = (mode: 'audio' | 'video') => {
-    if (!currentUserAuth) {
-      toast({
-        variant: "destructive",
-        title: "Login Required",
-        description: "You must be logged in to make a call.",
-      });
-      router.push('/auth/login');
-      return;
-    }
-    setCallMode(mode);
-    setShowAgentPicker(true);
-  };
+  const handleCall = (mode: 'audio' | 'video') => {
+    initiateCall({
+        mode,
+        agentId: 'akilipesa-ai',
+        agentType: 'admin'
+    });
+  }
 
-  const handleAgentSelect = async (agent: { id: string; type: 'admin' | 'user' }) => {
-    setShowAgentPicker(false);
-    if (!callMode || !functions) return;
-
-    try {
-        const callSessionHandler = httpsCallable(functions, 'callSessionHandler');
-        const result = await callSessionHandler({ agentId: agent.id, agentType: agent.type, mode: callMode });
-        const { token, channelName, callId, appId } = result.data as any;
-
-        const query = new URLSearchParams({
-            agentId: agent.id,
-            callId,
-            channelName,
-            token,
-            appId,
-        }).toString();
-        
-        router.push(`/call/${callMode}?${query}`);
-
-    } catch (error: any) {
-        console.error('Error getting Agora token:', error);
-        toast({
-            variant: "destructive",
-            title: "Call Failed",
-            description: error.message || "Could not initiate the call.",
-        });
-    }
-  };
 
   return (
     <div className="flex flex-col h-screen dark bg-background text-foreground">
@@ -141,17 +105,11 @@ export default function AiCreatePage() {
         </Button>
         <h1 className="text-lg font-semibold">Create</h1>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={() => handleInitiateCall('audio')}><GradientIcon icon={Phone} className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" onClick={() => handleInitiateCall('video')}><GradientIcon icon={VideoIcon} className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => handleCall('audio')}><GradientIcon icon={Phone} className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => handleCall('video')}><GradientIcon icon={VideoIcon} className="h-5 w-5" /></Button>
         </div>
       </header>
        
-      <AgentPicker
-        show={showAgentPicker}
-        onSelect={handleAgentSelect}
-        onCancel={() => setShowAgentPicker(false)}
-      />
-
       <div className="border-b shrink-0">
          <div className="flex justify-center p-2">
            <Tabs defaultValue="ai" className="w-auto">

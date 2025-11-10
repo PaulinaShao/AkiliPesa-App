@@ -1,35 +1,56 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
+import { firebaseConfig } from '@/firebase/config';
 
-// ✅ ALWAYS initialize with config — no auto-mode
-export function initializeFirebase() {
-  const firebaseApp = getApps().length
-    ? getApp()
-    : initializeApp(firebaseConfig);
+type Sdks = {
+  firebaseApp: FirebaseApp;
+  auth: ReturnType<typeof getAuth>;
+  firestore: ReturnType<typeof getFirestore>;
+  functions: ReturnType<typeof getFunctions>;
+  storage: ReturnType<typeof getStorage>;
+};
 
-  return getSdks(firebaseApp);
-}
+export function initializeFirebase(): Sdks {
+  // Never run on the server
+  if (typeof window === 'undefined') {
+    throw new Error('initializeFirebase() called on the server');
+  }
 
-export function getSdks(firebaseApp: FirebaseApp) {
+  let app: FirebaseApp;
+  if (!getApps().length) {
+    try {
+      // If Hosting injects config, this works:
+      // @ts-ignore – empty init allowed on Hosting
+      app = initializeApp();
+    } catch (_e) {
+      // Local/dev/Studio: fall back to explicit config
+      app = initializeApp(firebaseConfig);
+    }
+  } else {
+    app = getApp();
+  }
+
   return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp),
-    functions: getFunctions(firebaseApp),
-    storage: getStorage(firebaseApp),
+    firebaseApp: app,
+    auth: getAuth(app),
+    firestore: getFirestore(app),
+    functions: getFunctions(app),
+    storage: getStorage(app),
   };
 }
 
+export const { auth, firestore, functions, storage } = initializeFirebase();
+
+// Re-exports you already had
 export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './use-memo-firebase';
 export * from './non-blocking-updates';
-export { useFirebaseUser } from "./auth/use-user";
-export * from "./provider";
+export { useFirebaseUser } from './auth/use-user';
+export * from './provider';

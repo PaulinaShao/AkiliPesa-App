@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -18,13 +17,8 @@ import {
 import { comments as allComments } from '@/lib/data';
 import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
-import { useFirebase, useFirebaseUser } from '@/firebase';
-import { httpsCallable } from 'firebase/functions';
-import { useToast } from '@/hooks/use-toast';
-import { AgentPicker } from './AgentPicker';
 import type { UserProfile } from 'docs/backend';
-
+import { useInitiateCall } from '@/hooks/useInitiateCall';
 
 interface VideoPlayerProps {
   post: Post;
@@ -35,14 +29,10 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ post, user, onPlay, isMuted }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const router = useRouter();
-  const { functions, user: currentUser } = useFirebase();
-  const { toast } = useToast();
+  const { initiateCall } = useInitiateCall();
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
-  const [showAgentPicker, setShowAgentPicker] = useState(false);
-  const [callMode, setCallMode] = useState<'audio' | 'video' | null>(null);
 
   const isInView = useInView(videoRef, { threshold: 0.6 });
 
@@ -82,47 +72,12 @@ export function VideoPlayer({ post, user, onPlay, isMuted }: VideoPlayerProps) {
     }
   }
   
-  const handleInitiateCall = (mode: 'audio' | 'video') => {
-    if (!currentUser) {
-      toast({
-        variant: "destructive",
-        title: "Login Required",
-        description: "You must be logged in to make a call.",
-      });
-      router.push('/auth/login');
-      return;
-    }
-    setCallMode(mode);
-    setShowAgentPicker(true);
-  };
-
-  const handleAgentSelect = async (agent: { id: string, type: 'admin' | 'user' }) => {
-    setShowAgentPicker(false);
-    if (!callMode) return;
-
-    try {
-      const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
-      const result = await getAgoraToken({ agentId: agent.id, agentType: agent.type, mode: callMode });
-      const { token, channelName, callId, appId } = result.data as any;
-
-      const query = new URLSearchParams({
-        to: agent.id,
-        callId,
-        channelName,
-        token,
-        appId
-      }).toString();
-      
-      router.push(`/call/${callMode}?${query}`);
-
-    } catch (error: any) {
-      console.error('Error getting Agora token:', error);
-      toast({
-        variant: "destructive",
-        title: "Call Failed",
-        description: error.message || "Could not initiate the call. Please try again.",
-      });
-    }
+  const handleCall = (mode: 'audio' | 'video') => {
+    initiateCall({
+        mode,
+        agentId: user.uid, // Calling the post author
+        agentType: 'user'
+    });
   };
 
   const shortenedCaption = post.caption.split(' ').slice(0, 3).join(' ');
@@ -144,13 +99,6 @@ export function VideoPlayer({ post, user, onPlay, isMuted }: VideoPlayerProps) {
           <Play className="h-20 w-20 text-white/70" />
         </div>
       )}
-
-      {/* Agent Picker Dialog */}
-      <AgentPicker
-        show={showAgentPicker}
-        onSelect={handleAgentSelect}
-        onCancel={() => setShowAgentPicker(false)}
-      />
 
       {/* Content Overlay */}
       <div 
@@ -197,11 +145,11 @@ export function VideoPlayer({ post, user, onPlay, isMuted }: VideoPlayerProps) {
             right: 'calc(env(safe-area-inset-right, 0px) + 8px)'
         }}
       >
-          <button onClick={() => handleInitiateCall('audio')} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+          <button onClick={() => handleCall('audio')} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
             <Phone size={32} />
           </button>
         
-          <button onClick={() => handleInitiateCall('video')} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
+          <button onClick={() => handleCall('video')} className="flex flex-col items-center gap-1.5 focus:outline-none rounded-full">
             <VideoIcon size={32} />
           </button>
        
