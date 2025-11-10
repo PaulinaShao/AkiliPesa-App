@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -77,6 +78,11 @@ service cloud.firestore {
 
     match /callInvites/{inviteId} {
       allow read, write: if isSignedIn();
+    }
+
+    match /aiSessions/{sessionId} {
+      allow create, read, update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     // NEW: Call Session signalling (Agora / Zego token exchange + join info)

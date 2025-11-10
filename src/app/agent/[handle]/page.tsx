@@ -158,7 +158,7 @@ export default function PublicAgentProfilePage() {
   const { data: users, isLoading: isProfileLoading } = useCollection<UserProfile>(userQuery);
   
   useEffect(() => {
-    if (!isProfileLoading && users && users.length === 0) {
+    if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
   }, [isProfileLoading, users]);
