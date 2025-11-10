@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -27,10 +28,12 @@ export default function PublicProfilePage() {
   const profileId = profile?.id;
 
   useEffect(() => {
+    // This effect should only run when the loading state changes from true to false.
+    // If loading is finished and there are still no users, then it's a 404.
     if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
-  }, [isProfileLoading, users, username]);
+  }, [isProfileLoading, users]);
   
   const isLoading = isProfileLoading;
 
@@ -83,3 +86,4 @@ export default function PublicProfilePage() {
     </div>
   );
 }
+
