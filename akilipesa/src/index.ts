@@ -11,11 +11,13 @@
 
 import {setGlobalOptions} from "firebase-functions";
 import * as admin from "firebase-admin";
-import { onUpdate } from "firebase-functions/v2/firestore";
+import { onUpdate, onDocumentWritten } from "firebase-functions/v2/firestore";
+import { computeCallCost } from "./lib/callPricing";
 
 if (!admin.apps.length) {
     admin.initializeApp();
 }
+const db = admin.firestore();
 
 setGlobalOptions({ maxInstances: 10 });
 
@@ -33,10 +35,53 @@ export { getAgoraToken } from "./adapters/agora";
 
 
 export const expireMissedCalls = onUpdate("callInvites/{callId}", async (change) => {
-    const data = change.after.data();
-    if (data.status === "pending") {
+    const after = change.after.data();
+    if (after.status === "ringing" && change.after.createTime.toMillis() < Date.now() - 30000) {
       await admin.firestore().collection("callHistory").doc(change.after.id).set({
         status: "missed"
       }, { merge: true });
+       await change.after.ref.delete();
+    }
+});
+
+
+export const onCallComplete = onDocumentWritten("callHistory/{callId}", async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const before = snap.before.data();
+    const after = snap.after.data();
+
+    // Trigger on transition from ongoing to a final state
+    if (before?.status === 'ongoing' && ['completed', 'missed', 'declined'].includes(after?.status)) {
+        const { callerId, receiverId, startedAt, endedAt } = after;
+        const durationSeconds = endedAt.toMillis() - startedAt.toMillis();
+        
+        // 1. Calculate Cost
+        const { cost, commission } = computeCallCost(durationSeconds);
+
+        // 2. Create Transaction
+        const txRef = db.collection('transactions').doc(event.params.callId);
+        await txRef.set({
+            uid: callerId,
+            type: 'deduction',
+            description: `Call with ${receiverId}`,
+            amount: -cost,
+            currency: 'credits',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 3. Update Wallets
+        const callerWalletRef = db.collection('users').doc(callerId);
+        const receiverWalletRef = db.collection('users').doc(receiverId);
+
+        const batch = db.batch();
+        batch.update(callerWalletRef, { 'wallet.balance': admin.firestore.FieldValue.increment(-cost) });
+        batch.update(receiverWalletRef, { 'wallet.balance': admin.firestore.FieldValue.increment(commission) });
+        
+        await batch.commit();
+        
+        // 4. Update agent availability
+        await db.collection('agentAvailability').doc(receiverId).set({ busy: false }, { merge: true });
     }
 });

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
 import AppLayout from '@/components/AppLayout';
 import { IncomingCallWatcher } from '@/components/IncomingCall';
+import { PresenceWriter } from '@/firebase/presence';
 
 export const metadata: Metadata = {
   title: 'AkiliPesa',
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={cn('font-body antialiased w-full max-w-full overflow-x-hidden', inter.variable)}>
         <FirebaseClientProvider>
+          <PresenceWriter />
           <AppLayout>{children}</AppLayout>
           <IncomingCallWatcher />
         </FirebaseClientProvider>

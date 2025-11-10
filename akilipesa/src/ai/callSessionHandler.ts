@@ -35,6 +35,20 @@ export const callSessionHandler = onCall({ secrets: ["OPENAI_API_KEY", "RUNPOD_A
   }
   const sessionData = sessionSnap.data()!;
   const channelName = sessionData.channelName;
+  const agentId = sessionData.agentId;
+
+  // Check agent availability
+  const agentAvailabilityRef = db.collection("agentAvailability").doc(agentId);
+  const agentAvailabilitySnap = await agentAvailabilityRef.get();
+  const availabilityData = agentAvailabilitySnap.data();
+
+  if (!availabilityData?.isOnline || availabilityData?.busy) {
+    throw new Error("Agent is currently unavailable.");
+  }
+
+  // Set agent to busy
+  await agentAvailabilityRef.update({ busy: true });
+
 
   // 1. Speech-to-Text (STT) with RunPod Whisper
   const sttResult = await runpod.whisperSTT(audioChunkB64);
