@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useFirebaseUser } from '@/firebase';
 import { collection, query, where, limit, getDocs, addDoc, serverTimestamp, onSnapshot, orderBy } from 'firebase/firestore';
 import { Header } from '@/components/header';
@@ -73,15 +73,20 @@ function ReviewsSection({ agentId }: { agentId: string }) {
   const [text, setText] = useState("");
   const [rating, setRating] = useState(5);
 
-  useEffect(() => {
-    if (!firestore || !agentId) return;
+  const reviewsQuery = useMemoFirebase(() => {
+    if (!firestore || !agentId) return null;
     const ref = collection(firestore, "agentReviews", agentId, "reviews");
-    const q = query(ref, orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, snap => {
-      setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return unsubscribe;
+    return query(ref, orderBy("createdAt", "desc"));
   }, [agentId, firestore]);
+
+  const { data: reviewData } = useCollection(reviewsQuery);
+  
+  useEffect(() => {
+    if (reviewData) {
+      setReviews(reviewData);
+    }
+  }, [reviewData]);
+
 
   async function submit() {
     if (!user || !text.trim() || !firestore) return;
@@ -177,13 +182,13 @@ export default function PublicAgentProfilePage() {
 
   const { data: users, isLoading: isProfileLoading } = useCollection<UserProfile>(userQuery);
   
-  const profile = users?.[0];
-  
   useEffect(() => {
-    if (!isProfileLoading && (!users || users.length === 0)) {
+    if (!isProfileLoading && users && users.length === 0) {
       notFound();
     }
   }, [isProfileLoading, users]);
+  
+  const profile = users?.[0];
 
   if (isProfileLoading || !profile) {
     return (

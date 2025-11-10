@@ -11,8 +11,9 @@
 
 import {setGlobalOptions} from "firebase-functions";
 import * as admin from "firebase-admin";
-import { onUpdate, onDocumentWritten } from "firebase-functions/v2/firestore";
+import { onUpdate, onDocumentWritten, onDocumentCreated } from "firebase-functions/v2/firestore";
 import { computeCallCost } from "./lib/callPricing";
+import { onBookingRequestCreate, onBookingStatusChange, onCallInvite } from "./notifications";
 
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -85,3 +86,6 @@ export const onCallComplete = onDocumentWritten("callHistory/{callId}", async (e
         await db.collection('agentAvailability').doc(receiverId).set({ busy: false }, { merge: true });
     }
 });
+
+// --- Notification Triggers ---
+export { onBookingRequestCreate, onBookingStatusChange, onCallInvite };
