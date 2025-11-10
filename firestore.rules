@@ -79,6 +79,11 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+    
+    match /agentPricing/{agentId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
 
     // ─────────────────────────────
     // FINANCIAL & EARNINGS SYSTEM
@@ -193,7 +198,7 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────
-    // SOCIAL & NOTIFICATIONS
+    // REAL-TIME & SOCIAL
     // ─────────────────────────────
 
     match /notifications/{nid} {
@@ -203,6 +208,11 @@ service cloud.firestore {
     match /followers/{fid} {
       allow read: if true;
       allow write: if isSignedIn();
+    }
+    
+    match /agentAvailability/{agentId} {
+        allow read: if true;
+        allow write: if isOwner(agentId) || isAdmin();
     }
 
     match /chats/{channelId}/messages/{messageId} {

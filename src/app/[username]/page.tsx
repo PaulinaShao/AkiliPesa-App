@@ -12,6 +12,8 @@ import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notFound, useParams } from 'next/navigation';
 import { AvatarWithPresence } from '@/components/AvatarWithPresence';
+import { NextAvailableBadge } from '@/components/NextAvailableBadge';
+import { CallPriceChip } from '@/components/CallPriceChip';
 
 export default function PublicProfilePage() {
   const firestore = useFirestore();
@@ -28,16 +30,15 @@ export default function PublicProfilePage() {
   const profileId = profile?.id;
 
   useEffect(() => {
-    // This effect should only run when the loading state changes from true to false.
-    // If loading is finished and there are still no users, then it's a 404.
+    // Only run this check AFTER the loading is complete.
     if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
   }, [isProfileLoading, users]);
   
-  const isLoading = isProfileLoading;
+  const isLoading = isProfileLoading || !profile;
 
-  if (isLoading || !profile) {
+  if (isLoading) {
     return (
       <div className="dark">
         <Header isMuted={true} onToggleMute={() => {}} />
@@ -86,4 +87,3 @@ export default function PublicProfilePage() {
     </div>
   );
 }
-

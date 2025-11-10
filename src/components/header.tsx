@@ -9,6 +9,7 @@ import { Button } from './ui/button';
 import { useDoc, useFirestore, useFirebaseUser } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/use-memo-firebase';
 import { doc } from 'firebase/firestore';
+import { RosterDrawer } from './RosterDrawer';
 
 interface HeaderProps {
   transparent?: boolean;
@@ -46,6 +47,7 @@ export function Header({ transparent, isMuted, onToggleMute }: HeaderProps) {
             ) : null}
         </div>
         {userProfile?.wallet?.plan?.id !== 'trial' && <Badge variant="secondary" className="shrink-0">Premium</Badge>}
+        <RosterDrawer />
         <Button variant="ghost" size="icon" onClick={onToggleMute}>
           {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
           <span className="sr-only">Toggle Sound</span>

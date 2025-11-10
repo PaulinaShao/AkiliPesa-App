@@ -1,4 +1,3 @@
-
 'use client';
 
 import { FormEvent, useState, useEffect, useRef } from 'react';
@@ -18,6 +17,9 @@ import type { UserProfile } from 'docs/backend';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useInitiateCall } from '@/hooks/useInitiateCall';
+import { AvatarWithPresence } from '@/components/AvatarWithPresence';
+import { NextAvailableBadge } from '@/components/NextAvailableBadge';
+import { CallPriceChip } from '@/components/CallPriceChip';
 
 export default function ChatPage() {
     const router = useRouter();
@@ -123,13 +125,22 @@ export default function ChatPage() {
                     <ChevronLeft className="h-6 w-6" />
                 </Button>
                 <div className="flex items-center gap-3 overflow-hidden">
-                    <FallbackAvatar src={otherUser.photoURL} alt={otherUser.handle} size={40} />
-                    <span className="font-bold text-lg truncate">{otherUser.handle}</span>
+                    <AvatarWithPresence uid={otherUser.uid} src={otherUser.photoURL} />
+                    <div className="overflow-hidden">
+                        <span className="font-bold text-lg truncate">{otherUser.handle}</span>
+                        <NextAvailableBadge agentId={otherUser.uid} />
+                    </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon" onClick={() => router.push(`/profile/calls`)}><History className="h-6 w-6 text-primary"/></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleCall('audio')}><Phone className="h-6 w-6 text-primary"/></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleCall('video')}><Video className="h-6 w-6 text-primary"/></Button>
+                    <div className="flex flex-col items-center">
+                        <Button variant="ghost" size="icon" onClick={() => handleCall('audio')}><Phone className="h-6 w-6 text-primary"/></Button>
+                        <CallPriceChip agentId={otherUser.uid} mode="audio" />
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <Button variant="ghost" size="icon" onClick={() => handleCall('video')}><Video className="h-6 w-6 text-primary"/></Button>
+                        <CallPriceChip agentId={otherUser.uid} mode="video" />
+                    </div>
                 </div>
             </header>
 
