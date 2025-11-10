@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
@@ -10,7 +11,8 @@ import AgoraRTC, {
   IRemoteUser,
 } from 'agora-rtc-sdk-ng';
 import { httpsCallable } from 'firebase/functions';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useFirebaseUser } from '@/firebase';
+import { addDoc, collection, serverTimestamp, getFirestore, doc, updateDoc } from 'firebase/firestore';
 
 type TokenResponse = { appId: string; token: string };
 export type UseAgora = {
@@ -19,7 +21,7 @@ export type UseAgora = {
   publishVideo: () => Promise<ICameraVideoTrack | null>;
   publishAudio: () => Promise<IMicrophoneAudioTrack | null>;
   localVideoTrack: ICameraVideoTrack | null;
-  leave: () => Promise<void>;
+  leave: (callId?: string) => Promise<void>;
 };
 
 /**
@@ -39,7 +41,7 @@ export default function useAgoraConnection(channelName?: string | null): UseAgor
     };
   }
 
-  const { functions } = useFirebase();
+  const { functions, firestore, user: currentUser } = useFirebase();
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
   const [connected, setConnected] = useState(false);
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
@@ -57,7 +59,7 @@ export default function useAgoraConnection(channelName?: string | null): UseAgor
 
   // Join/subscribe lifecycle
   useEffect(() => {
-    if (!functions || !rtcClient || !channelRef.current) return;
+    if (!functions || !rtcClient || !channelRef.current || !currentUser) return;
 
     let mounted = true;
     const activeClient = rtcClient;
@@ -65,17 +67,16 @@ export default function useAgoraConnection(channelName?: string | null): UseAgor
     const init = async () => {
       try {
         const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
-        const uid = Math.floor(Math.random() * 10_000);
-
+        
         const { data } = await getAgoraToken({
           channelName: channelRef.current,
-          uid,
+          uid: currentUser.uid,
           role: 'publisher',
         });
 
         const { appId, token } = data as TokenResponse;
 
-        await activeClient.join(appId, channelRef.current!, token, uid);
+        await activeClient.join(appId, channelRef.current!, token, currentUser.uid);
         if (!mounted) return;
 
         setConnected(true);
@@ -127,7 +128,7 @@ export default function useAgoraConnection(channelName?: string | null): UseAgor
       })();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [functions, rtcClient, channelRef.current]);
+  }, [functions, rtcClient, channelRef.current, currentUser]);
 
   const publishVideo = useCallback(async () => {
     if (!client) return null;
@@ -147,7 +148,19 @@ export default function useAgoraConnection(channelName?: string | null): UseAgor
     return track;
   }, [client]);
 
-  const leave = useCallback(async () => {
+  const leave = useCallback(async (callId?: string) => {
+    if (!firestore || !currentUser) return;
+    const db = getFirestore();
+    const { user } = useFirebaseUser();
+    
+    if (callId) {
+        await updateDoc(doc(db, "callHistory", callId), {
+          endedAt: serverTimestamp(),
+          status: "completed"
+        });
+    }
+
+
     try {
       localVideoTrack?.stop();
       localVideoTrack?.close();
@@ -163,7 +176,7 @@ export default function useAgoraConnection(channelName?: string | null): UseAgor
     } catch (e) {
       console.warn('[Agora] leave error:', e);
     }
-  }, [client, localVideoTrack]);
+  }, [client, localVideoTrack, firestore, currentUser]);
 
   return { client, connected, publishVideo, publishAudio, localVideoTrack, leave };
 }

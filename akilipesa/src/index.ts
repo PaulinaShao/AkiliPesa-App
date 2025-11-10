@@ -1,4 +1,5 @@
 
+
 /**
  * Import function triggers from their respective submodules:
  *
@@ -9,6 +10,12 @@
  */
 
 import {setGlobalOptions} from "firebase-functions";
+import * as admin from "firebase-admin";
+import { onUpdate } from "firebase-functions/v2/firestore";
+
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
 
 setGlobalOptions({ maxInstances: 10 });
 
@@ -23,3 +30,13 @@ export { summarizeAiSession } from "./ai/summarizeSession";
 // --- Original AI Router & Adapters ---
 export { aiRouter, pollVideoJob, createRtcToken } from "./ai/aiRouter";
 export { getAgoraToken } from "./adapters/agora";
+
+
+export const expireMissedCalls = onUpdate("callInvites/{callId}", async (change) => {
+    const data = change.after.data();
+    if (data.status === "pending") {
+      await admin.firestore().collection("callHistory").doc(change.after.id).set({
+        status: "missed"
+      }, { merge: true });
+    }
+});

@@ -27,6 +27,7 @@ export default function PublicProfilePage() {
   const profileId = profile?.id;
 
   useEffect(() => {
+    // This logic ensures we only call notFound() after we've finished loading and confirmed the user is not there.
     if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }

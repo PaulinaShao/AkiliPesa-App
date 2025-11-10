@@ -65,6 +65,16 @@ export const createAiCallSession = onCall({ secrets: ["AGORA_APP_ID", "AGORA_APP
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
+  await admin.firestore().collection("callHistory").doc(sessionId).set({
+    callId: sessionId,
+    mode,
+    callerId: req.auth.uid,
+    receiverId: agentId,
+    participants: [req.auth.uid, agentId],
+    startedAt: admin.firestore.FieldValue.serverTimestamp(),
+    status: "ongoing"
+  });
+
   return {
     sessionId,
     channelName,

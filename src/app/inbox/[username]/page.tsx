@@ -1,8 +1,9 @@
+
 'use client';
 
 import { FormEvent, useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ChevronLeft, Paperclip, Mic, Send, Phone, Video } from 'lucide-react';
+import { ChevronLeft, Paperclip, Mic, Send, Phone, Video, History } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import FallbackAvatar from '@/components/ui/FallbackAvatar';
@@ -126,6 +127,7 @@ export default function ChatPage() {
                     <span className="font-bold text-lg truncate">{otherUser.handle}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" onClick={() => router.push(`/profile/calls`)}><History className="h-6 w-6 text-primary"/></Button>
                     <Button variant="ghost" size="icon" onClick={() => handleCall('audio')}><Phone className="h-6 w-6 text-primary"/></Button>
                     <Button variant="ghost" size="icon" onClick={() => handleCall('video')}><Video className="h-6 w-6 text-primary"/></Button>
                 </div>
