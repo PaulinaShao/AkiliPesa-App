@@ -11,9 +11,7 @@ import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
 import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notFound, useParams } from 'next/navigation';
-import { AvatarWithPresence } from '@/components/AvatarWithPresence';
-import { NextAvailableBadge } from '@/components/NextAvailableBadge';
-import { CallPriceChip } from '@/components/CallPriceChip';
+import { AgentProfilePanel } from '@/components/AgentProfilePanel';
 
 export default function PublicProfilePage() {
   const firestore = useFirestore();
@@ -28,10 +26,11 @@ export default function PublicProfilePage() {
   const { data: users, isLoading: isProfileLoading } = useCollection<any>(userQuery);
   const profile = users?.[0];
   const profileId = profile?.id;
+  const isAgent = profile?.role === 'agent';
 
   useEffect(() => {
-    // Only run this check AFTER the loading is complete.
-    if (!isProfileLoading && (!users || users.length === 0)) {
+    if (isProfileLoading) return;
+    if (!users || users.length === 0) {
       notFound();
     }
   }, [isProfileLoading, users]);
@@ -76,6 +75,8 @@ export default function PublicProfilePage() {
           onEditClick={() => {}}
         />
         
+        {isAgent && profileId && <AgentProfilePanel agentId={profileId} />}
+
         {profileId && (
           <>
             <TrustScoreBadge sellerId={profileId} />
