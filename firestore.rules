@@ -208,6 +208,11 @@ service cloud.firestore {
     match /chats/{channelId}/messages/{messageId} {
       allow read, write: if isSignedIn() && request.auth.uid in channelId.split('_');
     }
+    
+    match /callHistory/{callId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow write: if isAdmin(); // Only backend can create/update
+    }
 
     // ─────────────────────────────
     // STRICT BACKEND-ONLY (NO CLIENT ACCESS)

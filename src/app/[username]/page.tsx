@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,6 +10,7 @@ import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
 import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notFound, useParams } from 'next/navigation';
+import { AvatarWithPresence } from '@/components/AvatarWithPresence';
 
 export default function PublicProfilePage() {
   const firestore = useFirestore();
@@ -27,11 +27,10 @@ export default function PublicProfilePage() {
   const profileId = profile?.id;
 
   useEffect(() => {
-    // This logic ensures we only call notFound() after we've finished loading and confirmed the user is not there.
     if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
-  }, [isProfileLoading, users]);
+  }, [isProfileLoading, users, username]);
   
   const isLoading = isProfileLoading;
 
