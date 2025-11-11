@@ -4,5 +4,6 @@ export const firebaseConfig = {
   "apiKey": "AIzaSyBL9J-F5q3OETLAKlZbUeOftw7k0OnqVm8",
   "authDomain": "akilipesacustomize-70486-65934.firebaseapp.com",
   "measurementId": "",
+  "databaseURL": "https://akilipesacustomize-70486-65934-default-rtdb.firebaseio.com/",
   "messagingSenderId": "410935694205"
 };

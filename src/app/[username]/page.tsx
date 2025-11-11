@@ -27,7 +27,7 @@ export default function PublicProfilePage() {
   
   useEffect(() => {
     // Only call notFound() if loading is complete and there are no users.
-    if (!isProfileLoading && (!users || users.length === 0)) {
+    if (!isProfileLoading && users && users.length === 0) {
       notFound();
     }
   }, [isProfileLoading, users]);

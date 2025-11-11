@@ -1,3 +1,4 @@
+
 'use client';
 
 import { FormEvent, useState, useEffect, useRef } from 'react';
@@ -33,9 +34,11 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const [isLoading, setIsLoading] = useState(true);
     
     useEffect(() => {
         if (!firestore || !username) return;
+        setIsLoading(true);
         const q = query(collection(firestore, 'users'), where('handle', '==', username), limit(1));
         getDocs(q).then(snapshot => {
             if (!snapshot.empty) {
@@ -44,11 +47,16 @@ export default function ChatPage() {
                   userData.uid = snapshot.docs[0].id;
                 }
                 setOtherUser(userData);
-            } else {
-                notFound();
             }
+            setIsLoading(false); 
         });
     }, [firestore, username]);
+
+    useEffect(() => {
+      if (!isLoading && !otherUser) {
+        notFound();
+      }
+    }, [isLoading, otherUser])
 
     useEffect(() => {
         if (!firestore || !currentUserAuth || !otherUser) return;
@@ -114,7 +122,7 @@ export default function ChatPage() {
           });
     };
     
-    if (!otherUser) {
+    if (isLoading || !otherUser) {
         return <div className="flex h-screen items-center justify-center">Loading chat...</div>
     }
 

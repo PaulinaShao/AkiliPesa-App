@@ -7,28 +7,23 @@ import { getFunctions } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
 import { firebaseConfig } from '@/firebase/config';
 
-type Sdks = {
-  firebaseApp: FirebaseApp;
-  auth: ReturnType<typeof getAuth>;
-  firestore: ReturnType<typeof getFirestore>;
-  functions: ReturnType<typeof getFunctions>;
-  storage: ReturnType<typeof getStorage>;
-};
+// ---- Shared SDK container ----
+let app: FirebaseApp;
 
-export function initializeFirebase(): Sdks {
-  // Never run on the server
+export function initializeFirebase() {
+  // Prevent running in SSR
   if (typeof window === 'undefined') {
-    throw new Error('initializeFirebase() called on the server');
+    return null;
   }
 
-  let app: FirebaseApp;
+  // Avoid duplicate initialization
   if (!getApps().length) {
     try {
-      // If Hosting injects config, this works:
-      // @ts-ignore – empty init allowed on Hosting
+      // Hosting auto inject config (works only when deployed)
+      // @ts-ignore
       app = initializeApp();
-    } catch (_e) {
-      // Local/dev/Studio: fall back to explicit config
+    } catch {
+      // Local / Firebase Studio
       app = initializeApp(firebaseConfig);
     }
   } else {
@@ -44,9 +39,17 @@ export function initializeFirebase(): Sdks {
   };
 }
 
-export const { auth, firestore, functions, storage } = initializeFirebase();
+// Initialize immediately on client
+const services = initializeFirebase();
 
-// Re-exports you already had
+// Export SDKs safely (undefined on server, valid on client)
+export const auth = services?.auth!;
+export const firestore = services?.firestore!;
+export const functions = services?.functions!;
+export const storage = services?.storage!;
+export const firebaseApp = services?.firebaseApp!;
+
+// Re-exports
 export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
