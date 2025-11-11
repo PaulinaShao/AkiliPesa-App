@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { ProfileHeader } from '@/components/profile/components/ProfileHeader';
@@ -33,7 +33,7 @@ export default function PublicProfilePage() {
   }, [isProfileLoading, users]);
   
   const profile = users?.[0];
-  const profileId = profile?.id || profile?.uid;
+  const profileId = profile?.uid; // Corrected from id to uid
   const isAgent = profile?.role === 'agent';
   
   if (isProfileLoading || !profile) {

@@ -1,53 +1,49 @@
-import { VendorPayload, VendorResult } from "./types";
+import { OPENAI_API_KEY } from "../../config/secrets";
+import fetch from "node-fetch";
 
-const KEY = process.env.OPENAI_API_KEY!;
+const OAI_BASE = "https://api.openai.com/v1";
 
-export async function run(p: VendorPayload): Promise<VendorResult> {
-  // default route: chat → return data:url of text
-  const r = await chat({ system: "You are AkiliPesa AI.", user: p.input });
-  if (r.error) return r;
-  const text = r.text!;
-  return { outputUrl: `data:text/plain;base64,${Buffer.from(text).toString("base64")}`, meta: { text } };
+function auth() {
+  return { Authorization: `Bearer ${OPENAI_API_KEY.value()}`, "Content-Type": "application/json" };
 }
 
-export async function chat({ system, user }:{ system?: string; user: string }) {
-  if (!KEY) return { error: "Missing OPENAI_API_KEY" };
-  try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o", // change per plan
-        messages: [
-          ...(system ? [{ role: "system", content: system }] : []),
-          { role: "user", content: user }
-        ]
-      })
-    });
-    const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content || null;
-    return text ? { text } : { error: "No content returned from OpenAI" };
-  } catch (e: any) {
-    return { error: e.message };
-  }
+export async function oaiChat(prompt: string, system = "You are AkiliPesa AI: warm, supportive, and concise.") {
+  const r = await fetch(`${OAI_BASE}/chat/completions`, {
+    method: "POST",
+    headers: auth(),
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
+      temperature: 0.7
+    })
+  });
+  const j = await r.json();
+  return (j as any).choices?.[0]?.message?.content || "";
 }
 
-export async function tts({ text, voice="alloy", format="mp3" }:{ text: string; voice?: string; format?: "mp3"|"wav" }) {
-  if (!KEY) return { error: "Missing OPENAI_API_KEY" };
-  try {
-    const res = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "tts-1", input: text, voice, response_format: format })
-    });
-    if (!res.ok) {
-        const errorText = await res.text();
-        return { error: `OpenAI TTS Error: ${errorText}`};
-    }
-    const buf = Buffer.from(await res.arrayBuffer());
-    const mime = format === "wav" ? "audio/wav" : "audio/mpeg";
-    return { outputUrl: `data:${mime};base64,${buf.toString("base64")}` };
-  } catch (e: any) {
-    return { error: e.message };
-  }
+// DALL·E 3 text-to-image
+export async function oaiImage(prompt: string, size: "1024x1024"|"512x512"="1024x1024") {
+  const r = await fetch(`${OAI_BASE}/images/generations`, {
+    method: "POST",
+    headers: auth(),
+    body: JSON.stringify({ model: "dall-e-3", prompt, n: 1, size, response_format: "b64_json" })
+  });
+  const j = await r.json();
+  return (j as any).data?.[0]?.b64_json as string; // base64 PNG
+}
+
+// TTS (Voice back to user)
+export async function oaiTTS(text: string) {
+  const r = await fetch(`${OAI_BASE}/audio/speech`, {
+    method: "POST",
+    headers: auth(),
+    body: JSON.stringify({
+      model: "tts-1",
+      voice: "alloy", // or 'nova', 'luna'
+      input: text,
+      response_format: "mp3"
+    })
+  });
+  const buf = Buffer.from(await r.arrayBuffer());
+  return buf; // mp3
 }
