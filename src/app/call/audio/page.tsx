@@ -1,9 +1,9 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import nextDynamic from 'next/dynamic';
+import { dynamicPick } from '@/lib/dynamic-safe';
 
-const AudioUI = nextDynamic(() => import('./ui'), { ssr: false });
+const AudioUI = dynamicPick(() => import('./ui'));
 
 export default function AudioPage() {
   return <AudioUI />;
