@@ -6,7 +6,12 @@ import { initializeFirebase } from '@/firebase';
 
 export function FirebaseClientProvider({ children }: { children: React.ReactNode }) {
   const services = initializeFirebase();
-  if (!services) return null; // SSR guard
+
+  // The SSR guard ensures that we don't try to render the provider on the server,
+  // preventing the hydration mismatch.
+  if (!services) {
+    return <>{children}</>;
+  }
 
   return (
     <FirebaseProvider

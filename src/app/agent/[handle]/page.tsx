@@ -119,7 +119,7 @@ export default function PublicAgentProfilePage() {
   }, [isProfileLoading, users]);
   
   const profile = users?.[0];
-  const agentId = profile?.uid; // Corrected from id to uid
+  const agentId = profile?.uid;
 
   if (isProfileLoading || !profile || !agentId) {
     return (

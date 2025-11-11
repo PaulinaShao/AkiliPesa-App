@@ -8,44 +8,41 @@ import { getDatabase } from "firebase/database";
 import { firebaseConfig } from '@/firebase/config';
 
 let app: FirebaseApp | undefined;
+let auth: ReturnType<typeof getAuth> | undefined;
+let firestore: ReturnType<typeof getFirestore> | undefined;
+let functions: ReturnType<typeof getFunctions> | undefined;
+let storage: ReturnType<typeof getStorage> | undefined;
 
 export function initializeFirebase() {
-  if (typeof window === 'undefined') return null; // never run during SSR
+  if (typeof window === 'undefined') {
+    return null; // Ensure nothing is initialized on the server
+  }
 
   if (!app) {
-    if (!getApps().length) {
+    if (getApps().length === 0) {
       try {
-        // Hosting injects config at runtime
+        // Hosting-injected config
         // @ts-ignore
         app = initializeApp();
-      } catch {
-        app = initializeApp(firebaseConfig); // Studio/Local
+      } catch (e) {
+        // Local/Studio development
+        app = initializeApp(firebaseConfig);
       }
     } else {
       app = getApp();
     }
+    
+    // Initialize services once
+    auth = getAuth(app);
+    firestore = getFirestore(app);
+    functions = getFunctions(app);
+    storage = getStorage(app);
   }
 
-  return {
-    firebaseApp: app,
-    auth: getAuth(app),
-    firestore: getFirestore(app),
-    functions: getFunctions(app),
-    storage: getStorage(app),
-  };
+  return { firebaseApp: app, auth, firestore, functions, storage };
 }
 
-// OPTIONAL: export lazy getters if you want
-export const services = initializeFirebase();
-
-export const auth = services?.auth!;
-export const firestore = services?.firestore!;
-export const functions = services?.functions!;
-export const storage = services?.storage!;
-export const firebaseApp = services?.firebaseApp!;
-export const database = services ? getDatabase(services.firebaseApp) : undefined;
-
-// Re-exports (unchanged)
+// Re-exports for easy access in the app
 export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';

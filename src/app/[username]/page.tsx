@@ -33,7 +33,7 @@ export default function PublicProfilePage() {
   }, [isProfileLoading, users]);
   
   const profile = users?.[0];
-  const profileId = profile?.uid; // Corrected from id to uid
+  const profileId = profile?.uid;
   const isAgent = profile?.role === 'agent';
   
   if (isProfileLoading || !profile) {
@@ -87,3 +87,4 @@ export default function PublicProfilePage() {
     </div>
   );
 }
+

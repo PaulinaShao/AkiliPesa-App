@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AgentPicker } from '@/components/AgentPicker';
 import type { Message } from '@/lib/definitions';
 import type { UserProfile } from 'docs/backend';
-import { collection, query, where, documentId } from 'firebase/firestore';
+import { collection, query, where, documentId, orderBy } from 'firebase/firestore';
 
 interface InboxClientProps {
   initialConversations: Message[];
@@ -35,16 +35,31 @@ export function InboxClient({ initialConversations }: InboxClientProps) {
         setIsClient(true);
     }, []);
     
+    const conversationsQuery = useMemoFirebase(() => {
+        if (!firestore || !currentUserAuth) return null;
+        // Query for conversations where the current user is either the sender or receiver
+        const q = query(
+            collection(firestore, 'conversations'), 
+            where('participants', 'array-contains', currentUserAuth.uid),
+            orderBy('timestamp', 'desc')
+        );
+        return q;
+    }, [firestore, currentUserAuth]);
+
+    const { data: conversations, isLoading: conversationsLoading } = useCollection<Message>(conversationsQuery);
+    
     // Get all unique user IDs from the conversations to fetch their profiles
     const userIdsInConversations = useMemo(() => {
       const ids = new Set<string>();
       if(currentUserAuth) ids.add(currentUserAuth.uid);
-      initialConversations.forEach(convo => {
-        ids.add(convo.senderId);
-        ids.add(convo.receiverId);
+      conversations?.forEach(convo => {
+        // Ensure participants is an array before trying to access it
+        if (Array.isArray(convo.participants)) {
+            convo.participants.forEach(id => ids.add(id));
+        }
       });
       return Array.from(ids);
-    }, [initialConversations, currentUserAuth]);
+    }, [conversations, currentUserAuth]);
 
     const usersQuery = useMemoFirebase(() => {
       if (!firestore || userIdsInConversations.length === 0) return null;
@@ -98,12 +113,13 @@ export function InboxClient({ initialConversations }: InboxClientProps) {
     };
     
     const currentUser = users?.find(u => u.uid === currentUserAuth?.uid);
+    const isLoading = conversationsLoading || usersLoading;
 
     if (!isClient) {
         return null;
     }
 
-    if (usersLoading) {
+    if (isLoading) {
         return (
              <div className="flex h-screen w-full items-center justify-center bg-background dark">
                 <p>Loading Conversations...</p>
@@ -149,8 +165,9 @@ export function InboxClient({ initialConversations }: InboxClientProps) {
 
                 {/* User DMs List */}
                 <div className="border-t">
-                    {initialConversations.map(convo => {
-                        const otherUser = users?.find(u => u.uid === (convo.senderId === currentUser?.uid ? convo.receiverId : convo.senderId));
+                    {conversations?.map(convo => {
+                        const otherUserId = convo.participants.find((p: string) => p !== currentUser?.uid);
+                        const otherUser = users?.find(u => u.uid === otherUserId);
                         if (!otherUser) return null;
 
                         const isUnread = convo.unread && convo.senderId !== currentUser?.uid;
@@ -168,7 +185,7 @@ export function InboxClient({ initialConversations }: InboxClientProps) {
                                     <div className="flex justify-between items-start">
                                         <p className="font-bold truncate">{otherUser.handle}</p>
                                         <p className="text-xs text-muted-foreground whitespace-nowrap ml-2 shrink-0">
-                                            {isClient ? formatDistanceToNow(new Date(convo.timestamp), { addSuffix: true }) : ''}
+                                            {isClient && convo.timestamp ? formatDistanceToNow(new Date(convo.timestamp.toDate()), { addSuffix: true }) : ''}
                                         </p>
                                     </div>
                                     <p className={`text-sm truncate ${isUnread ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
