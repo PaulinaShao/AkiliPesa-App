@@ -1,26 +1,19 @@
-
 'use client';
 
-import React, { type ReactNode } from 'react';
+import React from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
-import { IncomingCallWatcher } from '@/components/IncomingCall';
 
-interface FirebaseClientProviderProps {
-  children: ReactNode;
-}
-
-// The services are now initialized inside the component, ensuring it only runs on the client.
-const firebaseServices = initializeFirebase();
-
-export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+export function FirebaseClientProvider({ children }: { children: React.ReactNode }) {
+  const services = initializeFirebase();
+  if (!services) return null; // SSR guard
 
   return (
     <FirebaseProvider
-      firebaseApp={firebaseServices.firebaseApp}
-      auth={firebaseServices.auth}
-      firestore={firebaseServices.firestore}
-      functions={firebaseServices.functions}
+      firebaseApp={services.firebaseApp}
+      auth={services.auth}
+      firestore={services.firestore}
+      functions={services.functions}
     >
       {children}
     </FirebaseProvider>

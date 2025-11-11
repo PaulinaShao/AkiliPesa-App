@@ -1,6 +1,6 @@
 'use client';
 
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
@@ -9,50 +9,43 @@ import { firebaseConfig } from '@/firebase/config';
 
 let app: FirebaseApp | undefined;
 
-export type FirebaseServices = {
-  firebaseApp: FirebaseApp;
-  auth: ReturnType<typeof getAuth>;
-  firestore: ReturnType<typeof getFirestore>;
-  functions: ReturnType<typeof getFunctions>;
-  storage: ReturnType<typeof getStorage>;
-};
+export function initializeFirebase() {
+  if (typeof window === 'undefined') return null; // never run during SSR
 
-export function initializeFirebase(): FirebaseServices | null {
-  // Never run on the server
-  if (typeof window === 'undefined') return null;
-
-  if (!getApps().length) {
-    // Try Hosting-injected config first (prod), fall back to local config
-    try {
-      // @ts-ignore Firebase Hosting can inject config with no args
-      app = initializeApp();
-    } catch {
-      app = initializeApp(firebaseConfig);
+  if (!app) {
+    if (!getApps().length) {
+      try {
+        // Hosting injects config at runtime
+        // @ts-ignore
+        app = initializeApp();
+      } catch {
+        app = initializeApp(firebaseConfig); // Studio/Local
+      }
+    } else {
+      app = getApp();
     }
-  } else {
-    app = getApp();
   }
 
   return {
-    firebaseApp: app!,
-    auth: getAuth(app!),
-    firestore: getFirestore(app!),
-    functions: getFunctions(app!),
-    storage: getStorage(app!),
+    firebaseApp: app,
+    auth: getAuth(app),
+    firestore: getFirestore(app),
+    functions: getFunctions(app),
+    storage: getStorage(app),
   };
 }
 
-// DO NOT re-export client-provider from here (prevents circular import)
+// OPTIONAL: export lazy getters if you want
+export const services = initializeFirebase();
 
-// Safe convenience exports (undefined on server, valid on client)
-const services = typeof window !== 'undefined' ? initializeFirebase() : null;
-export const firebaseApp = services?.firebaseApp;
-export const auth = services?.auth;
-export const firestore = services?.firestore;
-export const functions = services?.functions;
-export const storage = services?.storage;
+export const auth = services?.auth!;
+export const firestore = services?.firestore!;
+export const functions = services?.functions!;
+export const storage = services?.storage!;
+export const firebaseApp = services?.firebaseApp!;
 
-// Other re-exports that do NOT import back from '@/firebase'
+// Re-exports (unchanged)
+export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './use-memo-firebase';
