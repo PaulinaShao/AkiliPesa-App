@@ -3,14 +3,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useFirebaseUser } from '@/firebase';
-import { collection, query, where, limit, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, limit, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Header } from '@/components/header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notFound, useParams } from 'next/navigation';
 import { AgentProfilePanel } from '@/components/AgentProfilePanel';
 import FallbackAvatar from '@/components/ui/FallbackAvatar';
 import type { UserProfile } from 'docs/backend';
-import { initializeFirebase } from '@/firebase/server-init';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Star } from 'lucide-react';
@@ -21,50 +20,6 @@ import { RatingChip } from '@/components/RatingChip';
 import { BookingRequest } from '@/components/BookingRequest';
 import { AvailabilityCalendar } from '@/components/AvailabilityCalendar';
 
-async function getAgentData(handle: string): Promise<UserProfile | null> {
-    const { firestore } = initializeFirebase();
-    const usersCollection = collection(firestore, 'users');
-    const q = query(usersCollection, where('handle', '==', handle), limit(1));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        return null;
-    }
-    const userDoc = snapshot.docs[0];
-    return { uid: userDoc.id, ...userDoc.data() } as UserProfile;
-}
-
-export async function generateMetadata({ params }: { params: { handle: string } }) {
-  const agent = await getAgentData(params.handle);
-  
-  if (!agent) {
-    return {
-      title: 'Agent Not Found',
-    };
-  }
-
-  const title = `${agent.displayName || agent.handle} | AkiliPesa Agent`;
-  const description = agent.bio || `Connect with ${agent.displayName} on AkiliPesa for expert advice and services.`;
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      images: [{ url: agent.photoURL || '/assets/default-avatar-tanzanite.svg' }],
-      type: "profile",
-      profile: {
-          username: agent.handle
-      }
-    },
-    twitter: {
-        card: "summary_large_image",
-        title,
-        description,
-        images: [agent.photoURL || '/assets/default-avatar-tanzanite.svg'],
-    },
-  };
-}
 
 function StarRating({ value, setValue }: { value: number; setValue: (value: number) => void; }) {
   return (
@@ -158,7 +113,7 @@ export default function PublicAgentProfilePage() {
   const { data: users, isLoading: isProfileLoading } = useCollection<UserProfile>(userQuery);
   
   useEffect(() => {
-    if (!isProfileLoading && users && users.length === 0) {
+    if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
   }, [isProfileLoading, users]);

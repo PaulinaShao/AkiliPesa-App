@@ -26,8 +26,7 @@ export default function PublicProfilePage() {
   const { data: users, isLoading: isProfileLoading } = useCollection<any>(userQuery);
   
   useEffect(() => {
-    // Only call notFound() if loading is complete and there are no users.
-    if (!isProfileLoading && users && users.length === 0) {
+    if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
   }, [isProfileLoading, users]);
@@ -36,9 +35,7 @@ export default function PublicProfilePage() {
   const profileId = profile?.id;
   const isAgent = profile?.role === 'agent';
   
-  const isLoading = isProfileLoading || !profile;
-
-  if (isLoading) {
+  if (isProfileLoading || !profile) {
     return (
       <div className="dark">
         <Header isMuted={true} onToggleMute={() => {}} />
