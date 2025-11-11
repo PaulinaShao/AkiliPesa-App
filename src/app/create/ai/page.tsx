@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -13,9 +14,9 @@ import { useFirebase, useFirebaseUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import useSessionManager from '@/lib/sessionManager';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import dynamic from "next/dynamic";
 import { useInitiateCall } from '@/hooks/useInitiateCall';
-const CallPanel = dynamic(() => import("@/components/CallPanel"), { ssr: false });
+import { dynamicPick } from '@/lib/dynamic-safe';
+const CallPanel = dynamicPick(() => import('@/components/CallPanel'));
 
 
 interface Message {
