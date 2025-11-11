@@ -13,3 +13,4 @@ export default async function Home() {
   // For simplicity, we'll let HomePageClient handle its own state.
   return <HomePageClient initialPosts={posts} initialUsers={users} />;
 }
+
