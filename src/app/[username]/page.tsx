@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
-import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
+import { ProfileHeader } from '@/components/profile/components/ProfileHeader';
 import { Header } from '@/components/header';
 import { TrustScoreBadge } from '@/app/profile/components/TrustScoreBadge';
 import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';
@@ -26,7 +26,7 @@ export default function PublicProfilePage() {
   const { data: users, isLoading: isProfileLoading } = useCollection<any>(userQuery);
   
   useEffect(() => {
-    if (!isProfileLoading && (!users || users.length === 0)) {
+    if (isProfileLoading === false && (!users || users.length === 0)) {
       notFound();
     }
   }, [isProfileLoading, users]);

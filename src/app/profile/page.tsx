@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFirebase, useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
@@ -15,9 +16,11 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
+import type { UserProfile } from 'docs/backend';
+
 
 export default function UserProfileContent() {
-  const { user: currentUser, isUserLoading } = useFirebaseUser();
+  const { user: currentUser, isUserLoading: isAuthLoading } = useFirebaseUser();
   const { firestore, functions } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
@@ -29,7 +32,7 @@ export default function UserProfileContent() {
     return doc(firestore, 'users', currentUser.uid);
   }, [currentUser?.uid, firestore]);
 
-  const { data: profile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
+  const { data: profile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
   const handleSaveProfile = async (updates: any) => {
     if (!currentUser || !firestore) return;
@@ -53,7 +56,9 @@ export default function UserProfileContent() {
     }
   };
   
-  if (isUserLoading || isProfileLoading || !profile || !currentUser) {
+  const isLoading = isAuthLoading || isProfileLoading;
+
+  if (isLoading || !profile || !currentUser) {
     return (
       <div className="dark">
         <Header isMuted={true} onToggleMute={() => {}} />
