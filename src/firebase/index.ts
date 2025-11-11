@@ -1,10 +1,10 @@
 'use client';
-
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
+import { getDatabase } from "firebase/database";
 import { firebaseConfig } from '@/firebase/config';
 
 let app: FirebaseApp | undefined;
@@ -43,6 +43,7 @@ export const firestore = services?.firestore!;
 export const functions = services?.functions!;
 export const storage = services?.storage!;
 export const firebaseApp = services?.firebaseApp!;
+export const database = services ? getDatabase(services.firebaseApp) : undefined;
 
 // Re-exports (unchanged)
 export * from './client-provider';

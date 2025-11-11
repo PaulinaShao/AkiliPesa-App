@@ -1,9 +1,28 @@
 {
   "rules": {
-    "status": {
-      ".read": "auth != null",
+    ".read": false,
+    ".write": false,
+
+    "presence": {
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid"
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+
+    "callInvites": {
+      "$inviteId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "typingStatus": {
+      "$chatId": {
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid == $uid"
+        }
       }
     }
   }
