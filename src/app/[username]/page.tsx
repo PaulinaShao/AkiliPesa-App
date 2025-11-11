@@ -69,7 +69,7 @@ export default function PublicProfilePage() {
             bio: profile.bio || '',
             stats: profile.stats || { followers: 0, following: 0, likes: 0, postsCount: 0 },
           }}
-          isOwnProfile={false} // Public profiles are not editable by default
+          isOwnProfile={false}
           onEditClick={() => {}}
         />
         

@@ -15,7 +15,7 @@ import { onUpdate, onDocumentWritten, onDocumentCreated } from "firebase-functio
 import { computeCallCost } from "./lib/callPricing";
 import { onBookingRequestCreate, onBookingStatusChange, onCallInvite } from "./notifications";
 import { onBookingStatusCreateIcs } from "./ics";
-import { callSessionHandler2, joinExistingCall, inviteToCall, updateLayoutMode, endCallRoom } from "./calls";
+import { callSessionHandler, joinExistingCall, inviteToCall, updateLayoutMode, endCallRoom } from "./calls";
 
 
 if (!admin.apps.length) {
@@ -27,7 +27,7 @@ setGlobalOptions({ maxInstances: 10 });
 
 // --- Core AI & Call Flows ---
 export { createAiCallSession } from "./ai/createAiCallSession";
-export { callSessionHandler, enqueueTTS } from "./ai/callSessionHandler";
+export { enqueueTTS } from "./ai/callSessionHandler";
 export { callLiveLoop } from "./ai/callLiveLoop";
 export { endAiCall } from "./ai/endAiCall";
 export { summarizeAiSession } from "./ai/summarizeSession";
@@ -96,4 +96,5 @@ export const onCallComplete = onDocumentWritten("callHistory/{callId}", async (e
 
 // --- Notification Triggers ---
 export { onBookingRequestCreate, onBookingStatusChange, onCallInvite };
-export { callSessionHandler2 };
+export { callSessionHandler };
+
