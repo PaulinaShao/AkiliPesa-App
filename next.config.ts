@@ -40,7 +40,12 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     NEXT_PUBLIC_FCM_VAPID_KEY: process.env.NEXT_PUBLIC_FCM_VAPID_KEY,
     NEXT_PUBLIC_AGORA_APP_ID: process.env.NEXT_PUBLIC_AGORA_APP_ID,
-  }
+  },
+  webpack: (config, { isServer }) => {
+    // Exclude the functions directory from being bundled by Webpack
+    config.watchOptions.ignored = /node_modules|functions/;
+    return config;
+  },
 };
 
 module.exports = nextConfig;

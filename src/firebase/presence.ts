@@ -14,7 +14,7 @@ export function PresenceWriter() {
 
     // Initialize Realtime Database and get a reference to the database service
     const db = getDatabase(app);
-    const myStatusRef = ref(db, 'status/' + user.uid);
+    const myStatusRef = ref(db, `/presence/${user.uid}`);
 
     // Get a reference to the /.info/connected node which is a boolean value that is true when the client is connected and false when they are not.
     const connectedRef = ref(db, '.info/connected');

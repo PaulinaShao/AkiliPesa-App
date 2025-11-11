@@ -1,29 +1,24 @@
 {
   "rules": {
-    ".read": false,
-    ".write": false,
-
     "presence": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid"
       }
     },
-
-    "callInvites": {
-      "$inviteId": {
+    "callStatus": {
+      "$sessionId": {
         ".read": "auth != null",
         ".write": "auth != null"
       }
     },
-
-    "typingStatus": {
-      "$chatId": {
-        "$uid": {
-          ".read": "auth != null",
-          ".write": "auth != null && auth.uid == $uid"
-        }
+    "agentLive": {
+      "$agentId": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $agentId"
       }
-    }
+    },
+    ".read": false,
+    ".write": false
   }
 }
