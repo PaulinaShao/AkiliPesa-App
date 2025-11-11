@@ -150,7 +150,7 @@ export default function AiCreatePage() {
             </div>
             ))}
              <div className="pt-4">
-              <CallPanel withVideo={false} />
+              <CallPanel />
             </div>
         </div>
       </ScrollArea>
