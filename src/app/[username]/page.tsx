@@ -12,6 +12,7 @@ import { AkiliPointsBadge } from '@/app/profile/components/AkiliPointsBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notFound, useParams } from 'next/navigation';
 import { AgentProfilePanel } from '@/components/AgentProfilePanel';
+import type { UserProfile } from 'docs/backend';
 
 export default function PublicProfilePage() {
   const firestore = useFirestore();
@@ -23,10 +24,10 @@ export default function PublicProfilePage() {
     return query(collection(firestore, 'users'), where('handle', '==', username), limit(1));
   }, [firestore, username]);
 
-  const { data: users, isLoading: isProfileLoading } = useCollection<any>(userQuery);
+  const { data: users, isLoading: isProfileLoading } = useCollection<UserProfile>(userQuery);
   
   useEffect(() => {
-    if (isProfileLoading === false && (!users || users.length === 0)) {
+    if (!isProfileLoading && (!users || users.length === 0)) {
       notFound();
     }
   }, [isProfileLoading, users]);

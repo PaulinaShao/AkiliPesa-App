@@ -15,7 +15,7 @@ import { onUpdate, onDocumentWritten, onDocumentCreated } from "firebase-functio
 import { computeCallCost } from "./lib/callPricing";
 import { onBookingRequestCreate, onBookingStatusChange, onCallInvite } from "./notifications";
 import { onBookingStatusCreateIcs } from "./ics";
-import { callSessionHandler, joinExistingCall, inviteToCall, updateLayoutMode, endCallRoom } from "./calls";
+import { joinExistingCall, inviteToCall, updateLayoutMode, endCallRoom } from "./calls";
 
 
 if (!admin.apps.length) {
@@ -96,5 +96,3 @@ export const onCallComplete = onDocumentWritten("callHistory/{callId}", async (e
 
 // --- Notification Triggers ---
 export { onBookingRequestCreate, onBookingStatusChange, onCallInvite };
-export { callSessionHandler };
-
