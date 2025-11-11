@@ -119,8 +119,9 @@ export default function PublicAgentProfilePage() {
   }, [isProfileLoading, users]);
   
   const profile = users?.[0];
+  const agentId = profile?.id || profile?.uid;
 
-  if (isProfileLoading || !profile) {
+  if (isProfileLoading || !profile || !agentId) {
     return (
       <div className="dark">
         <Header isMuted={true} onToggleMute={() => {}} />
@@ -144,23 +145,23 @@ export default function PublicAgentProfilePage() {
           <h1 className="text-2xl font-bold mt-4">@{profile.handle}</h1>
           <p className="text-muted-foreground">{profile.displayName}</p>
           <div className="my-2">
-            <RatingChip agentId={profile.uid} />
+            <RatingChip agentId={agentId} />
           </div>
           <p className="text-sm max-w-md mt-2">{profile.bio}</p>
         </header>
         
-        <AgentProfilePanel agentId={profile.uid} />
+        <AgentProfilePanel agentId={agentId} />
 
         <div className="mt-4">
             <h3 className="font-medium text-lg mb-2">Book a Session</h3>
-            <AvailabilityCalendar agentId={profile.uid} />
-            <BookingRequest agentId={profile.uid} />
+            <AvailabilityCalendar agentId={agentId} />
+            <BookingRequest agentId={agentId} />
         </div>
         
-        <ReviewsSection agentId={profile.uid} />
+        <ReviewsSection agentId={agentId} />
         
       </div>
-       <MobileActionSheet agentId={profile.uid} />
+       <MobileActionSheet agentId={agentId} />
     </div>
   );
 }

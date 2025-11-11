@@ -42,20 +42,24 @@ export default function ChatPage() {
         getDocs(q).then(snapshot => {
             if (!snapshot.empty) {
                 const userData = snapshot.docs[0].data() as UserProfile;
+                // Ensure the UID is on the object
                 if (!userData.uid) {
                   userData.uid = snapshot.docs[0].id;
                 }
                 setOtherUser(userData);
+            } else {
+                setOtherUser(null);
             }
             setIsLoading(false); 
         });
     }, [firestore, username]);
 
     useEffect(() => {
+      // This is the critical fix: only run notFound() AFTER loading is complete AND otherUser is still null.
       if (!isLoading && !otherUser) {
         notFound();
       }
-    }, [isLoading, otherUser])
+    }, [isLoading, otherUser]);
 
     useEffect(() => {
         if (!firestore || !currentUserAuth || !otherUser) return;

@@ -33,7 +33,7 @@ export default function PublicProfilePage() {
   }, [isProfileLoading, users]);
   
   const profile = users?.[0];
-  const profileId = profile?.id;
+  const profileId = profile?.id || profile?.uid;
   const isAgent = profile?.role === 'agent';
   
   if (isProfileLoading || !profile) {
@@ -63,7 +63,7 @@ export default function PublicProfilePage() {
       <div className="max-w-xl mx-auto p-4 pt-20 pb-24">
         <ProfileHeader
           user={{
-            id: profile.id,
+            id: profileId,
             username: profile.handle,
             name: profile.displayName,
             avatar: profile.photoURL,
