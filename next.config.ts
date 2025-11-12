@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https',
+        protocol: 'https' ,
         hostname: 'picsum.photos',
         pathname: '/**',
       },
@@ -44,12 +44,13 @@ const nextConfig: NextConfig = {
   },
   webpack: (config, { isServer }) => {
     // This is the correct way to exclude directories from the build
-    config.watchOptions.ignored = [
-        ...(Array.isArray(config.watchOptions.ignored) ? config.watchOptions.ignored : []),
+    if (Array.isArray(config.watchOptions.ignored)) {
+      config.watchOptions.ignored.push(
         path.resolve(__dirname, 'functions'),
         path.resolve(__dirname, 'bot'),
         path.resolve(__dirname, 'workspace'),
-    ];
+      );
+    }
     return config;
   },
 };
