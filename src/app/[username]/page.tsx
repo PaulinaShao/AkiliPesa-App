@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
-import { ProfileHeader } from '@/components/profile/components/ProfileHeader';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { Header } from '@/components/header';
 import { TrustScoreBadge } from '@/app/profile/components/TrustScoreBadge';
 import { BuyerTrustBadge } from '@/app/profile/components/BuyerTrustBadge';

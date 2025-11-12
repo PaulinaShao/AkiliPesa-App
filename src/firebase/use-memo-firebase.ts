@@ -1,19 +1,64 @@
 'use client';
 
-import { useMemo, type DependencyList } from 'react';
+import { useMemo } from 'react';
+import { useFirebase } from '@/firebase/provider';
+import { FirebaseApp } from 'firebase/app';
+import { Firestore } from 'firebase/firestore';
+import { Auth } from 'firebase/auth';
+import { Functions } from 'firebase/functions';
 
-type MemoFirebase<T> = T & { __memo?: boolean };
+/**
+ * useMemoFirebase()
+ * - Provides stable, memoized Firebase context references
+ * - Prevents [object Object] hydration mismatch in Next.js
+ * - Ensures services are only returned once fully initialized
+ */
 
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
-  const memoized = useMemo(factory, deps);
+export interface MemoizedFirebase {
+  firebaseApp: FirebaseApp | null;
+  firestore: Firestore | null;
+  auth: Auth | null;
+  functions: Functions | null;
+  user: any;
+  isUserLoading: boolean;
+  userError: Error | null;
+}
 
-  if (typeof memoized !== 'object' || memoized === null) {
-    return memoized;
-  }
+export function useMemoFirebase(): MemoizedFirebase | null {
+  const {
+    firebaseApp,
+    firestore,
+    auth,
+    functions,
+    user,
+    isUserLoading,
+    userError,
+  } = useFirebase();
 
-  // Use a type assertion to tell TypeScript it's safe to add the property.
-  const result = memoized as MemoFirebase<T>;
-  result.__memo = true;
+  // ✅ Return null until Firebase is ready
+  const memoized = useMemo(() => {
+    if (!firebaseApp || !firestore || !auth || !functions) {
+      return null;
+    }
 
-  return result;
+    return {
+      firebaseApp,
+      firestore,
+      auth,
+      functions,
+      user,
+      isUserLoading,
+      userError,
+    };
+  }, [
+    firebaseApp,
+    firestore,
+    auth,
+    functions,
+    user,
+    isUserLoading,
+    userError,
+  ]);
+
+  return memoized;
 }

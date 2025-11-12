@@ -1,21 +1,23 @@
-
 'use client';
 
-import React, { createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { Functions } from 'firebase/functions';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { initializeFirebase } from '@/firebase';
 
-interface FirebaseProviderProps {
-  children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
-  functions: Functions;
-}
-
+/** -------------------------------------------------------------------
+ *  Context Interfaces
+ *  ------------------------------------------------------------------- */
 interface UserAuthState {
   user: User | null;
   isUserLoading: boolean;
@@ -33,55 +35,56 @@ export interface FirebaseContextState {
   userError: Error | null;
 }
 
-export interface FirebaseServicesAndUser {
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
-  functions: Functions;
-  user: User | null;
-  isUserLoading: boolean;
-  userError: Error | null;
-}
+/** -------------------------------------------------------------------
+ *  Create Context
+ *  ------------------------------------------------------------------- */
+export const FirebaseContext = createContext<FirebaseContextState | undefined>(
+  undefined
+);
 
-export interface UserHookResult {
-  user: User | null;
-  isUserLoading: boolean;
-  userError: Error | null;
-}
+/** -------------------------------------------------------------------
+ *  FirebaseProvider: self-initializing wrapper
+ *  ------------------------------------------------------------------- */
+export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
+  // Initialize Firebase once (using your global helper)
+  const { app: firebaseApp, firestore, auth, functions } = initializeFirebase();
 
-export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
-
-export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
-  children,
-  firebaseApp,
-  firestore,
-  auth,
-  functions,
-}) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
     isUserLoading: true,
     userError: null,
   });
 
+  // --- Auth listener ---
   useEffect(() => {
     if (!auth) {
-      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
+      setUserAuthState({
+        user: null,
+        isUserLoading: false,
+        userError: new Error('Auth service not provided.'),
+      });
       return;
     }
-
-    setUserAuthState({ user: null, isUserLoading: true, userError: null });
 
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => {
-        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        setUserAuthState({
+          user: firebaseUser,
+          isUserLoading: false,
+          userError: null,
+        });
       },
       (error) => {
-        console.error("FirebaseProvider: onAuthStateChanged error:", error);
-        setUserAuthState({ user: null, isUserLoading: false, userError: error });
+        console.error('FirebaseProvider: onAuthStateChanged error:', error);
+        setUserAuthState({
+          user: null,
+          isUserLoading: false,
+          userError: error,
+        });
       }
     );
+
     return () => unsubscribe();
   }, [auth]);
 
@@ -107,44 +110,36 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   );
 };
 
-export const useFirebase = (): FirebaseServicesAndUser => {
+/** -------------------------------------------------------------------
+ *  Custom Hooks
+ *  ------------------------------------------------------------------- */
+export const useFirebase = (): FirebaseContextState => {
   const context = useContext(FirebaseContext);
-
   if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
-
-  if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth || !context.functions) {
-    throw new Error('Firebase core services not available. Check FirebaseProvider props.');
-  }
-
-  return {
-    firebaseApp: context.firebaseApp,
-    firestore: context.firestore,
-    auth: context.auth,
-    functions: context.functions,
-    user: context.user,
-    isUserLoading: context.isUserLoading,
-    userError: context.userError,
-  };
+  return context;
 };
 
 export const useAuth = (): Auth => {
   const { auth } = useFirebase();
+  if (!auth) throw new Error('Auth not available.');
   return auth;
 };
 
 export const useFirestore = (): Firestore => {
   const { firestore } = useFirebase();
+  if (!firestore) throw new Error('Firestore not available.');
   return firestore;
 };
 
 export const useFirebaseApp = (): FirebaseApp => {
   const { firebaseApp } = useFirebase();
+  if (!firebaseApp) throw new Error('Firebase App not available.');
   return firebaseApp;
 };
 
-export const useFirebaseUser = (): UserHookResult => {
+export const useFirebaseUser = () => {
   const { user, isUserLoading, userError } = useFirebase();
   return { user, isUserLoading, userError };
 };

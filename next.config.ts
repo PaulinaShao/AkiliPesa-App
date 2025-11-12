@@ -1,5 +1,6 @@
 
 import type { NextConfig } from 'next';
+import path from 'path';
 
 const nextConfig: NextConfig = {
   typescript: {
@@ -40,6 +41,16 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     NEXT_PUBLIC_FCM_VAPID_KEY: process.env.NEXT_PUBLIC_FCM_VAPID_KEY,
     NEXT_PUBLIC_AGORA_APP_ID: process.env.NEXT_PUBLIC_AGORA_APP_ID,
+  },
+  webpack: (config, { isServer }) => {
+    // This is the correct way to exclude directories from the build
+    config.watchOptions.ignored = [
+        ...(Array.isArray(config.watchOptions.ignored) ? config.watchOptions.ignored : []),
+        path.resolve(__dirname, 'functions'),
+        path.resolve(__dirname, 'bot'),
+        path.resolve(__dirname, 'workspace'),
+    ];
+    return config;
   },
 };
 
