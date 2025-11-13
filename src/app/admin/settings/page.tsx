@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { doc, updateDoc, getDoc, setDoc, collection, query, where, Timestamp } from 'firebase/firestore';
-import { useFirestore, useCollection, useMemoFirebase, useFirebaseUser } from '@/firebase';
+import { useFirestore, useCollection, useFsMemo, useFirebaseUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -80,7 +80,7 @@ export default function AdminSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   
-  const withdrawalRequestsQuery = useMemoFirebase(() => 
+  const withdrawalRequestsQuery = useFsMemo(() => 
     firestore ? query(collection(firestore, 'withdrawalRequests'), where('status', '==', 'pending')) : null,
     [firestore]
   );

@@ -2,9 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { useFirestore, useFirebaseUser } from '@/firebase';
-import { useMemoFirebase } from '@/firebase/use-memo-firebase';
 import { httpsCallable } from 'firebase/functions';
+
+import {
+  useFirestore,
+  useFirebaseUser,
+  useFirebase,
+  useFsMemo,
+} from '@/firebase';
 
 export type Participant = {
   uid: string;
@@ -29,12 +34,13 @@ export type CallRoom = {
 
 export function useCallRoom(callId: string) {
   const firestore = useFirestore();
-  const { functions } = useFirebaseUser();
+  const { functions } = useFirebase(); // functions live in Firebase context
   const { user } = useFirebaseUser();
+
   const [room, setRoom] = useState<CallRoom | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const callRoomRef = useMemoFirebase(() => {
+  const callRoomRef = useFsMemo(() => {
     if (!firestore || !callId) return null;
     return doc(firestore, 'callRooms', callId);
   }, [firestore, callId]);
@@ -44,14 +50,16 @@ export function useCallRoom(callId: string) {
       setLoading(false);
       return;
     }
+
     const unsubscribe = onSnapshot(callRoomRef, (snap) => {
       if (snap.exists()) {
-        setRoom({ id: snap.id, ...snap.data() } as CallRoom);
+        setRoom({ id: snap.id, ...(snap.data() as Omit<CallRoom, 'id'>) });
       } else {
         setRoom(null);
       }
       setLoading(false);
     });
+
     return () => unsubscribe();
   }, [callRoomRef]);
 
@@ -63,12 +71,12 @@ export function useCallRoom(callId: string) {
     const updateLayout = httpsCallable(functions, 'updateLayoutMode');
     await updateLayout({ callId, layoutMode });
   };
-  
+
   const invite = async (calleeId: string) => {
-      if (!functions) return;
-      const inviteFn = httpsCallable(functions, 'inviteToCall');
-      await inviteFn({ callId, calleeId });
-  }
+    if (!functions) return;
+    const inviteFn = httpsCallable(functions, 'inviteToCall');
+    await inviteFn({ callId, calleeId });
+  };
 
   return { room, participants, isHost, loading, setLayoutMode, invite };
 }

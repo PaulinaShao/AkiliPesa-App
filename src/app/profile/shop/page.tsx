@@ -1,6 +1,6 @@
 'use client';
 import { Header } from '@/components/header';
-import { useFirebaseUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useFirebaseUser, useCollection, useFirestore, useFsMemo } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ export default function ShopPage() {
   const { user } = useFirebaseUser();
   const firestore = useFirestore();
   
-  const q = useMemoFirebase(() => 
+  const q = useFsMemo(() => 
     user && firestore ? query(collection(firestore, 'products'), where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')) : null,
     [user, firestore]
   );

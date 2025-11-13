@@ -1,6 +1,6 @@
 'use client';
-import { useDoc, useFirestore } from '@/firebase';
-import { useMemoFirebase } from '@/firebase/use-memo-firebase';
+
+import { useDoc, useFirestore, useFsMemo } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 export type AgentPricing = {
@@ -12,11 +12,11 @@ export type AgentPricing = {
 export function useAgentPricing(agentId: string) {
   const firestore = useFirestore();
 
-  const pricingDocRef = useMemoFirebase(() => {
+  const pricingDocRef = useFsMemo(() => {
     if (!firestore || !agentId) return null;
     return doc(firestore, 'agentPricing', agentId);
   }, [firestore, agentId]);
-  
+
   const { data, isLoading, error } = useDoc<AgentPricing>(pricingDocRef);
 
   return { pricing: data, isLoading, error };

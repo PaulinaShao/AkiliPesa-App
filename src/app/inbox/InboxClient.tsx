@@ -10,7 +10,7 @@ import { Phone, Sparkles, Video, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo } from 'react';
-import { useFirebase, useFirebaseUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useFirebaseUser, useCollection, useFsMemo } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { AgentPicker } from '@/components/AgentPicker';
@@ -35,7 +35,7 @@ export function InboxClient({ initialConversations }: InboxClientProps) {
         setIsClient(true);
     }, []);
     
-    const conversationsQuery = useMemoFirebase(() => {
+    const conversationsQuery = useFsMemo(() => {
         if (!firestore || !currentUserAuth) return null;
         // Query for conversations where the current user is either the sender or receiver
         const q = query(
@@ -61,7 +61,7 @@ export function InboxClient({ initialConversations }: InboxClientProps) {
       return Array.from(ids);
     }, [conversations, currentUserAuth]);
 
-    const usersQuery = useMemoFirebase(() => {
+    const usersQuery = useFsMemo(() => {
       if (!firestore || userIdsInConversations.length === 0) return null;
       // Note: A real app might need to chunk this query if userIdsInConversations > 30
       return query(collection(firestore, 'users'), where(documentId(), 'in', userIdsInConversations));

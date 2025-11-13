@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { ArrowDownLeft, ArrowUpRight, Plus, Send, ShieldCheck, Hourglass, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useFirebaseUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebaseUser, useFirestore, useDoc, useCollection, useFsMemo } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 
 
@@ -31,14 +31,14 @@ export default function WalletPage() {
   const { user, loading: isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
 
-  const walletDocRef = useMemoFirebase(
+  const walletDocRef = useFsMemo(
     () => (user && firestore ? doc(firestore, "wallets", user.uid) : null),
     [user, firestore]
   );
   const { data: walletData, isLoading: isWalletLoading } = useDoc<any>(walletDocRef);
   const wallet = walletData || { balanceTZS: 0, escrow: 0, plan: { credits: 0 } };
 
-  const transactionsQuery = useMemoFirebase(() => {
+  const transactionsQuery = useFsMemo(() => {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, "transactions"),

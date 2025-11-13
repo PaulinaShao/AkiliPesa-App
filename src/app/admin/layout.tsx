@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useFirebaseUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useFirebaseUser, useDoc, useFirestore, useFsMemo } from '@/firebase';
 import { useEffect } from 'react';
 import { doc } from 'firebase/firestore';
 
@@ -15,7 +15,7 @@ export default function AdminLayout({
   const { user, isUserLoading } = useFirebaseUser();
   const firestore = useFirestore();
 
-  const userDocRef = useMemoFirebase(() => 
+  const userDocRef = useFsMemo(() => 
     user ? doc(firestore, 'users', user.uid) : null
   , [user, firestore]);
 

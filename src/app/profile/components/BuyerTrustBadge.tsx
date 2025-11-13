@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore, useDoc, useFsMemo } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { ShieldCheck } from 'lucide-react';
 
@@ -13,7 +13,7 @@ interface BuyerTrust {
 export function BuyerTrustBadge({ buyerId }: { buyerId: string }) {
   const firestore = useFirestore();
 
-  const scoreDocRef = useMemoFirebase(() => {
+  const scoreDocRef = useFsMemo(() => {
     if (!firestore || !buyerId) return null;
     return doc(firestore, 'buyerTrust', buyerId);
   }, [firestore, buyerId]);

@@ -1,4 +1,6 @@
 
+'use client';
+
 import CallHistoryList from "@/components/CallHistoryList";
 import { Header } from "@/components/header";
 

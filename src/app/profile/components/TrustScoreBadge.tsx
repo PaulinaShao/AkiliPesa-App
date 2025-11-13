@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore, useDoc, useFsMemo } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { ShieldCheck } from 'lucide-react';
 
@@ -20,7 +20,7 @@ const levelColors: Record<string, string> = {
 export function TrustScoreBadge({ sellerId }: { sellerId: string }) {
   const firestore = useFirestore();
 
-  const scoreDocRef = useMemoFirebase(() => {
+  const scoreDocRef = useFsMemo(() => {
     if (!firestore || !sellerId) return null;
     return doc(firestore, 'trustScores', sellerId);
   }, [firestore, sellerId]);

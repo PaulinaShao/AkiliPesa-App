@@ -6,14 +6,31 @@ import React, {
   useMemo,
   useState,
   useEffect,
-  ReactNode,
+  type ReactNode,
 } from 'react';
-import { FirebaseApp } from 'firebase/app';
-import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { Functions } from 'firebase/functions';
+import {
+  initializeApp,
+  getApps,
+  getApp,
+  type FirebaseApp,
+} from 'firebase/app';
+import {
+  getFirestore,
+  type Firestore,
+} from 'firebase/firestore';
+import {
+  getAuth,
+  type Auth,
+  type User,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import {
+  getFunctions,
+  type Functions,
+} from 'firebase/functions';
+
+import { firebaseConfig } from '@/firebase/config';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { initializeFirebase } from '@/firebase';
 
 /** -------------------------------------------------------------------
  *  Context Interfaces
@@ -36,6 +53,31 @@ export interface FirebaseContextState {
 }
 
 /** -------------------------------------------------------------------
+ *  Local initialization (no circular deps)
+ *  ------------------------------------------------------------------- */
+function initFirebaseCore() {
+  let app: FirebaseApp;
+
+  if (!getApps().length) {
+    try {
+      // On Hosting, Firebase can inject config
+      // @ts-ignore
+      app = initializeApp();
+    } catch {
+      app = initializeApp(firebaseConfig);
+    }
+  } else {
+    app = getApp();
+  }
+
+  const auth = getAuth(app);
+  const firestore = getFirestore(app);
+  const functions = getFunctions(app, 'us-central1');
+
+  return { app, auth, firestore, functions };
+}
+
+/** -------------------------------------------------------------------
  *  Create Context
  *  ------------------------------------------------------------------- */
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(
@@ -43,11 +85,10 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(
 );
 
 /** -------------------------------------------------------------------
- *  FirebaseProvider: self-initializing wrapper
+ *  FirebaseProvider
  *  ------------------------------------------------------------------- */
 export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
-  // Initialize Firebase once (using your global helper)
-  const { app: firebaseApp, firestore, auth, functions } = initializeFirebase();
+  const { app: firebaseApp, auth, firestore, functions } = initFirebaseCore();
 
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
@@ -88,8 +129,9 @@ export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, [auth]);
 
-  const contextValue = useMemo((): FirebaseContextState => {
+  const contextValue = useMemo<FirebaseContextState>(() => {
     const servicesAvailable = !!(firebaseApp && firestore && auth && functions);
+
     return {
       areServicesAvailable: servicesAvailable,
       firebaseApp: servicesAvailable ? firebaseApp : null,

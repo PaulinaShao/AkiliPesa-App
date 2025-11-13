@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useFsMemo } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { Header } from '@/components/header';
@@ -19,7 +19,7 @@ export default function PublicProfilePage() {
   const params = useParams();
   const username = params.username as string;
 
-  const userQuery = useMemoFirebase(() => {
+  const userQuery = useFsMemo(() => {
     if (!firestore || !username) return null;
     return query(collection(firestore, 'users'), where('handle', '==', username), limit(1));
   }, [firestore, username]);

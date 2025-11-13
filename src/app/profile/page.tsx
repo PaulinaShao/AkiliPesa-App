@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useFirebase, useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebase, useFirebaseUser, useFirestore, useDoc, useFsMemo } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProfileHeader } from '@/app/profile/components/ProfileHeader';
 import { Header } from '@/components/header';
@@ -27,7 +27,7 @@ export default function UserProfileContent() {
 
   const [showEditor, setShowEditor] = useState(false);
   
-  const userDocRef = useMemoFirebase(() => {
+  const userDocRef = useFsMemo(() => {
     if (!currentUser || !firestore) return null;
     return doc(firestore, 'users', currentUser.uid);
   }, [currentUser?.uid, firestore]);

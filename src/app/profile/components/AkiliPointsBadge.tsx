@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore, useDoc, useFsMemo } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 interface AkiliPoints {
@@ -20,7 +20,7 @@ const levelThresholds: Record<string, number> = {
 export function AkiliPointsBadge({ userId }: { userId: string }) {
   const firestore = useFirestore();
 
-  const pointsDocRef = useMemoFirebase(() => {
+  const pointsDocRef = useFsMemo(() => {
     if (!firestore || !userId) return null;
     return doc(firestore, 'akiliPoints', userId);
   }, [firestore, userId]);

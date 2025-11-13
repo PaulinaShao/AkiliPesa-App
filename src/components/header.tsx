@@ -7,7 +7,7 @@ import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { useDoc, useFirestore, useFirebaseUser } from '@/firebase';
-import { useMemoFirebase } from '@/firebase/use-memo-firebase';
+import { useFsMemo } from '@/firebase/use-memo-firebase';
 import { doc } from 'firebase/firestore';
 import { RosterDrawer } from './RosterDrawer';
 
@@ -21,7 +21,7 @@ export function Header({ transparent, isMuted, onToggleMute }: HeaderProps) {
   const { user } = useFirebaseUser();
   const firestore = useFirestore();
 
-  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+  const userDocRef = useFsMemo(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userDocRef);
 
   const walletBalance = userProfile?.wallet?.balance ?? 0;

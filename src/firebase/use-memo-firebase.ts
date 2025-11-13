@@ -1,30 +1,59 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, type DependencyList } from 'react';
 import { useFirebase } from '@/firebase/provider';
-import { FirebaseApp } from 'firebase/app';
-import { Firestore } from 'firebase/firestore';
-import { Auth } from 'firebase/auth';
-import { Functions } from 'firebase/functions';
+import type { FirebaseApp } from 'firebase/app';
+import type { Firestore, Query, DocumentData, DocumentReference } from 'firebase/firestore';
+import type { Auth } from 'firebase/auth';
+import type { Functions } from 'firebase/functions';
+
+/** Tag added to Firestore refs/queries that are safely memoized */
+type FsMemoTag = { __fsMemo: true };
 
 /**
- * useMemoFirebase()
- * - Provides stable, memoized Firebase context references
- * - Prevents [object Object] hydration mismatch in Next.js
- * - Ensures services are only returned once fully initialized
+ * useFsMemo
+ *
+ * Memoize ANY Firestore ref/query you pass in and tag it with __fsMemo so our
+ * hooks (useDoc/useCollection) can assert stability.
+ *
+ * Example:
+ *   const userDoc = useFsMemo(
+ *     () => (user ? doc(firestore, 'users', user.uid) : null),
+ *     [firestore, user?.uid]
+ *   );
  */
+export function useFsMemo<T extends object | null>(
+  factory: () => T,
+  deps: DependencyList
+): (T & FsMemoTag) | null {
+  const value = useMemo(factory, deps);
 
-export interface MemoizedFirebase {
-  firebaseApp: FirebaseApp | null;
-  firestore: Firestore | null;
-  auth: Auth | null;
-  functions: Functions | null;
+  if (value && typeof value === 'object') {
+    (value as any).__fsMemo = true;
+  }
+
+  return value as (T & FsMemoTag) | null;
+}
+
+/**
+ * useFirebaseReady
+ *
+ * Returns Firebase services once initialized on the client.
+ * Returns null on SSR or before initialization.
+ *
+ * Use this when a page needs to “wait” before it can safely call Firestore.
+ */
+export interface FirebaseReady {
+  firebaseApp: FirebaseApp;
+  firestore: Firestore;
+  auth: Auth;
+  functions: Functions;
   user: any;
   isUserLoading: boolean;
   userError: Error | null;
 }
 
-export function useMemoFirebase(): MemoizedFirebase | null {
+export function useFirebaseReady(): FirebaseReady | null {
   const {
     firebaseApp,
     firestore,
@@ -35,11 +64,8 @@ export function useMemoFirebase(): MemoizedFirebase | null {
     userError,
   } = useFirebase();
 
-  // ✅ Return null until Firebase is ready
-  const memoized = useMemo(() => {
-    if (!firebaseApp || !firestore || !auth || !functions) {
-      return null;
-    }
+  const ready = useMemo<FirebaseReady | null>(() => {
+    if (!firebaseApp || !firestore || !auth || !functions) return null;
 
     return {
       firebaseApp,
@@ -50,15 +76,7 @@ export function useMemoFirebase(): MemoizedFirebase | null {
       isUserLoading,
       userError,
     };
-  }, [
-    firebaseApp,
-    firestore,
-    auth,
-    functions,
-    user,
-    isUserLoading,
-    userError,
-  ]);
+  }, [firebaseApp, firestore, auth, functions, user, isUserLoading, userError]);
 
-  return memoized;
+  return ready;
 }

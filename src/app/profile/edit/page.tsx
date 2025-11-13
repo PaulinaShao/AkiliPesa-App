@@ -1,6 +1,6 @@
 'use client';
 import { Header } from '@/components/header';
-import { useFirebaseUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebaseUser, useFirestore, useDoc, useFsMemo } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ export default function EditProfilePage() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const userDocRef = useMemoFirebase(() => {
+  const userDocRef = useFsMemo(() => {
     if (!user || !firestore) return null;
     return doc(firestore, 'users', user.uid);
   }, [user, firestore]);

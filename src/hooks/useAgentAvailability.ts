@@ -1,7 +1,7 @@
 'use client';
-import { useDoc, useFirestore } from '@/firebase';
-import { useMemoFirebase } from '@/firebase/use-memo-firebase';
+
 import { doc, Timestamp } from 'firebase/firestore';
+import { useDoc, useFirestore, useFsMemo } from '@/firebase';
 
 export type Availability = {
   isOnline: boolean;
@@ -11,11 +11,12 @@ export type Availability = {
 
 export function useAgentAvailability(agentId: string) {
   const firestore = useFirestore();
-  const availabilityDocRef = useMemoFirebase(() => {
+
+  const availabilityDocRef = useFsMemo(() => {
     if (!firestore || !agentId) return null;
     return doc(firestore, 'agentAvailability', agentId);
   }, [firestore, agentId]);
-  
+
   const { data, isLoading, error } = useDoc<Availability>(availabilityDocRef);
 
   return { availability: data, isLoading, error };

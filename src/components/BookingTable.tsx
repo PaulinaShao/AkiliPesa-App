@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useFirestore, useCollection, useMemoFirebase, useFirebaseUser } from '@/firebase';
+import { useFirestore, useCollection, useFsMemo, useFirebaseUser } from '@/firebase';
 import { collection, collectionGroup, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,7 @@ export function BookingTable({ adminMode, agentId }: { adminMode: boolean; agent
     const { user } = useFirebaseUser();
     const { toast } = useToast();
 
-    const bookingsQuery = useMemoFirebase(() => {
+    const bookingsQuery = useFsMemo(() => {
         if (!firestore) return null;
         if (adminMode) {
             return query(collectionGroup(firestore, 'requests'), orderBy('createdAt', 'desc'));

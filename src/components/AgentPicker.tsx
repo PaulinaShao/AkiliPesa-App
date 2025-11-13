@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useFirestore, useFirebaseUser } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useMemoFirebase } from '@/firebase/use-memo-firebase';
+import { useFsMemo } from '@/firebase/use-memo-firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,7 +35,7 @@ export function AgentPicker({ show, onSelect, onCancel }: AgentPickerProps) {
   const firestore = useFirestore();
   const { user } = useFirebaseUser();
 
-  const adminAgentsQuery = useMemoFirebase(
+  const adminAgentsQuery = useFsMemo(
     () =>
       firestore && user // Only create query if user is authenticated
         ? query(collection(firestore, 'adminAgents'), where('status', '==', 'active'))
@@ -44,7 +44,7 @@ export function AgentPicker({ show, onSelect, onCancel }: AgentPickerProps) {
   );
   const { data: adminAgents, isLoading: adminLoading } = useCollection<Agent>(adminAgentsQuery);
   
-  const userAgentsQuery = useMemoFirebase(
+  const userAgentsQuery = useFsMemo(
     () =>
       firestore && user
         ? query(collection(firestore, `users/${user.uid}/agents`), where('status', '==', 'active'))

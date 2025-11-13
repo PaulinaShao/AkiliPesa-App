@@ -1,25 +1,19 @@
+import path from "path";
+
 /** @type {import('next').NextConfig} */
-const path = require('path');
-
 const nextConfig = {
-  reactStrictMode: true,
-
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
 
   images: {
     remotePatterns: [
-      { protocol: 'https'_hostname: 'placehold.co', pathname: '/**' },
-      { protocol: 'https'_hostname: 'images.unsplash.com', pathname: '/**' },
-      { protocol: 'https'_hostname: 'picsum.photos', pathname: '/**' },
-      { protocol: 'https'_hostname: 'lh3.googleusercontent.com' },
-      { protocol: 'https'_hostname: 'firebasestorage.googleapis.com' },
-      { protocol: 'https'_hostname: '*.fbcdn.net' },
-      { protocol: 'https'_hostname: 'cdn.discordapp.com' },
+      { protocol: "https", hostname: "placehold.co", pathname: "/**" },
+      { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
+      { protocol: "https", hostname: "picsum.photos", pathname: "/**" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "firebasestorage.googleapis.com" },
+      { protocol: "https", hostname: "*.fbcdn.net" },
+      { protocol: "https", hostname: "cdn.discordapp.com" },
     ],
   },
 
@@ -34,6 +28,28 @@ const nextConfig = {
     NEXT_PUBLIC_FCM_VAPID_KEY: process.env.NEXT_PUBLIC_FCM_VAPID_KEY,
     NEXT_PUBLIC_AGORA_APP_ID: process.env.NEXT_PUBLIC_AGORA_APP_ID,
   },
+
+  webpack: (config, { isServer }) => {
+    // In Firebase Studio (or some CI), watchOptions can be frozen
+    try {
+      const ignoredGlobs = [
+        "**/functions/**",
+        "**/bot/**",
+        "**/workspace/**",
+      ];
+
+      // ✅ Return a shallow clone instead of mutating
+      config.watchOptions = Object.assign(
+        {},
+        config.watchOptions || {},
+        { ignored: ignoredGlobs }
+      );
+    } catch (err) {
+      console.warn("⚠️  Firebase Studio: watchOptions modification skipped:", err.message);
+    }
+
+    return config;
+  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

@@ -12,7 +12,7 @@ import { Users } from "lucide-react";
 import { useOnlineUsers } from "@/hooks/useOnlineUsers";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, where, documentId } from "firebase/firestore";
-import { useMemoFirebase } from "@/firebase/use-memo-firebase";
+import { useFsMemo } from "@/firebase/use-memo-firebase";
 import { AvatarWithPresence } from "./AvatarWithPresence";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -22,7 +22,7 @@ function RosterList() {
     const firestore = useFirestore();
     const onlineUsers = useOnlineUsers();
 
-    const usersQuery = useMemoFirebase(() => {
+    const usersQuery = useFsMemo(() => {
         if (!firestore || onlineUsers.length === 0) return null;
         // Firestore 'in' query is limited to 30 items.
         // For a real app, you might need to paginate or use a different strategy.
