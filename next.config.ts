@@ -1,3 +1,4 @@
+
 import path from "path";
 
 /** @type {import('next').NextConfig} */
@@ -32,20 +33,17 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     // In Firebase Studio (or some CI), watchOptions can be frozen
     try {
-      const ignoredGlobs = [
-        "**/functions/**",
-        "**/bot/**",
-        "**/workspace/**",
-      ];
-
-      // ✅ Return a shallow clone instead of mutating
-      config.watchOptions = Object.assign(
-        {},
-        config.watchOptions || {},
-        { ignored: ignoredGlobs }
-      );
+      if (config.watchOptions) {
+        const ignored = [
+            ...(Array.isArray(config.watchOptions.ignored) ? config.watchOptions.ignored : []),
+            "**/functions/**",
+            "**/bot/**",
+            "**/workspace/**",
+        ];
+        config.watchOptions.ignored = ignored;
+      }
     } catch (err) {
-      console.warn("⚠️  Firebase Studio: watchOptions modification skipped:", err.message);
+      console.warn("⚠️  Firebase Studio: watchOptions modification skipped:", (err as Error).message);
     }
 
     return config;
