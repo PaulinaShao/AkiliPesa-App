@@ -19,21 +19,17 @@ export interface UseCollectionResult<T> {
   error: FirestoreError | Error | null;
 }
 
-/**
- * Query that has been created via useFsMemo (or legacy useMemoFirebase).
- * We allow null/undefined so callers can “wait” for Firestore to be ready.
- */
 type MemoTaggedQuery =
   | (Query<DocumentData> & { __fsMemo?: boolean; __memo?: boolean })
   | null
   | undefined;
 
 /**
- * Subscribe to a Firestore query in real-time.
+ * React hook to subscribe to a Firestore query in real time.
  *
  * IMPORTANT:
- *   The Query **must** be memoized using `useFsMemo` (or legacy `useMemoFirebase`)
- *   otherwise it will be recreated every render and cause re-subscriptions.
+ *   The Query MUST be memoized using useFsMemo (or legacy useMemoFirebase),
+ *   otherwise React will recreate it every render and cause re-subscriptions.
  */
 export function useCollection<T = any>(
   memoizedQuery: MemoTaggedQuery
@@ -41,11 +37,10 @@ export function useCollection<T = any>(
   type StateDataType = WithId<T>[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // If caller passes null, treat as “not ready yet”
     if (!memoizedQuery) {
       setData(null);
       setIsLoading(false);
@@ -63,23 +58,22 @@ export function useCollection<T = any>(
           ...(doc.data() as T),
           id: doc.id,
         }));
-
         setData(docs);
         setError(null);
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        // We avoid touching private internals like _queryPath – just mark as unknown
         const contextualError = new FirestorePermissionError({
           operation: 'list',
-          path: 'unknown',
+          path:
+            // @ts-expect-error internal path
+            memoizedQuery._queryPath?.toString?.() ?? 'unknown',
         });
 
         setError(contextualError);
         setData(null);
         setIsLoading(false);
 
-        // Bubble up globally so your UI can react
         errorEmitter.emit('permission-error', contextualError);
       }
     );
@@ -87,7 +81,7 @@ export function useCollection<T = any>(
     return () => unsubscribe();
   }, [memoizedQuery]);
 
-  // Safety check: ensure the query was actually memoized
+  // Safety check: ensure the query was memoized
   if (
     memoizedQuery &&
     !(memoizedQuery as any).__fsMemo &&

@@ -1,27 +1,19 @@
 'use client';
 
-/**
- * Firebase Root Export Module
- * -----------------------------------------
- * Provides:
- * - Safe initialization (client + SSR)
- * - Global singletons (app, auth, firestore, etc.)
- * - High-level hooks (useFirebase, useFirestore, useAuth, etc.)
- * - Firestore hooks (useDoc, useCollection)
- * - Memo helpers (useFsMemo, useFirebaseReady)
- */
-
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import {
+  initializeApp,
+  getApps,
+  getApp,
+  type FirebaseApp,
+} from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getFunctions, type Functions } from 'firebase/functions';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { getDatabase, type Database } from 'firebase/database';
-import { firebaseConfig } from './config';
+import { firebaseConfig } from '@/firebase/config';
 
-// ---------------------------------------------------------
-// Global Firebase Instances (never recreated)
-// ---------------------------------------------------------
+// --- Global singletons ------------------------------------------------------
 
 let app: FirebaseApp;
 let auth: Auth;
@@ -31,13 +23,13 @@ let storage: FirebaseStorage;
 let database: Database;
 
 /**
- * Safe Firebase initialization (client + SSR)
- * Ensures Firebase is never re-initialized or duplicated.
+ * Initializes Firebase app & services safely (client + SSR).
+ * Ensures we never re-initialize during hot reload or multiple imports.
  */
 export function initializeFirebase() {
   if (!getApps().length) {
     try {
-      // Firebase Hosting may inject config automatically
+      // On Firebase Hosting, config can be injected automatically
       // @ts-ignore
       app = initializeApp();
     } catch {
@@ -56,34 +48,27 @@ export function initializeFirebase() {
   return { app, auth, firestore, functions, storage, database };
 }
 
-// Initialize immediately at module load
+// Initialize immediately for app-wide usage
 initializeFirebase();
 
-// ---------------------------------------------------------
-// DIRECT EXPORTS (Low-level SDK Access)
-// ---------------------------------------------------------
+// --- Direct named exports (for low-level access if needed) -------------------
+
 export { app, auth, firestore, functions, storage, database };
 
-// ---------------------------------------------------------
-// HIGH-LEVEL HOOKS (Context + Firebase Client Access)
-// ---------------------------------------------------------
-export * from './provider'; // useFirebase(), useAuth(), useFirestore(), etc.
+// --- High-level hooks & utilities -------------------------------------------
+
+// Context provider + hooks (useFirebase, useAuth, useFirestore, useFirebaseUser, etc.)
+export * from './provider';
+
+// Optional: client-side wrapper (if you use FirebaseClientProvider somewhere)
 export * from './client-provider';
 
-// ---------------------------------------------------------
-// FIRESTORE HOOKS (Document + Collection)
-// ---------------------------------------------------------
+// Firestore hooks
 export * from './firestore/use-doc';
 export * from './firestore/use-collection';
 
-// ---------------------------------------------------------
-// MEMO + INITIALIZATION HELPERS
-// ---------------------------------------------------------
-export * from './use-memo-firebase';   // <-- contains useFsMemo + useFirebaseReady
+// Memo helper + "ready" helper (useFsMemo, useMemoFirebase, useFirebaseReady)
+export * from './use-memo-firebase';
 
-// ---------------------------------------------------------
-// UTILITIES (Optional Files That Exist in Your Project)
-// ---------------------------------------------------------
+// Optional util you already had
 export * from './non-blocking-updates';
-export * from './notifications';
-export * from './presence';

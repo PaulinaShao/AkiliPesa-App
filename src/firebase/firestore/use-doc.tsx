@@ -11,29 +11,30 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
-/** Add a Firestore document ID onto a typed record. */
+/** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
 
+/**
+ * Interface for the return value of the useDoc hook.
+ */
 export interface UseDocResult<T> {
   data: WithId<T> | null;
   isLoading: boolean;
   error: FirestoreError | Error | null;
 }
 
-/**
- * DocumentReference tagged by useFsMemo (or legacy useMemoFirebase).
- */
 type MemoTaggedDocRef =
   | (DocumentReference<DocumentData> & { __fsMemo?: boolean; __memo?: boolean })
   | null
   | undefined;
 
 /**
- * Subscribe to a single Firestore document in real-time.
+ * React hook to subscribe to a single Firestore document in real-time.
+ * Handles nullable references.
  *
  * IMPORTANT:
- *   The DocumentReference must be memoized using useFsMemo (or useMemoFirebase)
- *   so React doesn’t recreate it on every render.
+ *   The DocumentReference MUST be memoized using useFsMemo (or the legacy
+ *   useMemoFirebase) so React doesn't recreate it on every render.
  */
 export function useDoc<T = any>(
   memoizedDocRef: MemoTaggedDocRef
@@ -41,7 +42,7 @@ export function useDoc<T = any>(
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {

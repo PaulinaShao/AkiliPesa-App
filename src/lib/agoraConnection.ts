@@ -1,182 +1,129 @@
-
+// src/lib/agoraConnection.ts
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AgoraRTC, {
   IAgoraRTCClient,
-  ICameraVideoTrack,
-  IMicrophoneAudioTrack,
-  IRemoteVideoTrack,
-  IRemoteAudioTrack,
+  ILocalAudioTrack,
+  ILocalVideoTrack,
   IRemoteUser,
 } from 'agora-rtc-sdk-ng';
-import { httpsCallable } from 'firebase/functions';
-import { useFirebase, useFirebaseUser } from '@/firebase';
-import { addDoc, collection, serverTimestamp, getFirestore, doc, updateDoc } from 'firebase/firestore';
 
-type TokenResponse = { appId: string; token: string };
-export type UseAgora = {
-  client: IAgoraRTCClient | null;
-  connected: boolean;
-  publishVideo: () => Promise<ICameraVideoTrack | null>;
-  publishAudio: () => Promise<IMicrophoneAudioTrack | null>;
-  localVideoTrack: ICameraVideoTrack | null;
-  leave: (callId?: string) => Promise<void>;
+type UseAgoraConfig = {
+  appId?: string | null;
+  channelName?: string | null;
+  token?: string | null;
+  uid?: string | null;
+  mode?: 'audio' | 'video';
 };
 
-/**
- * Safe on Next 15: returns an inert stub on the server and the real
- * client implementation on the browser.
- */
-export default function useAgoraConnection(channelName?: string | null): UseAgora {
-  // SSR stub
-  if (typeof window === 'undefined') {
-    return {
-      client: null,
-      connected: false,
-      publishVideo: async () => null,
-      publishAudio: async () => null,
-      localVideoTrack: null,
-      leave: async () => {},
-    };
-  }
+export function useAgoraConnection(config: UseAgoraConfig) {
+  const { appId, channelName, token, uid, mode = 'video' } = config;
 
-  const { functions, firestore, user: currentUser } = useFirebase();
-  const [client, setClient] = useState<IAgoraRTCClient | null>(null);
+  const clientRef = useRef<IAgoraRTCClient | null>(null);
   const [connected, setConnected] = useState(false);
-  const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
-  const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
+  const [remoteUsers, setRemoteUsers] = useState<IRemoteUser[]>([]);
+  const [localAudioTrack, setLocalAudioTrack] = useState<ILocalAudioTrack | null>(null);
+  const [localVideoTrack, setLocalVideoTrack] = useState<ILocalVideoTrack | null>(null);
 
-  const channelRef = useRef<string | null>(channelName ?? null);
-  channelRef.current = channelName ?? null;
-
-  // Create client once
-  const rtcClient = useMemo(() => {
-    const c = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-    setClient(c);
-    return c;
-  }, []);
-
-  // Join/subscribe lifecycle
+  // Create client + join
   useEffect(() => {
-    if (!functions || !rtcClient || !channelRef.current || !currentUser) return;
+    let cancelled = false;
 
-    let mounted = true;
-    const activeClient = rtcClient;
+    async function init() {
+      if (!appId || !channelName || !token || !uid) return;
+      if (clientRef.current) return;
 
-    const init = async () => {
+      const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+      clientRef.current = client;
+
+      client.on('user-published', async (user, mediaType) => {
+        await client.subscribe(user, mediaType);
+        setRemoteUsers(Array.from(client.remoteUsers));
+      });
+
+      client.on('user-unpublished', () => {
+        setRemoteUsers(Array.from(client.remoteUsers));
+      });
+
+      client.on('user-left', () => {
+        setRemoteUsers(Array.from(client.remoteUsers));
+      });
+
       try {
-        const getAgoraToken = httpsCallable(functions, 'getAgoraToken');
-        
-        const { data } = await getAgoraToken({
-          channelName: channelRef.current,
-          uid: currentUser.uid,
-          role: 'publisher',
-        });
-
-        const { appId, token } = data as TokenResponse;
-
-        await activeClient.join(appId, channelRef.current!, token, currentUser.uid);
-        if (!mounted) return;
-
+        await client.join(appId, channelName, token, uid);
+        if (cancelled) return;
         setConnected(true);
-
-        activeClient.on('user-published', async (user: IRemoteUser, mediaType) => {
-          await activeClient.subscribe(user, mediaType);
-          if (mediaType === 'video') {
-            // You can create a DOM container on demand, or rely on a known id:
-            const elId = `remote-player-${user.uid}`;
-            let el = document.getElementById(elId);
-            if (!el) {
-              el = document.createElement('div');
-              el.id = elId;
-              el.style.width = '100%';
-              el.style.height = '100%';
-              document.body.appendChild(el); // or mount inside your call UI container
-            }
-            (user.videoTrack as IRemoteVideoTrack | null)?.play(elId);
-          }
-          if (mediaType === 'audio') {
-            (user.audioTrack as IRemoteAudioTrack | null)?.play();
-          }
-        });
-
-        activeClient.on('connection-state-change', (cur) => {
-          setConnected(cur === 'CONNECTED');
-        });
-      } catch (e) {
-        console.error('[Agora] join failed:', e);
-        setConnected(false);
+      } catch (err) {
+        console.error('Agora join failed:', err);
       }
-    };
+    }
 
     init();
 
     return () => {
-      mounted = false;
-      // Cleanup handles in leave() below; we still ensure tracks are closed.
-      (async () => {
-        try {
-          // Close local tracks if any
-          localVideoTrack?.close();
-          localAudioTrackRef.current?.close();
-          // Leave if still joined
-          if (activeClient.connectionState !== 'DISCONNECTED') {
-            await activeClient.leave();
-          }
-        } catch (_) {}
-      })();
+      cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [functions, rtcClient, channelRef.current, currentUser]);
-
-  const publishVideo = useCallback(async () => {
-    if (!client) return null;
-    if (localVideoTrack) return localVideoTrack;
-    const track = await AgoraRTC.createCameraVideoTrack();
-    setLocalVideoTrack(track);
-    await client.publish(track);
-    return track;
-  }, [client, localVideoTrack]);
+  }, [appId, channelName, token, uid]);
 
   const publishAudio = useCallback(async () => {
-    if (!client) return null;
-    if (localAudioTrackRef.current) return localAudioTrackRef.current;
-    const track = await AgoraRTC.createMicrophoneAudioTrack();
-    localAudioTrackRef.current = track;
-    await client.publish(track);
-    return track;
-  }, [client]);
-
-  const leave = useCallback(async (callId?: string) => {
-    if (!firestore || !currentUser) return;
-    const db = getFirestore();
-    const { user } = useFirebaseUser();
-    
-    if (callId) {
-        await updateDoc(doc(db, "callHistory", callId), {
-          endedAt: serverTimestamp(),
-          status: "completed"
-        });
-    }
-
-
+    if (!clientRef.current || localAudioTrack) return;
     try {
-      localVideoTrack?.stop();
-      localVideoTrack?.close();
-      setLocalVideoTrack(null);
-      localAudioTrackRef.current?.close();
-      localAudioTrackRef.current = null;
-
-      if (client && client.connectionState !== 'DISCONNECTED') {
-        await client.unpublish();
-        await client.leave();
-      }
-      setConnected(false);
-    } catch (e) {
-      console.warn('[Agora] leave error:', e);
+      const track = await AgoraRTC.createMicrophoneAudioTrack();
+      setLocalAudioTrack(track);
+      await clientRef.current.publish(track);
+    } catch (err) {
+      console.error('Failed to publish audio:', err);
     }
-  }, [client, localVideoTrack, firestore, currentUser]);
+  }, [localAudioTrack]);
 
-  return { client, connected, publishVideo, publishAudio, localVideoTrack, leave };
+  const publishVideo = useCallback(async () => {
+    if (!clientRef.current || localVideoTrack) return localVideoTrack;
+    try {
+      const track = await AgoraRTC.createCameraVideoTrack();
+      setLocalVideoTrack(track);
+      await clientRef.current.publish(track);
+      return track;
+    } catch (err) {
+      console.error('Failed to publish video:', err);
+      return null;
+    }
+  }, [localVideoTrack]);
+
+  const leave = useCallback(async () => {
+    try {
+      if (localAudioTrack) {
+        localAudioTrack.stop();
+        localAudioTrack.close();
+      }
+      if (localVideoTrack) {
+        localVideoTrack.stop();
+        localVideoTrack.close();
+      }
+      if (clientRef.current) {
+        await clientRef.current.leave();
+      }
+    } catch (err) {
+      console.error('Failed to leave Agora:', err);
+    } finally {
+      clientRef.current = null;
+      setLocalAudioTrack(null);
+      setLocalVideoTrack(null);
+      setConnected(false);
+      setRemoteUsers([]);
+    }
+  }, [localAudioTrack, localVideoTrack]);
+
+  return {
+    client: clientRef.current,
+    connected,
+    remoteUsers,
+    localAudioTrack,
+    localVideoTrack,
+    publishAudio,
+    publishVideo,
+    leave,
+  };
 }
+
+export default useAgoraConnection;

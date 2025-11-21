@@ -8,33 +8,15 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import {
-  initializeApp,
-  getApps,
-  getApp,
-  type FirebaseApp,
-} from 'firebase/app';
-import {
-  getFirestore,
-  type Firestore,
-} from 'firebase/firestore';
-import {
-  getAuth,
-  type Auth,
-  type User,
-  onAuthStateChanged,
-} from 'firebase/auth';
-import {
-  getFunctions,
-  type Functions,
-} from 'firebase/functions';
+import type { FirebaseApp } from 'firebase/app';
+import type { Firestore } from 'firebase/firestore';
+import type { Auth, User } from 'firebase/auth';
+import type { Functions } from 'firebase/functions';
+import { onAuthStateChanged } from 'firebase/auth';
 
-import { firebaseConfig } from '@/firebase/config';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { initializeFirebase } from '@/firebase';
 
-/** -------------------------------------------------------------------
- *  Context Interfaces
- *  ------------------------------------------------------------------- */
 interface UserAuthState {
   user: User | null;
   isUserLoading: boolean;
@@ -52,43 +34,13 @@ export interface FirebaseContextState {
   userError: Error | null;
 }
 
-/** -------------------------------------------------------------------
- *  Local initialization (no circular deps)
- *  ------------------------------------------------------------------- */
-function initFirebaseCore() {
-  let app: FirebaseApp;
-
-  if (!getApps().length) {
-    try {
-      // On Hosting, Firebase can inject config
-      // @ts-ignore
-      app = initializeApp();
-    } catch {
-      app = initializeApp(firebaseConfig);
-    }
-  } else {
-    app = getApp();
-  }
-
-  const auth = getAuth(app);
-  const firestore = getFirestore(app);
-  const functions = getFunctions(app, 'us-central1');
-
-  return { app, auth, firestore, functions };
-}
-
-/** -------------------------------------------------------------------
- *  Create Context
- *  ------------------------------------------------------------------- */
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(
   undefined
 );
 
-/** -------------------------------------------------------------------
- *  FirebaseProvider
- *  ------------------------------------------------------------------- */
 export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
-  const { app: firebaseApp, auth, firestore, functions } = initFirebaseCore();
+  // Initialize Firebase once (global helper)
+  const { app: firebaseApp, firestore, auth, functions } = initializeFirebase();
 
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
@@ -129,9 +81,8 @@ export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, [auth]);
 
-  const contextValue = useMemo<FirebaseContextState>(() => {
+  const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth && functions);
-
     return {
       areServicesAvailable: servicesAvailable,
       firebaseApp: servicesAvailable ? firebaseApp : null,
@@ -152,9 +103,7 @@ export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-/** -------------------------------------------------------------------
- *  Custom Hooks
- *  ------------------------------------------------------------------- */
+/** Core context hook */
 export const useFirebase = (): FirebaseContextState => {
   const context = useContext(FirebaseContext);
   if (context === undefined) {
@@ -163,6 +112,7 @@ export const useFirebase = (): FirebaseContextState => {
   return context;
 };
 
+/** Low-level hooks */
 export const useAuth = (): Auth => {
   const { auth } = useFirebase();
   if (!auth) throw new Error('Auth not available.');
@@ -181,6 +131,7 @@ export const useFirebaseApp = (): FirebaseApp => {
   return firebaseApp;
 };
 
+/** Common convenience hook used across the app */
 export const useFirebaseUser = () => {
   const { user, isUserLoading, userError } = useFirebase();
   return { user, isUserLoading, userError };
