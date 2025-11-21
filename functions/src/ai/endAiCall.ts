@@ -1,45 +1,55 @@
 
+// functions/src/ai/endAiCall.ts
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
-import { db } from "../firebase";
+import { db, admin } from "../firebase";
 
+export const endAiCall = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth) {
+      throw new HttpsError("unauthenticated", "Sign-in required.");
+    }
 
-/**
- * endAiCall
- * Marks an aiCallSessions document as ended.
- */
-export const endAiCall = onCall(async (request) => {
-  const uid = request.auth?.uid;
-  if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
+    const { aiCallId, reason = "ended_by_user" } = request.data || {};
+    if (!aiCallId) {
+      throw new HttpsError("invalid-argument", "aiCallId is required.");
+    }
 
-  const { aiCallId, reason = "user-ended" } = request.data as {
-    aiCallId?: string;
-    reason?: string;
-  };
+    const ref = db.collection("aiCallSessions").doc(aiCallId);
+    const snap = await ref.get();
 
-  if (!aiCallId) {
-    throw new HttpsError("invalid-argument", "aiCallId is required.");
-  }
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "AI call session not found.");
+    }
 
-  const ref = db.collection("aiCallSessions").doc(aiCallId);
-  const snap = await ref.get();
-  if (!snap.exists) {
-    throw new HttpsError("not-found", "AI Call Session not found.");
-  }
+    const data = snap.data() || {};
+    const startedAt = (data.startedAt as FirebaseFirestore.Timestamp) || null;
+    const now = admin.firestore.FieldValue.serverTimestamp();
 
-  const data = snap.data();
-  if (data?.callerId !== uid) {
-    throw new HttpsError("permission-denied", "Not session owner.");
-  }
+    let durationSec: number | null = null;
+    if (startedAt) {
+      const startDate = startedAt.toDate();
+      const diffMs = Date.now() - startDate.getTime();
+      durationSec = Math.round(diffMs / 1000);
+    }
 
-  await ref.set(
-    {
+    await ref.set(
+      {
+        status: "ended",
+        endedAt: now,
+        endReason: reason,
+        durationSec,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+
+    return {
+      ok: true,
+      aiCallId,
       status: "ended",
-      endReason: reason,
-      endedAt: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    { merge: true }
-  );
-
-  return { ok: true };
-});
+      durationSec,
+    };
+  }
+);

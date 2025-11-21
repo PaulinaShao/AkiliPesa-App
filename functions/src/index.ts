@@ -37,3 +37,5 @@ export { updateAgentRanks } from "./trust/updateAgentRanks";
 export { vendorOptimizer } from "./vendorOptimizer";
 export { redeemReward } from "./rewards/redeemReward";
 
+// ---------- SEEDING ----------
+export { initializeDemoData } from "./seed/initializeDemoData";
