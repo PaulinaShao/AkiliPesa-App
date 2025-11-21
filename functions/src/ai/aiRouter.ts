@@ -1,46 +1,72 @@
-// functions/src/ai/aiRouter.ts
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { OPENAI_API_KEY } from "../config/secrets";
 import { db } from "../firebase";
-import { AiRequest } from "./adapters/types";
-import { selectVendor } from "./adapters/selector";
+import { selectVendor } from "./common/vendorSelector";
+import { validateAIInput } from "./common/validateInput";
+import { runTextPipeline } from "./pipelines/textPipeline";
+import { runImagePipeline } from "./pipelines/imagePipeline";
+import { runAudioPipeline } from "./pipelines/audioPipeline";
+import { runVideoPipeline } from "./pipelines/videoPipeline";
+import { runMusicPipeline } from "./pipelines/musicPipeline";
+import { runVoiceClonePipeline } from "./pipelines/voiceClonePipeline";
+import { runMultiFormatPipeline } from "./pipelines/multiFormatPipeline";
+import { AIResult } from "./adapters/types";
 
 export const aiRouter = onCall(
-  { region: "us-central1", secrets: [OPENAI_API_KEY] },
+  { region: "us-central1" },
   async (request) => {
-    const auth = request.auth;
-    if (!auth) {
-      throw new HttpsError("unauthenticated", "Sign-in required.");
+    if (!request.auth)
+      throw new HttpsError("unauthenticated", "Login required");
+
+    const uid = request.auth.uid;
+    const { mode, payload, metadata } = request.data || {};
+
+    validateAIInput(mode, payload);
+
+    const vendor = await selectVendor(mode);
+    let result: AIResult;
+
+    switch (mode) {
+      case "text":
+        result = await runTextPipeline(payload, vendor);
+        break;
+      case "image":
+        result = await runImagePipeline(payload, vendor);
+        break;
+      case "audio":
+        result = await runAudioPipeline(payload, vendor);
+        break;
+      case "tts":
+        result = await runAudioPipeline(
+          { ...payload, type: "tts" },
+          vendor
+        );
+        break;
+      case "voice_clone":
+        result = await runVoiceClonePipeline(payload, vendor);
+        break;
+      case "music":
+        result = await runMusicPipeline(payload, vendor);
+        break;
+      case "video":
+        result = await runVideoPipeline(payload, vendor);
+        break;
+      case "multi":
+        result = await runMultiFormatPipeline(payload, vendor);
+        break;
+      default:
+        throw new HttpsError("invalid-argument", `Unknown mode ${mode}`);
     }
 
-    const { mode = "chat", prompt, vendor, extra } = request.data || {};
-
-    if (!prompt || typeof prompt !== "string") {
-      throw new HttpsError("invalid-argument", "'prompt' is required.");
-    }
-
-    const uid = auth.uid;
-    const aiRequest: AiRequest = {
-      mode,
-      prompt,
-      userId: uid,
-      extra: extra || {},
-    };
-
-    const chosenVendor = selectVendor(mode, vendor);
-    const result = await chosenVendor.handle(aiRequest);
-
-    const logRef = db.collection("aiLogs").doc();
-    await logRef.set({
-      id: logRef.id,
+    await db.collection("aiLogs").add({
       uid,
-      vendor: result.vendor,
-      mode: result.mode,
-      prompt,
-      type: result.type,
+      mode,
+      vendor,
+      payload,
+      metadata: metadata || {},
+      resultType: result.type,
       createdAt: new Date(),
     });
 
-    return result;
+    return { ok: true, result };
   }
 );
