@@ -1,4 +1,4 @@
-import { db, admin } from "../firebase.js";
+import { db, admin } from "../firebase/index.js";
 
 export async function bootstrapFirestore() {
   console.log("🚀 Bootstrapping Firestore...");

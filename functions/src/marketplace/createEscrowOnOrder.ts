@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { db, admin } from "../firebase.js";
+import { db, admin } from "../firebase/index.js";
 
 /**
  * Create escrow for new order

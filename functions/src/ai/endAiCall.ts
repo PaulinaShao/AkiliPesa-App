@@ -1,6 +1,6 @@
 // functions/src/ai/endAiCall.ts
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { db, admin } from "../firebase.js";
+import { db, admin } from "../firebase/index.js";
 
 export const endAiCall = onCall(
   { region: "us-central1" },

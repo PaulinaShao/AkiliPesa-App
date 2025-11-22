@@ -1,4 +1,4 @@
-// firebase.ts – TypeScript version used by the project
+// firebase.ts — single source of truth (TypeScript)
 
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";

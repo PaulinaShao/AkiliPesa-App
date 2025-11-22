@@ -1,59 +1,67 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import pkg from "agora-access-token";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 
-const { RtcTokenBuilder, RtcRole, RtmTokenBuilder } = pkg;
+// Load agora-access-token using CJS require (the ONLY correct way)
+const {
+  RtcTokenBuilder,
+  RtmTokenBuilder,
+  RtcRole,
+  RtmRole,
+} = require("agora-access-token");
 
-const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
-const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
+export const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
+export const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
 
 export const createCallToken = onCall(
   {
+    region: "us-central1",
     secrets: [AGORA_APP_ID, AGORA_APP_CERT],
-    timeoutSeconds: 30,
   },
-  async (request) => {
-    const { channelName, uid } = request.data;
 
-    if (!channelName || !uid) {
-      throw new HttpsError("invalid-argument", "Missing channelName or uid");
+  async (request) => {
+    const { channel, uid } = request.data;
+
+    if (!channel || !uid) {
+      throw new Error("Missing channel or uid");
     }
 
     const appId = AGORA_APP_ID.value();
     const appCert = AGORA_APP_CERT.value();
 
     if (!appId || !appCert) {
-      throw new HttpsError("failed-precondition", "Agora secrets are not configured on the server.");
+      throw new Error("Agora secrets not loaded");
     }
 
-    // Unix timestamps
-    const expireTs = Math.floor(Date.now() / 1000) + 3600; // 1 hour
-    const privilegeExpiredTs = expireTs; // same expiry
+    const expireSeconds = 3600; // 1 hour
+    const privilegeExpiredTs = Math.floor(Date.now() / 1000) + expireSeconds;
 
-    // RTC TOKEN (video/audio stream)
+    // --- RTC TOKEN (6 args) ---
     const rtcToken = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCert,
-      channelName,
-      Number(uid),
-      RtcRole.PUBLISHER,
-      expireTs,
+      channel,
+      uid,
+      RtcRole.PUBLISHER, // Exists in agora-access-token
       privilegeExpiredTs
     );
 
-    // RTM TOKEN (messaging)
+    // --- RTM TOKEN (5 args) ---
     const rtmToken = RtmTokenBuilder.buildToken(
       appId,
       appCert,
       String(uid),
-      expireTs
+      RtmRole.PUBLISHER,
+      privilegeExpiredTs
     );
 
     return {
+      channel,
+      uid,
       rtcToken,
       rtmToken,
-      channel: channelName,
-      uid,
+      expiresAt: privilegeExpiredTs,
     };
   }
 );
