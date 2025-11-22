@@ -1,40 +1,42 @@
 import { onCall } from "firebase-functions/v2/https";
-import { AGORA_APP_ID, AGORA_APP_CERT } from "../config/secrets.js";
-import { RtcRole, RtmRole, RtcTokenBuilder, RtmTokenBuilder } from "agora-token";
+import { defineSecret } from "firebase-functions/params";
+import { RtcTokenBuilder, RtcRole, RtmTokenBuilder } from "agora-token";
+import { db } from "../firebase.js";
 
-export const createCallToken = onCall(async (req) => {
-  const { channelName, uid } = req.data;
+const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
+const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
 
-  if (!channelName || !uid) {
-    throw new Error("Missing channelName or uid");
+export const createCallToken = onCall(
+  { secrets: [AGORA_APP_ID, AGORA_APP_CERT] },
+  async (request) => {
+    const channelName = request.data?.channel || "default_channel";
+    const uid = request.data?.uid || 0;
+    const role = RtcRole.PUBLISHER;
+
+    const expirationTimeInSeconds = 3600;
+    const privilegeExpireTime = Math.floor(Date.now() / 1000) + expirationTimeInSeconds;
+
+    const rtcToken = RtcTokenBuilder.buildTokenWithUid(
+      AGORA_APP_ID.value(),
+      AGORA_APP_CERT.value(),
+      channelName,
+      uid,
+      role,
+      privilegeExpireTime
+    );
+
+    const rtmToken = RtmTokenBuilder.buildToken(
+      AGORA_APP_ID.value(),
+      AGORA_APP_CERT.value(),
+      uid.toString(),
+      privilegeExpireTime
+    );
+
+    return {
+      rtcToken,
+      rtmToken,
+      channel: channelName,
+      uid,
+    };
   }
-
-  const appId = AGORA_APP_ID.value();
-  const appCert = AGORA_APP_CERT.value();
-  const expireTime = 3600; // 1 hour
-  const currentTime = Math.floor(Date.now() / 1000);
-  const privilegeExpireTime = currentTime + expireTime;
-
-  const rtcToken = RtcTokenBuilder.buildTokenWithUid(
-    appId,
-    appCert,
-    channelName,
-    uid,
-    RtcRole.PUBLISHER,
-    privilegeExpireTime
-  );
-
-  const rtmToken = RtmTokenBuilder.buildToken(
-    appId,
-    appCert,
-    uid.toString(),
-    RtmRole.Rtm_User,
-    privilegeExpireTime
-  );
-
-  return {
-    rtcToken,
-    rtmToken,
-    expireAt: privilegeExpireTime,
-  };
-});
+);
