@@ -1,21 +1,24 @@
 import { onCall } from "firebase-functions/v2/https";
-import { AGORA_APP_ID, AGORA_APP_CERT } from "../config/secrets.js";
-import { RtcRole, RtmRole, RtcTokenBuilder, RtmTokenBuilder } from "agora-token";
-export const createCallToken = onCall(async (req) => {
-    const { channelName, uid } = req.data;
-    if (!channelName || !uid) {
-        throw new Error("Missing channelName or uid");
-    }
-    const appId = AGORA_APP_ID.value();
-    const appCert = AGORA_APP_CERT.value();
-    const expireTime = 3600; // 1 hour
-    const currentTime = Math.floor(Date.now() / 1000);
-    const privilegeExpireTime = currentTime + expireTime;
-    const rtcToken = RtcTokenBuilder.buildTokenWithUid(appId, appCert, channelName, uid, RtcRole.PUBLISHER, privilegeExpireTime);
-    const rtmToken = RtmTokenBuilder.buildToken(appId, appCert, uid.toString(), RtmRole.Rtm_User, privilegeExpireTime);
+import { RtcTokenBuilder, RtcRole, RtmTokenBuilder } from "agora-token";
+export const createCallToken = onCall(async (request) => {
+    const data = request.data;
+    const appId = process.env.AGORA_APP_ID;
+    const appCertificate = process.env.AGORA_APP_CERT;
+    const channel = data.channel || "akilipesa";
+    const uid = data.uid || 0;
+    const role = RtcRole.PUBLISHER;
+    const now = Math.floor(Date.now() / 1000);
+    const expireTime = now + 3600; // 1 hour
+    const privilegeExpire = expireTime; // REQUIRED ARGUMENT #7
+    // FIXED: agora-token requires 7 args
+    const rtcToken = RtcTokenBuilder.buildTokenWithUid(appId, appCertificate, channel, uid, role, expireTime, privilegeExpire // <-- Missing argument added
+    );
+    // RTM token
+    const rtmToken = RtmTokenBuilder.buildToken(appId, appCertificate, uid.toString(), expireTime);
     return {
         rtcToken,
         rtmToken,
-        expireAt: privilegeExpireTime,
+        channel,
+        uid
     };
 });

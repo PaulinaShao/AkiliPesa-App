@@ -1,49 +1,54 @@
 import { onCall } from "firebase-functions/v2/https";
-import { db } from "../firebase.js";
-
+import { defineSecret } from "firebase-functions/params";
 import {
   RtcTokenBuilder,
   RtcRole,
-  RtmTokenBuilder
-} from "agora-token";
+  RtmTokenBuilder,
+} from "agora-access-token";
 
-export const createCallToken = onCall(async (request) => {
-  const data = request.data;
+const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
+const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
 
-  const appId = process.env.AGORA_APP_ID!;
-  const appCertificate = process.env.AGORA_APP_CERT!;
-  const channel = data.channel || "akilipesa";
-  const uid = data.uid || 0;
+export const createCallToken = onCall(
+  {
+    secrets: [AGORA_APP_ID, AGORA_APP_CERT],
+    timeoutSeconds: 30,
+  },
+  async (request) => {
+    const { channelName, uid } = request.data;
 
-  const role = RtcRole.PUBLISHER;
+    if (!channelName || !uid) {
+      throw new Error("Missing channelName or uid");
+    }
 
-  const now = Math.floor(Date.now() / 1000);
-  const expireTime = now + 3600;  // 1 hour
-  const privilegeExpire = expireTime; // REQUIRED ARGUMENT #7
+    const appId = AGORA_APP_ID.value();
+    const appCert = AGORA_APP_CERT.value();
 
-  // FIXED: agora-token requires 7 args
-  const rtcToken = RtcTokenBuilder.buildTokenWithUid(
-    appId,
-    appCertificate,
-    channel,
-    uid,
-    role,
-    expireTime,
-    privilegeExpire   // <-- Missing argument added
-  );
+    const expireTime = Math.floor(Date.now() / 1000) + 3600;
 
-  // RTM token
-  const rtmToken = RtmTokenBuilder.buildToken(
-    appId,
-    appCertificate,
-    uid.toString(),
-    expireTime
-  );
+    // RTC token
+    const rtcToken = RtcTokenBuilder.buildTokenWithUid(
+      appId,
+      appCert,
+      channelName,
+      Number(uid),
+      RtcRole.PUBLISHER,
+      expireTime
+    );
 
-  return {
-    rtcToken,
-    rtmToken,
-    channel,
-    uid
-  };
-});
+    // RTM token
+    const rtmToken = RtmTokenBuilder.buildToken(
+      appId,
+      appCert,
+      String(uid),
+      expireTime
+    );
+
+    return {
+      rtcToken,
+      rtmToken,
+      channel: channelName,
+      uid,
+    };
+  }
+);
