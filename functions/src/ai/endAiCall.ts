@@ -1,4 +1,3 @@
-
 // functions/src/ai/endAiCall.ts
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { db, admin } from "../firebase.js";
@@ -24,7 +23,7 @@ export const endAiCall = onCall(
     }
 
     const data = snap.data() || {};
-    const startedAt = (data.startedAt as FirebaseFirestore.Timestamp) || null;
+    const startedAt = (data.startedAt as admin.firestore.Timestamp) || null;
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     let durationSec: number | null = null;

@@ -1,4 +1,3 @@
-
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { db, admin } from "../firebase.js";
 
@@ -18,7 +17,7 @@ export const verifyAndReleaseEscrow = onCall(
     if (!escrowSnap.exists)
       throw new HttpsError("not-found", "Escrow not found.");
 
-    const escrow = escrowSnap.data();
+    const escrow = escrowSnap.data()!;
     if (escrow.status !== "held")
       throw new HttpsError("failed-precondition", "Escrow already released.");
 
@@ -27,7 +26,7 @@ export const verifyAndReleaseEscrow = onCall(
 
     const now = admin.firestore.FieldValue.serverTimestamp();
 
-    await db.runTransaction(async (tx) => {
+    await db.runTransaction(async (tx: admin.firestore.Transaction) => {
       const sellerSnap = await tx.get(sellerRef);
       const sellerBalance = sellerSnap.data()?.balanceTZS || 0;
 

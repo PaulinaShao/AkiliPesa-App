@@ -1,4 +1,3 @@
-
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { db, admin } from "../firebase.js";
 
@@ -15,7 +14,7 @@ export const redeemReward = onCall(
 
     const userRef = db.collection("users").doc(uid);
 
-    await db.runTransaction(async (tx) => {
+    await db.runTransaction(async (tx: admin.firestore.Transaction) => {
       const snap = await tx.get(userRef);
       const current = snap.data()?.points || 0;
 

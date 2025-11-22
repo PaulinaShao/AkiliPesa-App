@@ -1,4 +1,3 @@
-
 import { onObjectFinalized } from "firebase-functions/v2/storage";
 import * as logger from "firebase-functions/logger";
 

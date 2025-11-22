@@ -1,4 +1,3 @@
-
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { db, admin } from "../firebase.js";
 
@@ -21,7 +20,7 @@ export const onWithdrawalApproved = onCall(
     if (!withdrawalSnap.exists)
       throw new HttpsError("not-found", "Withdrawal not found.");
 
-    const data = withdrawalSnap.data();
+    const data = withdrawalSnap.data()!;
     if (data.status !== "pending")
       throw new HttpsError("failed-precondition", "Not pending.");
 
@@ -29,9 +28,8 @@ export const onWithdrawalApproved = onCall(
     const uid = data.userId;
 
     const platformRef = db.collection("wallets").doc("platform");
-    const userRef = db.collection("wallets").doc(uid);
 
-    await db.runTransaction(async (tx) => {
+    await db.runTransaction(async (tx: admin.firestore.Transaction) => {
       const platformSnap = await tx.get(platformRef);
       const platformBalance = platformSnap.data()?.balanceTZS || 0;
 

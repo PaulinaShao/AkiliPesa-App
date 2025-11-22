@@ -1,4 +1,3 @@
-
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { db, admin } from "../firebase.js";
 

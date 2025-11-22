@@ -1,4 +1,4 @@
-import { AIResult } from "../adapters/types";
+import { AIResult } from "../adapters/types.js";
 
 /**
  * High-level “any format → any format” pipeline.

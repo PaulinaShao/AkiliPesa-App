@@ -1,4 +1,3 @@
-
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { db, admin } from "../firebase.js";
 
@@ -38,7 +37,7 @@ export const sendWalletTransfer = onCall(
     const platformRef = db.collection("wallets").doc(PLATFORM_WALLET_ID);
     const txCol = db.collection("transactions");
 
-    const result = await db.runTransaction(async (tx) => {
+    const result = await db.runTransaction(async (tx: admin.firestore.Transaction) => {
       const [senderSnap, receiverSnap, platformSnap] = await Promise.all([
         tx.get(senderRef),
         tx.get(receiverRef),
