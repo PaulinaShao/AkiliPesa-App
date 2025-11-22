@@ -16,7 +16,6 @@ export async function runpodImage(prompt) {
     });
     const json = await res.json();
     return {
-        vendor: "runpod",
         mode: "image",
         type: "image",
         url: json.outputUrl || "",
@@ -26,7 +25,6 @@ export async function runpodImage(prompt) {
 export async function runpodVoiceClone(payload) {
     // placeholder for your OpenVoice / RunPod workflow
     return {
-        vendor: "runpod",
         mode: "voice_clone",
         type: "audio",
         url: "https://example.com/voice-clone-placeholder.mp3",

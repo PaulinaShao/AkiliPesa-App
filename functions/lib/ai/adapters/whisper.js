@@ -4,7 +4,6 @@
 export async function whisperTranscribe(audioUrl) {
     // TODO: implement real Whisper / RunPod / custom endpoint call
     return {
-        vendor: "whisper",
         mode: "audio",
         type: "text",
         text: "[transcript placeholder]",

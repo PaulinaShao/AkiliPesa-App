@@ -1,7 +1,6 @@
 export async function pikaVideo(payload) {
     // TODO: real Pika API
     return {
-        vendor: "pika",
         mode: "video",
         type: "video",
         url: "https://example.com/pika-video.mp4",

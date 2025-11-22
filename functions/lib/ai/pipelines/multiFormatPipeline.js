@@ -4,10 +4,9 @@
  */
 export async function runMultiFormatPipeline(payload, vendor) {
     return {
-        vendor,
-        mode: "multi",
         type: "multi",
         text: "Multi-format pipeline placeholder",
+        vendor,
         meta: { payload },
     };
 }

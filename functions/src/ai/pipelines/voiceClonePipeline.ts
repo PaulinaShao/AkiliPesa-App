@@ -1,10 +1,20 @@
-import { AIResult } from "../adapters/types.js";
-import { runpodVoiceClone } from "../adapters/runpod.js";
+import type { AIResult, AiVendor } from "../adapters/types.js";
 
 export async function runVoiceClonePipeline(
   payload: any,
-  vendor: string
+  vendor: AiVendor
 ): Promise<AIResult> {
-  // For now we use RunPod as main clone engine.
-  return runpodVoiceClone(payload);
+  const res = await vendor.handle({
+    mode: "voice_clone",
+    prompt: payload?.prompt ?? "",
+  });
+
+  return {
+    type: "audio",
+    text: res.text,
+    url: res.url,
+    buffer: res.buffer,
+    vendor: vendor.name,
+    mode: "voice_clone",
+  };
 }

@@ -1,17 +1,16 @@
-import type { AIResult } from "../adapters/types.js";
+import type { AIResult, AiVendor } from "../adapters/types.js";
 
-/**
- * High-level “any format → any format” pipeline.
- * For now this is a placeholder that echoes payload; later we chain multiple adapters.
- */
 export async function runMultiFormatPipeline(
   payload: any,
-  vendor: string
+  vendor: AiVendor
 ): Promise<AIResult> {
+  // For now this is a placeholder that just tags the request.
+  // Later we can chain text → image → video, etc.
   return {
     type: "multi",
     text: "Multi-format pipeline placeholder",
-    vendor,
+    vendor: vendor.name,
+    mode: "multi",
     meta: { payload },
   };
 }

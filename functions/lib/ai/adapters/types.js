@@ -1,4 +1,4 @@
 //--------------------------------------------------------
-// UNIFIED AI TYPES (FIXES AiResponse, AIResult MISMATCH)
+// UNIFIED AI TYPES — FIXED to include vendor + multi mode
 //--------------------------------------------------------
 export {};

@@ -1,14 +1,20 @@
-import { AIResult } from "../adapters/types.js";
-import { udioMusic } from "../adapters/udio.js";
-import { sunoMusic } from "../adapters/suno.js";
+import type { AIResult, AiVendor } from "../adapters/types.js";
 
 export async function runMusicPipeline(
-  payload: { prompt: string },
-  vendor: string
+  payload: any,
+  vendor: AiVendor
 ): Promise<AIResult> {
-  if (vendor === "udio") return udioMusic(payload.prompt);
-  if (vendor === "suno") return sunoMusic(payload.prompt);
+  const res = await vendor.handle({
+    mode: "music",
+    prompt: payload?.prompt ?? payload?.text ?? "",
+  });
 
-  // fallback:
-  return udioMusic(payload.prompt);
+  return {
+    type: "audio",
+    text: res.text,
+    url: res.url,
+    buffer: res.buffer,
+    vendor: vendor.name,
+    mode: "music",
+  };
 }

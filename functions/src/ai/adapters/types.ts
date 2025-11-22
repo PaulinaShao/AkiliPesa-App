@@ -1,5 +1,5 @@
 //--------------------------------------------------------
-// UNIFIED AI TYPES — FIXED to include vendor + multi mode
+// UNIFIED AI TYPES — FINAL VERSION
 //--------------------------------------------------------
 
 export type AIResultType = "text" | "image" | "audio" | "video" | "multi";
@@ -9,7 +9,9 @@ export interface AIResult {
   url?: string;
   text?: string;
   buffer?: Buffer;
-  vendor?: string;   // FIX #1
+  vendor?: string;
+  mode?: string;     // allow adapters/pipelines to tag the mode
+  meta?: any;        // optional extra metadata (e.g. payload info)
 }
 
 export interface AiResponse {
@@ -17,11 +19,13 @@ export interface AiResponse {
   url?: string;
   text?: string;
   buffer?: Buffer;
-  vendor?: string;   // FIX #1
+  vendor?: string;
+  mode?: string;
+  meta?: any;
 }
 
 export interface AiRequest {
-  mode: string;
+  mode: string;      // e.g. "text", "image", "music", "video"
   prompt?: string;
   text?: string;
   audioUrl?: string;
@@ -32,6 +36,6 @@ export interface AiVendor {
   supports: string[];
   cost: number;
 
-  // REQUIRED
+  // Every vendor must implement this
   handle(request: AiRequest): Promise<AiResponse>;
 }

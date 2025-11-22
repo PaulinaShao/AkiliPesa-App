@@ -1,15 +1,20 @@
-import { AIResult } from "../adapters/types.js";
-import { kaiberVideo } from "../adapters/kaiber.js";
-import { pikaVideo } from "../adapters/pika.js";
-import { lumaVideo } from "../adapters/luma.js";
+import type { AIResult, AiVendor } from "../adapters/types.js";
 
 export async function runVideoPipeline(
   payload: any,
-  vendor: string
+  vendor: AiVendor
 ): Promise<AIResult> {
-  if (vendor === "kaiber") return kaiberVideo(payload);
-  if (vendor === "pika") return pikaVideo(payload);
-  if (vendor === "luma") return lumaVideo(payload);
+  const res = await vendor.handle({
+    mode: "video",
+    prompt: payload?.prompt ?? "",
+  });
 
-  return kaiberVideo(payload);
+  return {
+    type: "video",
+    text: res.text,
+    url: res.url,
+    buffer: res.buffer,
+    vendor: vendor.name,
+    mode: "video",
+  };
 }
