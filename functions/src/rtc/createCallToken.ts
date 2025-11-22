@@ -24,24 +24,27 @@ export const createCallToken = onCall(
     const appId = AGORA_APP_ID.value();
     const appCert = AGORA_APP_CERT.value();
 
-    const expireTime = Math.floor(Date.now() / 1000) + 3600;
+    // Unix timestamps
+    const expireTs = Math.floor(Date.now() / 1000) + 3600;       // 1 hour
+    const privilegeExpiredTs = expireTs;                         // same expiry
 
-    // RTC token
+    // RTC TOKEN (video/audio stream)
     const rtcToken = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCert,
       channelName,
       Number(uid),
       RtcRole.PUBLISHER,
-      expireTime
+      expireTs
     );
 
-    // RTM token
+    // RTM TOKEN (messaging)
     const rtmToken = RtmTokenBuilder.buildToken(
       appId,
       appCert,
       String(uid),
-      expireTime
+      expireTs,
+      privilegeExpiredTs    // ← NEW REQUIRED ARG
     );
 
     return {
