@@ -1,9 +1,11 @@
-// functions/src/firebase.ts
+// src/firebase.ts
+
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
-if (!admin.apps.length) {
+// IMPORTANT: admin must be initialized BEFORE using apps.length
+if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
