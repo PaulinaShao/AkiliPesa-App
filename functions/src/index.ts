@@ -52,3 +52,4 @@ export { redeemReward } from "./rewards/redeemReward.js";
 
 // ---------- SEEDING ----------
 export { initializeDemoData } from "./seed/initializeDemoData.js";
+export { bootstrapFirestore } from "./seed/bootstrapFirestore.js";

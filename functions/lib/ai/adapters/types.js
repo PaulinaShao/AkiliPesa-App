@@ -1,4 +1,4 @@
 //--------------------------------------------------------
-// UNIFIED AI TYPES — FIXED to include vendor + multi mode
+// UNIFIED AI TYPES — FINAL VERSION
 //--------------------------------------------------------
 export {};
