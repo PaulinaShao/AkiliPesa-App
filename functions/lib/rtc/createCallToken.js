@@ -1,6 +1,6 @@
 import { onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import { RtcTokenBuilder, RtcRole, RtmTokenBuilder, } from "agora-access-token";
+import { RtcTokenBuilder, RtmTokenBuilder, } from "agora-access-token";
 const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
 const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
 export const createCallToken = onCall({
@@ -17,10 +17,9 @@ export const createCallToken = onCall({
     const expireTs = Math.floor(Date.now() / 1000) + 3600; // 1 hour
     const privilegeExpiredTs = expireTs; // same expiry
     // RTC TOKEN (video/audio stream)
-    const rtcToken = RtcTokenBuilder.buildTokenWithUid(appId, appCert, channelName, Number(uid), RtcRole.PUBLISHER, expireTs);
+    const rtcToken = RtcTokenBuilder.buildTokenWithUid(appId, appCert, channelName, Number(uid), RtcTokenBuilder.Role.PUBLISHER, expireTs, privilegeExpiredTs);
     // RTM TOKEN (messaging)
-    const rtmToken = RtmTokenBuilder.buildToken(appId, appCert, String(uid), expireTs, privilegeExpiredTs // ← NEW REQUIRED ARG
-    );
+    const rtmToken = RtmTokenBuilder.buildToken(appId, appCert, String(uid), expireTs, privilegeExpiredTs);
     return {
         rtcToken,
         rtmToken,

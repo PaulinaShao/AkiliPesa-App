@@ -34,8 +34,9 @@ export const createCallToken = onCall(
       appCert,
       channelName,
       Number(uid),
-      RtcRole.PUBLISHER,
-      expireTs
+      RtcTokenBuilder.Role.PUBLISHER,
+      expireTs,
+      privilegeExpiredTs
     );
 
     // RTM TOKEN (messaging)
@@ -44,7 +45,7 @@ export const createCallToken = onCall(
       appCert,
       String(uid),
       expireTs,
-      privilegeExpiredTs // ← NEW REQUIRED ARG
+      privilegeExpiredTs
     );
 
     return {
