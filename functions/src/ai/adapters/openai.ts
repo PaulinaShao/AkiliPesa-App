@@ -1,50 +1,50 @@
+// functions/src/ai/adapters/openai.ts
 import fetch from "node-fetch";
 import { OPENAI_API_KEY } from "../../config/secrets.js";
-import { AIResult } from "./types.js";
+import { AiVendor, AiRequest, AiResponse } from "./types.js";
 
 const OAI_BASE = "https://api.openai.com/v1";
 
-function openaiHeaders() {
+function oaiHeaders() {
   return {
     Authorization: `Bearer ${OPENAI_API_KEY.value()}`,
     "Content-Type": "application/json",
   };
 }
 
-export async function openaiText(prompt: string): Promise<AIResult> {
-  const res = await fetch(`${OAI_BASE}/chat/completions`, {
+async function openaiText(prompt: string): Promise<AiResponse> {
+  const r = await fetch(`${OAI_BASE}/chat/completions`, {
     method: "POST",
-    headers: openaiHeaders(),
+    headers: oaiHeaders(),
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
           content:
-            "You are AkiliPesa AI, Tanzanian, warm, practical and concise.",
+            "You are AkiliPesa AI: Tanzanian, warm, practical, and concise.",
         },
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
     }),
   });
-
-  const json: any = await res.json();
-  const text = json.choices?.[0]?.message?.content || "";
-
+  const j = await r.json() as any;
+  const text = j.choices?.[0]?.message?.content || "";
   return {
+    ok: true,
     vendor: "openai",
-    mode: "text",
+    mode: 'chat',
     type: "text",
     text,
-    meta: json,
+    raw: j,
   };
 }
 
-export async function openaiImage(prompt: string): Promise<AIResult> {
-  const res = await fetch(`${OAI_BASE}/images/generations`, {
+async function openaiImage(prompt: string): Promise<AiResponse> {
+  const r = await fetch(`${OAI_BASE}/images/generations`, {
     method: "POST",
-    headers: openaiHeaders(),
+    headers: oaiHeaders(),
     body: JSON.stringify({
       model: "dall-e-3",
       prompt,
@@ -53,38 +53,58 @@ export async function openaiImage(prompt: string): Promise<AIResult> {
       response_format: "b64_json",
     }),
   });
-
-  const json: any = await res.json();
-  const base64 = json.data?.[0]?.b64_json as string;
-
+  const j = await r.json() as any;
+  const imageBase64 = j.data?.[0]?.b64_json as string;
   return {
+    ok: true,
     vendor: "openai",
-    mode: "image",
+    mode: 'image',
     type: "image",
-    base64,
-    meta: json,
+    imageBase64,
+    raw: j,
   };
 }
 
-export async function openaiTTS(text: string): Promise<AIResult> {
-  const res = await fetch(`${OAI_BASE}/audio/speech`, {
+async function openaiTTS(prompt: string): Promise<AiResponse> {
+  const r = await fetch(`${OAI_BASE}/audio/speech`, {
     method: "POST",
-    headers: openaiHeaders(),
+    headers: oaiHeaders(),
     body: JSON.stringify({
       model: "tts-1",
       voice: "alloy",
-      input: text,
+      input: prompt,
       response_format: "mp3",
     }),
   });
-
-  const buf = Buffer.from(await res.arrayBuffer());
-  const base64 = buf.toString("base64");
-
+  const buf = Buffer.from(await r.arrayBuffer());
+  const audioBase64 = buf.toString("base64");
+  const dataUrl = `data:audio/mp3;base64,${audioBase64}`;
   return {
+    ok: true,
     vendor: "openai",
-    mode: "tts",
+    mode: 'tts',
     type: "audio",
-    base64,
+    audioUrl: dataUrl,
+    raw: { base64Length: audioBase64.length },
   };
 }
+
+export const openAiVendor: AiVendor = {
+  name: "openai",
+  supports: ["chat", "image", "tts"],
+  async handle(request: AiRequest): Promise<AiResponse> {
+    const { mode, prompt } = request;
+
+    if (mode === "chat") {
+      return openaiText(prompt);
+    }
+    if (mode === "image") {
+      return openaiImage(prompt);
+    }
+    if (mode === "tts") {
+      return openaiTTS(prompt);
+    }
+
+    throw new Error(`OpenAI does not support mode ${mode}`);
+  },
+};

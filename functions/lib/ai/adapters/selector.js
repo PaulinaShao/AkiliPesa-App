@@ -1,4 +1,4 @@
-import { openAiVendor } from "./openai";
+import { openAiVendor } from "./openai.js";
 // Later: import { runpodVendor } from "./runpod"; etc.
 const vendors = [
     openAiVendor,
