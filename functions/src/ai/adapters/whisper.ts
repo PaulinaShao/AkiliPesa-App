@@ -8,7 +8,6 @@ import { AIResult } from "./types.js";
 export async function whisperTranscribe(audioUrl: string): Promise<AIResult> {
   // TODO: implement real Whisper / RunPod / custom endpoint call
   return {
-    vendor: "whisper",
     mode: "audio",
     type: "text",
     text: "[transcript placeholder]",

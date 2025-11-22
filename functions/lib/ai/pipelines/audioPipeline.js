@@ -1,11 +1,23 @@
-import { openaiTTS } from "../adapters/openai.js";
-import { whisperTranscribe } from "../adapters/whisper.js";
 export async function runAudioPipeline(payload, vendor) {
     if (payload.type === "tts") {
-        return openaiTTS(payload.text || "");
+        const res = await vendor.handle({
+            mode: "tts",
+            text: payload.text || "",
+        });
+        return {
+            type: "audio",
+            buffer: res.buffer,
+        };
     }
     if (payload.type === "transcribe") {
-        return whisperTranscribe(payload.audioUrl || "");
+        const res = await vendor.handle({
+            mode: "audio", // Assuming vendor has an 'audio' mode for transcription
+            audioUrl: payload.audioUrl || "",
+        });
+        return {
+            type: "text",
+            text: res.text,
+        };
     }
     throw new Error(`Unsupported audio type: ${payload.type}`);
 }

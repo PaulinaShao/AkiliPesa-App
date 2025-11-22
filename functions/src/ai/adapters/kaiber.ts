@@ -5,7 +5,6 @@ import { AIResult } from "./types.js";
 export async function kaiberVideo(payload: any): Promise<AIResult> {
   // TODO: real Kaiber API
   return {
-    vendor: "kaiber",
     mode: "video",
     type: "video",
     url: "https://example.com/kaiber-video.mp4",

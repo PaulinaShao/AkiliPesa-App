@@ -1,4 +1,4 @@
-import { AIResult } from "../adapters/types.js";
+import type { AIResult } from "../adapters/types.js";
 
 /**
  * High-level “any format → any format” pipeline.
@@ -9,10 +9,9 @@ export async function runMultiFormatPipeline(
   vendor: string
 ): Promise<AIResult> {
   return {
-    vendor,
-    mode: "multi",
     type: "multi",
     text: "Multi-format pipeline placeholder",
+    vendor,
     meta: { payload },
   };
 }

@@ -22,7 +22,6 @@ export async function runpodImage(prompt: string): Promise<AIResult> {
   const json: any = await res.json();
 
   return {
-    vendor: "runpod",
     mode: "image",
     type: "image",
     url: json.outputUrl || "",
@@ -33,7 +32,6 @@ export async function runpodImage(prompt: string): Promise<AIResult> {
 export async function runpodVoiceClone(payload: any): Promise<AIResult> {
   // placeholder for your OpenVoice / RunPod workflow
   return {
-    vendor: "runpod",
     mode: "voice_clone",
     type: "audio",
     url: "https://example.com/voice-clone-placeholder.mp3",

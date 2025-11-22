@@ -5,7 +5,6 @@ import { AIResult } from "./types.js";
 export async function pikaVideo(payload: any): Promise<AIResult> {
   // TODO: real Pika API
   return {
-    vendor: "pika",
     mode: "video",
     type: "video",
     url: "https://example.com/pika-video.mp4",

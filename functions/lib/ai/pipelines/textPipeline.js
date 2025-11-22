@@ -1,8 +1,10 @@
-import { openaiText } from "../adapters/openai.js";
 export async function runTextPipeline(payload, vendor) {
-    switch (vendor) {
-        case "openai":
-        default:
-            return openaiText(payload.prompt);
-    }
+    const res = await vendor.handle({
+        mode: "text",
+        prompt: payload.prompt,
+    });
+    return {
+        type: "text",
+        text: res.text,
+    };
 }

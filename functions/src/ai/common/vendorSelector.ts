@@ -1,30 +1,14 @@
-import { db } from "../../firebase.js";
+//---------------------------------------------------------
+// FIXED VENDOR SELECTOR — returns AiVendor object, not string
+//---------------------------------------------------------
 
-/**
- * Basic vendor selection.
- * Later: use vendorOptimizer config from Firestore.
- */
-export async function selectVendor(mode: string): Promise<string> {
-  // Example: read override from Firestore
-  const configSnap = await db.collection("vendorConfig").doc("active").get();
-  const preferred = configSnap.data()?.preferredVendors?.[mode];
+import { openAiVendor } from "../adapters/openai.js";
+import type { AiVendor } from "../adapters/types.js";
 
-  const defaults: Record<string, string[]> = {
-    text: ["openai"],
-    image: ["openai", "runpod"],
-    audio: ["openai", "whisper"],
-    tts: ["openai"],
-    voice_clone: ["runpod"],
-    music: ["udio", "suno"],
-    video: ["kaiber", "pika", "luma"],
-    multi: ["openai", "runpod"],
-  };
+// Expand here later
+export const vendorRegistry: AiVendor[] = [openAiVendor];
 
-  const options = (defaults[mode] || ["openai"]).slice();
-
-  if (preferred && options.includes(preferred)) {
-    return preferred;
-  }
-
-  return options[0];
+export function selectVendor(mode: string): AiVendor {
+  // Simple rule: always OpenAI for now
+  return openAiVendor;
 }

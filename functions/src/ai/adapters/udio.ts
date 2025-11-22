@@ -7,7 +7,6 @@ export async function udioMusic(prompt: string): Promise<AIResult> {
   const json = { message: "Udio placeholder" };
 
   return {
-    vendor: "udio",
     mode: "music",
     type: "audio",
     url: "https://example.com/udio-placeholder.mp3",

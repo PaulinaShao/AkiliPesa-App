@@ -1,14 +1,15 @@
 //--------------------------------------------------------
-// UNIFIED AI TYPES (FIXES AiResponse, AIResult MISMATCH)
+// UNIFIED AI TYPES — FIXED to include vendor + multi mode
 //--------------------------------------------------------
 
-export type AIResultType = "text" | "image" | "audio" | "video";
+export type AIResultType = "text" | "image" | "audio" | "video" | "multi";
 
 export interface AIResult {
   type: AIResultType;
   url?: string;
   text?: string;
   buffer?: Buffer;
+  vendor?: string;   // FIX #1
 }
 
 export interface AiResponse {
@@ -16,6 +17,7 @@ export interface AiResponse {
   url?: string;
   text?: string;
   buffer?: Buffer;
+  vendor?: string;   // FIX #1
 }
 
 export interface AiRequest {
