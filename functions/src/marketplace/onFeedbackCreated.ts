@@ -6,7 +6,7 @@ export const onFeedbackCreated = onDocumentCreated(
     region: "us-central1",
     document: "feedback/{feedbackId}",
   },
-  async (event) => {
+  async (event: any) => {
     const data = event.data?.data();
     if (!data) return;
 

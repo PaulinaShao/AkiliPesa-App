@@ -7,7 +7,7 @@ import { db, admin } from "../firebase.js";
  */
 export const onWithdrawalApproved = onCall(
   { region: "us-central1" },
-  async (request) => {
+  async (request: any) => {
     const auth = request.auth;
     if (!auth) throw new HttpsError("unauthenticated", "Sign-in required.");
 

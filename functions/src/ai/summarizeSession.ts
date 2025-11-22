@@ -6,7 +6,7 @@ import { openaiText } from "./adapters/openai.js";
 
 export const summarizeAiSession = onCall(
   { region: "us-central1", secrets: [OPENAI_API_KEY] },
-  async (request) => {
+  async (request: any) => {
     const auth = request.auth;
     if (!auth) {
       throw new HttpsError("unauthenticated", "Sign-in required.");

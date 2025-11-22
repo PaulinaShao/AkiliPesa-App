@@ -9,7 +9,7 @@ export const onOrderStatusChange = onDocumentUpdated(
     region: "us-central1",
     document: "orders/{orderId}",
   },
-  async (event) => {
+  async (event: any) => {
     const before = event.data?.before.data();
     const after = event.data?.after.data();
 

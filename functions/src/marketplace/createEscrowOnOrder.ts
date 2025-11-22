@@ -6,7 +6,7 @@ import { db, admin } from "../firebase.js";
  */
 export const createEscrowOnOrder = onCall(
   { region: "us-central1" },
-  async (request) => {
+  async (request: any) => {
     const { orderId, amount, buyerId, sellerId } = request.data || {};
 
     if (!orderId || !buyerId || !sellerId)

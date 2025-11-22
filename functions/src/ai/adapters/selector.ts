@@ -1,6 +1,6 @@
 // functions/src/ai/adapters/selector.ts
-import { AiRequest, AiVendor } from "./types";
-import { openAiVendor } from "./openai";
+import { AiRequest, AiVendor } from "./types.js";
+import { openAiVendor } from "./openai.js";
 
 // Later: import { runpodVendor } from "./runpod"; etc.
 

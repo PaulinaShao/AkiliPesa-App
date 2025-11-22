@@ -3,7 +3,7 @@ import { db, admin } from "../firebase.js";
 
 export const redeemReward = onCall(
   { region: "us-central1" },
-  async (request) => {
+  async (request: any) => {
     const uid = request.auth?.uid;
     if (!uid)
       throw new HttpsError("unauthenticated", "Login required.");

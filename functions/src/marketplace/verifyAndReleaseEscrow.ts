@@ -3,7 +3,7 @@ import { db, admin } from "../firebase.js";
 
 export const verifyAndReleaseEscrow = onCall(
   { region: "us-central1" },
-  async (request) => {
+  async (request: any) => {
     const { orderId } = request.data || {};
     if (!orderId) throw new HttpsError("invalid-argument", "orderId required.");
 
