@@ -1,7 +1,7 @@
 // functions/src/calls/createCallSession.ts
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import { db } from "../firebase";
+import { db } from "../firebase.js";
 export const createCallSession = onCall({ region: "us-central1" }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "Sign-in required.");

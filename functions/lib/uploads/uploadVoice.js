@@ -1,6 +1,6 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import { db } from "../firebase";
+import { db } from "../firebase.js";
 export const uploadVoice = onCall({ region: "us-central1" }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)

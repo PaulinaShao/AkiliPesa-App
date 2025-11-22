@@ -1,5 +1,5 @@
 import { onCall } from "firebase-functions/v2/https";
-import { db } from "../firebase";
+import { db } from "../firebase.js";
 export const updateAgentRanks = onCall({ region: "us-central1" }, async () => {
     const agentsSnap = await db.collection("agents").get();
     for (const doc of agentsSnap.docs) {

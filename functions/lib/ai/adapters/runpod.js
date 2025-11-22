@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { RUNPOD_API_KEY } from "../../config/secrets";
+import { RUNPOD_API_KEY } from "../../config/secrets.js";
 const RUNPOD_ENDPOINT = "https://api.runpod.ai/v2/your-endpoint-id/run"; // TODO: replace
 function runpodHeaders() {
     return {

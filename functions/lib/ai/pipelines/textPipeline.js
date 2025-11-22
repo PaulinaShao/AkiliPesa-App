@@ -1,4 +1,4 @@
-import { openaiText } from "../adapters/openai";
+import { openaiText } from "../adapters/openai.js";
 export async function runTextPipeline(payload, vendor) {
     switch (vendor) {
         case "openai":

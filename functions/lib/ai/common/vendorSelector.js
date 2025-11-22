@@ -1,4 +1,4 @@
-import { db } from "../../firebase";
+import { db } from "../../firebase.js";
 /**
  * Basic vendor selection.
  * Later: use vendorOptimizer config from Firestore.

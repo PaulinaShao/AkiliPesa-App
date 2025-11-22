@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { OPENAI_API_KEY } from "../../config/secrets";
+import { OPENAI_API_KEY } from "../../config/secrets.js";
 const OAI_BASE = "https://api.openai.com/v1";
 function openaiHeaders() {
     return {

@@ -1,14 +1,14 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { db } from "../firebase";
-import { selectVendor } from "./common/vendorSelector";
-import { validateAIInput } from "./common/validateInput";
-import { runTextPipeline } from "./pipelines/textPipeline";
-import { runImagePipeline } from "./pipelines/imagePipeline";
-import { runAudioPipeline } from "./pipelines/audioPipeline";
-import { runVideoPipeline } from "./pipelines/videoPipeline";
-import { runMusicPipeline } from "./pipelines/musicPipeline";
-import { runVoiceClonePipeline } from "./pipelines/voiceClonePipeline";
-import { runMultiFormatPipeline } from "./pipelines/multiFormatPipeline";
+import { db } from "../firebase.js";
+import { selectVendor } from "./common/vendorSelector.js";
+import { validateAIInput } from "./common/validateInput.js";
+import { runTextPipeline } from "./pipelines/textPipeline.js";
+import { runImagePipeline } from "./pipelines/imagePipeline.js";
+import { runAudioPipeline } from "./pipelines/audioPipeline.js";
+import { runVideoPipeline } from "./pipelines/videoPipeline.js";
+import { runMusicPipeline } from "./pipelines/musicPipeline.js";
+import { runVoiceClonePipeline } from "./pipelines/voiceClonePipeline.js";
+import { runMultiFormatPipeline } from "./pipelines/multiFormatPipeline.js";
 export const aiRouter = onCall({ region: "us-central1" }, async (request) => {
     if (!request.auth)
         throw new HttpsError("unauthenticated", "Login required");

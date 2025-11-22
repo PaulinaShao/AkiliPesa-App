@@ -1,4 +1,4 @@
-import { storage } from "../../firebase";
+import { storage } from "../../firebase.js";
 import { v4 as uuidv4 } from "uuid";
 export async function saveBase64ToStorage(base64, contentType, folder) {
     const bucket = storage.bucket();

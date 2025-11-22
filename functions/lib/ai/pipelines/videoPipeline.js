@@ -1,6 +1,6 @@
-import { kaiberVideo } from "../adapters/kaiber";
-import { pikaVideo } from "../adapters/pika";
-import { lumaVideo } from "../adapters/luma";
+import { kaiberVideo } from "../adapters/kaiber.js";
+import { pikaVideo } from "../adapters/pika.js";
+import { lumaVideo } from "../adapters/luma.js";
 export async function runVideoPipeline(payload, vendor) {
     if (vendor === "kaiber")
         return kaiberVideo(payload);
