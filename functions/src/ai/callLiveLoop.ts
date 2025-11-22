@@ -1,3 +1,4 @@
+
 import { onCall } from "firebase-functions/v2/https";
 import { openaiText } from "./adapters/openai.js";
 
