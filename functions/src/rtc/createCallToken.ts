@@ -1,40 +1,41 @@
 import { onCall } from "firebase-functions/v2/https";
-import { db } from "../firebase.js";
-import {
-  RtcTokenBuilder,
-  RtcRole
-} from "agora-access-token";
+import { AGORA_APP_ID, AGORA_APP_CERT } from "../config/secrets.js";
+import { RtcRole, RtmRole, RtcTokenBuilder, RtmTokenBuilder } from "agora-token";
 
-export const createCallToken = onCall(async (request) => {
-  try {
-    const { channel, uid } = request.data;
-    
-    if (!channel || !uid) {
-      throw new Error("Missing channel or uid");
-    }
+export const createCallToken = onCall(async (req) => {
+  const { channelName, uid } = req.data;
 
-    const appId = process.env.AGORA_APP_ID;
-    const appCert = process.env.AGORA_APP_CERT;
-
-    if (!appId || !appCert) {
-        throw new Error("Agora App ID or Certificate not configured in environment.");
-    }
-
-    const role = RtcRole.PUBLISHER;
-    const expire = Math.floor(Date.now() / 1000) + 3600;
-
-    const token = RtcTokenBuilder.buildTokenWithUid(
-      appId,
-      appCert,
-      channel,
-      uid,
-      role,
-      expire
-    );
-
-    return { token };
-  } catch (e: any) {
-    console.error(e);
-    return { error: e.message };
+  if (!channelName || !uid) {
+    throw new Error("Missing channelName or uid");
   }
+  
+  const appId = AGORA_APP_ID.value();
+  const appCert = AGORA_APP_CERT.value();
+
+  const expireTime = 3600; // 1 hour
+  const currentTime = Math.floor(Date.now() / 1000);
+  const privilegeExpireTime = currentTime + expireTime;
+
+  const rtcToken = RtcTokenBuilder.buildTokenWithUid(
+    appId,
+    appCert,
+    channelName,
+    uid,
+    RtcRole.PUBLISHER,
+    privilegeExpireTime
+  );
+
+  const rtmToken = RtmTokenBuilder.buildToken(
+    appId,
+    appCert,
+    uid.toString(),
+    RtmRole.Rtm_User,
+    privilegeExpireTime
+  );
+
+  return {
+    rtcToken,
+    rtmToken,
+    expireAt: privilegeExpireTime,
+  };
 });
