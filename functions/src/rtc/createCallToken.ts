@@ -1,55 +1,40 @@
-// functions/src/rtc/createCallToken.ts
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as logger from "firebase-functions/logger";
-import { RtcTokenBuilder, RtcRole } from "agora-access-token";
-import { AGORA_APP_ID, AGORA_APP_CERT } from "../config/secrets.js";
+import { onCall } from "firebase-functions/v2/https";
+import { db } from "../firebase.js";
+import {
+  RtcTokenBuilder,
+  RtcRole
+} from "agora-access-token";
 
-export const createCallToken = onCall(
-  { region: "us-central1", secrets: [AGORA_APP_ID, AGORA_APP_CERT] },
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Sign-in required.");
+export const createCallToken = onCall(async (request) => {
+  try {
+    const { channel, uid } = request.data;
+    
+    if (!channel || !uid) {
+      throw new Error("Missing channel or uid");
     }
 
-    const { channelName, role = "host", expireSeconds = 3600 } =
-      request.data || {};
-    if (!channelName) {
-      throw new HttpsError("invalid-argument", "channelName is required.");
-    }
+    const appId = process.env.AGORA_APP_ID;
+    const appCert = process.env.AGORA_APP_CERT;
 
-    const appId = AGORA_APP_ID.value();
-    const appCert = AGORA_APP_CERT.value();
     if (!appId || !appCert) {
-      logger.error("Agora secrets not configured");
-      throw new HttpsError(
-        "failed-precondition",
-        "Agora credentials not configured."
-      );
+        throw new Error("Agora App ID or Certificate not configured in environment.");
     }
 
-    const agoraRole =
-      role === "host" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
-    const now = Math.floor(Date.now() / 1000);
-    const expire = now + expireSeconds;
-    const uid = request.auth.uid;
+    const role = RtcRole.PUBLISHER;
+    const expire = Math.floor(Date.now() / 1000) + 3600;
 
-    const token = RtcTokenBuilder.buildTokenWithAccount(
+    const token = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCert,
-      channelName,
+      channel,
       uid,
-      agoraRole,
+      role,
       expire
     );
 
-    return {
-      ok: true,
-      appId,
-      token,
-      channelName,
-      uid,
-      role,
-      expireAt: expire,
-    };
+    return { token };
+  } catch (e: any) {
+    console.error(e);
+    return { error: e.message };
   }
-);
+});
