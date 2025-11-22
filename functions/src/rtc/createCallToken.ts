@@ -46,8 +46,7 @@ export const createCallToken = onCall(
       appId,
       appCert,
       String(uid),
-      expireTs,
-      privilegeExpiredTs
+      expireTs
     );
 
     return {

@@ -23,7 +23,7 @@ export const createCallToken = onCall({
     // RTC TOKEN (video/audio stream)
     const rtcToken = RtcTokenBuilder.buildTokenWithUid(appId, appCert, channelName, Number(uid), RtcRole.PUBLISHER, expireTs, privilegeExpiredTs);
     // RTM TOKEN (messaging)
-    const rtmToken = RtmTokenBuilder.buildToken(appId, appCert, String(uid), expireTs, privilegeExpiredTs);
+    const rtmToken = RtmTokenBuilder.buildToken(appId, appCert, String(uid), expireTs);
     return {
         rtcToken,
         rtmToken,
