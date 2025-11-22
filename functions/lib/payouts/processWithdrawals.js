@@ -21,7 +21,6 @@ export const onWithdrawalApproved = onCall({ region: "us-central1" }, async (req
     const amount = Number(data.amount);
     const uid = data.userId;
     const platformRef = db.collection("wallets").doc("platform");
-    const userRef = db.collection("wallets").doc(uid);
     await db.runTransaction(async (tx) => {
         const platformSnap = await tx.get(platformRef);
         const platformBalance = platformSnap.data()?.balanceTZS || 0;
