@@ -8,10 +8,9 @@ export const createCallToken = onCall(async (req) => {
   if (!channelName || !uid) {
     throw new Error("Missing channelName or uid");
   }
-  
+
   const appId = AGORA_APP_ID.value();
   const appCert = AGORA_APP_CERT.value();
-
   const expireTime = 3600; // 1 hour
   const currentTime = Math.floor(Date.now() / 1000);
   const privilegeExpireTime = currentTime + expireTime;
