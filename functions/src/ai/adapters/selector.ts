@@ -1,26 +1,15 @@
-// functions/src/ai/adapters/selector.ts
+//---------------------------------------------------------
+// MASTER VENDOR SELECTOR (FIXED WITH .js EXTENSIONS)
+//---------------------------------------------------------
 import { AiRequest, AiVendor } from "./types.js";
 import { openAiVendor } from "./openai.js";
 
-export const vendorRegistry: AiVendor[] = [
-  openAiVendor
-  // Later, you can add other vendors here:
-  // runpodVendor,
-  // udioVendor,
-];
+export const vendorRegistry: AiVendor[] = [openAiVendor];
 
-export function selectVendorForMode(mode: string, preferred?: string): AiVendor {
-  // 1. Try to find the preferred vendor if specified
-  if (preferred) {
-    const found = vendorRegistry.find((v) => v.name === preferred);
-    if (found && found.supports.includes(mode as any)) return found;
+export function selectVendorForMode(mode: string): AiVendor {
+  const found = vendorRegistry.find(v => v.supports.includes(mode));
+  if (found) {
+    return found;
   }
-
-  // 2. Find the first vendor that supports the mode
-  const fallback = vendorRegistry.find((v) => v.supports.includes(mode as any));
-  if (!fallback) {
-    throw new Error(`No vendor supports mode: ${mode}`);
-  }
-
-  return fallback;
+  return vendorRegistry[0]; // default for now
 }

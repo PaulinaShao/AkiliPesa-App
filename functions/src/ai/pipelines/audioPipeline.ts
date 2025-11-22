@@ -1,7 +1,4 @@
-
-import { AIResult } from "../adapters/types.js";
-import { openaiTTS } from "../adapters/openai.js";
-import { whisperTranscribe } from "../adapters/whisper.js";
+import type { AIResult, AiVendor } from "../adapters/types.js";
 
 interface AudioPayload {
   type: "tts" | "transcribe";
@@ -11,14 +8,28 @@ interface AudioPayload {
 
 export async function runAudioPipeline(
   payload: AudioPayload,
-  vendor: string
+  vendor: AiVendor
 ): Promise<AIResult> {
   if (payload.type === "tts") {
-    return openaiTTS(payload.text || "");
+    const res = await vendor.handle({
+      mode: "tts",
+      text: payload.text || "",
+    });
+    return {
+      type: "audio",
+      buffer: res.buffer,
+    };
   }
 
   if (payload.type === "transcribe") {
-    return whisperTranscribe(payload.audioUrl || "");
+     const res = await vendor.handle({
+      mode: "audio", // Assuming vendor has an 'audio' mode for transcription
+      audioUrl: payload.audioUrl || "",
+    });
+    return {
+        type: "text",
+        text: res.text,
+    }
   }
 
   throw new Error(`Unsupported audio type: ${payload.type}`);

@@ -1,19 +1,17 @@
-//----------------------------------------------
-// OPENAI ADAPTER — FULL EXPORT-SAFE VERSION
-//----------------------------------------------
+//-------------------------------------------------------
+// OPENAI ADAPTER (FIXED TO MATCH AiResponse + AiVendor)
+//-------------------------------------------------------
 
 import { OPENAI_API_KEY } from "../../config/secrets.js";
-import type { AiResponse } from "./types.js";
+import type { AiResponse, AiRequest } from "./types.js";
 import fetch from "node-fetch";
 
-// ----------------------------------------------
-// TEXT GENERATION
-// ----------------------------------------------
+// ---------------- TEXT --------------------
 export async function openaiText(prompt: string): Promise<AiResponse> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY.value()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -22,21 +20,20 @@ export async function openaiText(prompt: string): Promise<AiResponse> {
     }),
   });
 
-  const data = await res.json();
+  const data: any = await res.json();
+
   return {
     type: "text",
-    output: (data as any).choices?.[0]?.message?.content || "",
+    text: data.choices?.[0]?.message?.content || "",
   };
 }
 
-// ----------------------------------------------
-// IMAGE GENERATION
-// ----------------------------------------------
+// ---------------- IMAGE --------------------
 export async function openaiImage(prompt: string): Promise<AiResponse> {
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY.value()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -46,21 +43,20 @@ export async function openaiImage(prompt: string): Promise<AiResponse> {
     }),
   });
 
-  const data = await res.json();
+  const data: any = await res.json();
+
   return {
     type: "image",
-    output: (data as any).data?.[0]?.url || "",
+    url: data.data?.[0]?.url || "",
   };
 }
 
-// ----------------------------------------------
-// TTS GENERATION
-// ----------------------------------------------
+// ----------------- TTS ---------------------
 export async function openaiTTS(text: string): Promise<AiResponse> {
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY.value()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -75,18 +71,21 @@ export async function openaiTTS(text: string): Promise<AiResponse> {
 
   return {
     type: "audio",
-    output: buffer,
+    buffer,
   };
 }
 
-// ----------------------------------------------
-// OPENAI VENDOR DEFINITION
-// ----------------------------------------------
+// ----------------- VENDOR --------------------
 export const openAiVendor = {
   name: "openai",
-  supports: ["text", "image", "audio", "tts", "multi"],
+  supports: ["text", "image", "tts", "audio"],
   cost: 1,
-  runText: openaiText,
-  runImage: openaiImage,
-  runTTS: openaiTTS,
+
+  async handle(request: AiRequest): Promise<AiResponse> {
+    if (request.mode === "text") return openaiText(request.prompt || "");
+    if (request.mode === "image") return openaiImage(request.prompt || "");
+    if (request.mode === "tts") return openaiTTS(request.text || "");
+
+    throw new Error("Unsupported mode for OpenAI vendor");
+  },
 };

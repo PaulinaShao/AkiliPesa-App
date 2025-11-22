@@ -1,100 +1,82 @@
-// functions/src/ai/adapters/openai.ts
-import fetch from "node-fetch";
+//----------------------------------------------
+// OPENAI ADAPTER — FULL EXPORT-SAFE VERSION
+//----------------------------------------------
 import { OPENAI_API_KEY } from "../../config/secrets.js";
-const OAI_BASE = "https://api.openai.com/v1";
-function oaiHeaders() {
-    return {
-        Authorization: `Bearer ${OPENAI_API_KEY.value()}`,
-        "Content-Type": "application/json",
-    };
-}
-async function openaiText(prompt) {
-    const r = await fetch(`${OAI_BASE}/chat/completions`, {
+import fetch from "node-fetch";
+// ----------------------------------------------
+// TEXT GENERATION
+// ----------------------------------------------
+export async function openaiText(prompt) {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: oaiHeaders(),
+        headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+        },
         body: JSON.stringify({
             model: "gpt-4o-mini",
-            messages: [
-                {
-                    role: "system",
-                    content: "You are AkiliPesa AI: Tanzanian, warm, practical, and concise.",
-                },
-                { role: "user", content: prompt },
-            ],
-            temperature: 0.7,
+            messages: [{ role: "user", content: prompt }],
         }),
     });
-    const j = await r.json();
-    const text = j.choices?.[0]?.message?.content || "";
+    const data = await res.json();
     return {
-        ok: true,
-        vendor: "openai",
-        mode: 'chat',
         type: "text",
-        text,
-        raw: j,
+        output: data.choices?.[0]?.message?.content || "",
     };
 }
-async function openaiImage(prompt) {
-    const r = await fetch(`${OAI_BASE}/images/generations`, {
+// ----------------------------------------------
+// IMAGE GENERATION
+// ----------------------------------------------
+export async function openaiImage(prompt) {
+    const res = await fetch("https://api.openai.com/v1/images/generations", {
         method: "POST",
-        headers: oaiHeaders(),
+        headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+        },
         body: JSON.stringify({
             model: "dall-e-3",
             prompt,
-            n: 1,
             size: "1024x1024",
-            response_format: "b64_json",
         }),
     });
-    const j = await r.json();
-    const imageBase64 = j.data?.[0]?.b64_json;
+    const data = await res.json();
     return {
-        ok: true,
-        vendor: "openai",
-        mode: 'image',
         type: "image",
-        imageBase64,
-        raw: j,
+        output: data.data?.[0]?.url || "",
     };
 }
-async function openaiTTS(prompt) {
-    const r = await fetch(`${OAI_BASE}/audio/speech`, {
+// ----------------------------------------------
+// TTS GENERATION
+// ----------------------------------------------
+export async function openaiTTS(text) {
+    const res = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
-        headers: oaiHeaders(),
+        headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+        },
         body: JSON.stringify({
             model: "tts-1",
+            input: text,
             voice: "alloy",
-            input: prompt,
             response_format: "mp3",
         }),
     });
-    const buf = Buffer.from(await r.arrayBuffer());
-    const audioBase64 = buf.toString("base64");
-    const dataUrl = `data:audio/mp3;base64,${audioBase64}`;
+    const buffer = Buffer.from(await res.arrayBuffer());
     return {
-        ok: true,
-        vendor: "openai",
-        mode: 'tts',
         type: "audio",
-        audioUrl: dataUrl,
-        raw: { base64Length: audioBase64.length },
+        output: buffer,
     };
 }
+// ----------------------------------------------
+// OPENAI VENDOR DEFINITION
+// ----------------------------------------------
 export const openAiVendor = {
     name: "openai",
-    supports: ["chat", "image", "tts"],
-    async handle(request) {
-        const { mode, prompt } = request;
-        if (mode === "chat") {
-            return openaiText(prompt);
-        }
-        if (mode === "image") {
-            return openaiImage(prompt);
-        }
-        if (mode === "tts") {
-            return openaiTTS(prompt);
-        }
-        throw new Error(`OpenAI does not support mode ${mode}`);
-    },
+    supports: ["text", "image", "audio", "tts", "multi"],
+    cost: 1,
+    runText: openaiText,
+    runImage: openaiImage,
+    runTTS: openaiTTS,
 };

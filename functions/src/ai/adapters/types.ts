@@ -1,56 +1,35 @@
-// functions/src/ai/adapters/types.ts
-export type AIMode =
-  | "text"
-  | "image"
-  | "audio"
-  | "tts"
-  | "voice_clone"
-  | "music"
-  | "video"
-  | "multi";
+//--------------------------------------------------------
+// UNIFIED AI TYPES (FIXES AiResponse, AIResult MISMATCH)
+//--------------------------------------------------------
 
-export type AIResultType = "text" | "image" | "audio" | "video" | "multi";
+export type AIResultType = "text" | "image" | "audio" | "video";
 
 export interface AIResult {
-  vendor: string;
-  mode: AIMode | string;
   type: AIResultType;
+  url?: string;
   text?: string;
-  url?: string;      // for hosted media
-  base64?: string;   // for inline image/audio
-  meta?: any;
-}
-
-// This is the old type definition, keeping it for compatibility with some existing files, but new files should use the above.
-export type AiMode =
-  | "chat"
-  | "image"
-  | "tts"
-  | "music"
-  | "video"
-  | "avatar";
-
-export interface AiRequest {
-  mode: AiMode;
-  prompt: string;
-  userId: string;
-  extra?: Record<string, any>;
+  buffer?: Buffer;
 }
 
 export interface AiResponse {
-  ok: boolean;
-  vendor: string;
-  mode: AiMode;
-  type: "text" | "image" | "audio" | "video" | "json";
+  type: AIResultType;
+  url?: string;
   text?: string;
-  imageBase64?: string;
+  buffer?: Buffer;
+}
+
+export interface AiRequest {
+  mode: string;
+  prompt?: string;
+  text?: string;
   audioUrl?: string;
-  videoUrl?: string;
-  raw?: any;
 }
 
 export interface AiVendor {
   name: string;
-  supports: AiMode[];
+  supports: string[];
+  cost: number;
+
+  // REQUIRED
   handle(request: AiRequest): Promise<AiResponse>;
 }
