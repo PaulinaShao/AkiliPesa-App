@@ -1,57 +1,61 @@
+
+// CREATE OR OVERWRITE FILE: src/rtc/createCallToken.ts
+
 import { onCall } from "firebase-functions/v2/https";
-import { defineSecret } from "firebase-functions/params";
 import {
   RtcTokenBuilder,
-  RtcRole,
-  RtmTokenBuilder,
+  RtmTokenBuilder
 } from "agora-access-token";
+
+// Import secrets (AGORA APP ID + AGORA APP CERTIFICATE)
+import { defineSecret } from "firebase-functions/params";
 
 const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
 const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
 
+
 export const createCallToken = onCall(
   {
     secrets: [AGORA_APP_ID, AGORA_APP_CERT],
-    timeoutSeconds: 30,
+    region: "us-central1",
   },
   async (request) => {
     const { channelName, uid } = request.data;
 
     if (!channelName || !uid) {
-      throw new Error("Missing channelName or uid");
+      throw new Error("channelName and uid are required");
     }
 
-    const appId = AGORA_APP_ID.value();
-    const appCert = AGORA_APP_CERT.value();
+    // Agora roles (correct method)
+    const role = RtcTokenBuilder.Role.PUBLISHER;
 
-    // Unix timestamps
-    const expireTs = Math.floor(Date.now() / 1000) + 3600;       // 1 hour
-    const privilegeExpiredTs = expireTs;                         // same expiry
+    const privilegeExpireTs = Math.floor(Date.now() / 1000) + 3600;
 
-    // RTC TOKEN (video/audio stream)
+    // RTC TOKEN
     const rtcToken = RtcTokenBuilder.buildTokenWithUid(
-      appId,
-      appCert,
+      AGORA_APP_ID.value(),
+      AGORA_APP_CERT.value(),
       channelName,
-      Number(uid),
-      RtcRole.PUBLISHER,
-      expireTs
+      uid,
+      role,
+      privilegeExpireTs,
+      privilegeExpireTs
     );
 
-    // RTM TOKEN (messaging)
+    // RTM TOKEN
     const rtmToken = RtmTokenBuilder.buildToken(
-      appId,
-      appCert,
+      AGORA_APP_ID.value(),
+      AGORA_APP_CERT.value(),
       String(uid),
-      expireTs,
-      privilegeExpiredTs    // ← NEW REQUIRED ARG
+      privilegeExpireTs,
+      privilegeExpireTs
     );
 
     return {
       rtcToken,
       rtmToken,
       channel: channelName,
-      uid,
+      uid: uid,
     };
   }
 );
