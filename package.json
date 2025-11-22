@@ -13,10 +13,10 @@
     "node": "20"
   },
   "dependencies": {
+    "agora-access-token": "^2.0.4",
     "firebase-admin": "^12.5.0",
     "firebase-functions": "^5.0.1",
-    "node-fetch": "^3.3.2",
-    "agora-access-token": "^2.0.4"
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
