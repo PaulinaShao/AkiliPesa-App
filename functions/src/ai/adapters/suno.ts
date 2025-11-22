@@ -1,6 +1,6 @@
-import { SUNO_API_KEY } from "../../config/secrets";
+import { SUNO_API_KEY } from "../../config/secrets.js";
 import fetch from "node-fetch";
-import { AIResult } from "./types";
+import { AIResult } from "./types.js";
 
 export async function sunoMusic(prompt: string): Promise<AIResult> {
   // TODO: replace with real Suno API when integrated

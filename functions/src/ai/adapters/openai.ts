@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
-import { OPENAI_API_KEY } from "../../config/secrets";
-import { AIResult } from "./types";
+import { OPENAI_API_KEY } from "../../config/secrets.js";
+import { AIResult } from "./types.js";
 
 const OAI_BASE = "https://api.openai.com/v1";
 

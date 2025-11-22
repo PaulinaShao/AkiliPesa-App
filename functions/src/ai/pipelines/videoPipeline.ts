@@ -1,7 +1,7 @@
-import { AIResult } from "../adapters/types";
-import { kaiberVideo } from "../adapters/kaiber";
-import { pikaVideo } from "../adapters/pika";
-import { lumaVideo } from "../adapters/luma";
+import { AIResult } from "../adapters/types.js";
+import { kaiberVideo } from "../adapters/kaiber.js";
+import { pikaVideo } from "../adapters/pika.js";
+import { lumaVideo } from "../adapters/luma.js";
 
 export async function runVideoPipeline(
   payload: any,

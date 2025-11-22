@@ -1,5 +1,5 @@
-import { AIResult } from "../adapters/types";
-import { runpodVoiceClone } from "../adapters/runpod";
+import { AIResult } from "../adapters/types.js";
+import { runpodVoiceClone } from "../adapters/runpod.js";
 
 export async function runVoiceClonePipeline(
   payload: any,

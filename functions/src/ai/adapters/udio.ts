@@ -1,6 +1,6 @@
-import { UDIO_API_KEY } from "../../config/secrets";
+import { UDIO_API_KEY } from "../../config/secrets.js";
 import fetch from "node-fetch";
-import { AIResult } from "./types";
+import { AIResult } from "./types.js";
 
 export async function udioMusic(prompt: string): Promise<AIResult> {
   // TODO: replace with real Udio API call when available

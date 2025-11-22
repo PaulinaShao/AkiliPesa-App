@@ -1,5 +1,5 @@
 import { onCall } from "firebase-functions/v2/https";
-import { openaiText } from "./adapters/openai";
+import { openaiText } from "./adapters/openai.js";
 
 export const callLiveLoop = onCall(
   { region: "us-central1" },

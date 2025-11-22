@@ -1,6 +1,6 @@
-import { AIResult } from "../adapters/types";
-import { udioMusic } from "../adapters/udio";
-import { sunoMusic } from "../adapters/suno";
+import { AIResult } from "../adapters/types.js";
+import { udioMusic } from "../adapters/udio.js";
+import { sunoMusic } from "../adapters/suno.js";
 
 export async function runMusicPipeline(
   payload: { prompt: string },

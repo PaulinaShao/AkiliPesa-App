@@ -1,6 +1,6 @@
-import { LUMA_API_KEY } from "../../config/secrets";
+import { LUMA_API_KEY } from "../../config/secrets.js";
 import fetch from "node-fetch";
-import { AIResult } from "./types";
+import { AIResult } from "./types.js";
 
 export async function lumaVideo(payload: any): Promise<AIResult> {
   // TODO: real Luma API

@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
-import { RUNPOD_API_KEY } from "../../config/secrets";
-import { AIResult } from "./types";
+import { RUNPOD_API_KEY } from "../../config/secrets.js";
+import { AIResult } from "./types.js";
 
 const RUNPOD_ENDPOINT = "https://api.runpod.ai/v2/your-endpoint-id/run"; // TODO: replace
 

@@ -1,6 +1,6 @@
-import { AIResult } from "../adapters/types";
-import { openaiImage } from "../adapters/openai";
-import { runpodImage } from "../adapters/runpod";
+import { AIResult } from "../adapters/types.js";
+import { openaiImage } from "../adapters/openai.js";
+import { runpodImage } from "../adapters/runpod.js";
 
 export async function runImagePipeline(
   payload: { prompt: string },

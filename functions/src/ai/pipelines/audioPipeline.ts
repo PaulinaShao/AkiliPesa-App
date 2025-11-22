@@ -1,6 +1,6 @@
-import { AIResult } from "../adapters/types";
-import { openaiTTS } from "../adapters/openai";
-import { whisperTranscribe } from "../adapters/whisper";
+import { AIResult } from "../adapters/types.js";
+import { openaiTTS } from "../adapters/openai.js";
+import { whisperTranscribe } from "../adapters/whisper.js";
 
 interface AudioPayload {
   type: "tts" | "transcribe";

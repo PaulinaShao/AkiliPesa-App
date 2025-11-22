@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
-import { WHISPER_API_KEY } from "../../config/secrets";
-import { AIResult } from "./types";
+import { WHISPER_API_KEY } from "../../config/secrets.js";
+import { AIResult } from "./types.js";
 
 /**
  * This is a placeholder – in many setups Whisper is accessed via OpenAI or your own server.

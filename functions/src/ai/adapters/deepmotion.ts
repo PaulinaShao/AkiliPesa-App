@@ -1,6 +1,6 @@
-import { DEEPMOTION_API_KEY } from "../../config/secrets";
+import { DEEPMOTION_API_KEY } from "../../config/secrets.js";
 import fetch from "node-fetch";
-import { AIResult } from "./types";
+import { AIResult } from "./types.js";
 
 export async function deepmotionAnimate(payload: any): Promise<AIResult> {
   // TODO: plug into DeepMotion animation API

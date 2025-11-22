@@ -1,5 +1,5 @@
-import { AIResult } from "../adapters/types";
-import { openaiText } from "../adapters/openai";
+import { AIResult } from "../adapters/types.js";
+import { openaiText } from "../adapters/openai.js";
 
 export async function runTextPipeline(
   payload: { prompt: string },

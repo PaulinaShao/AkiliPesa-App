@@ -1,6 +1,6 @@
-import { KAIBER_API_KEY } from "../../config/secrets";
+import { KAIBER_API_KEY } from "../../config/secrets.js";
 import fetch from "node-fetch";
-import { AIResult } from "./types";
+import { AIResult } from "./types.js";
 
 export async function kaiberVideo(payload: any): Promise<AIResult> {
   // TODO: real Kaiber API

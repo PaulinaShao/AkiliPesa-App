@@ -3,7 +3,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { RtcTokenBuilder, RtcRole } from "agora-access-token";
-import { AGORA_APP_ID, AGORA_APP_CERT } from "../config/secrets";
+import { AGORA_APP_ID, AGORA_APP_CERT } from "../config/secrets.js";
 
 export const createCallToken = onCall(
   { region: "us-central1", secrets: [AGORA_APP_ID, AGORA_APP_CERT] },

@@ -1,9 +1,9 @@
 
 // functions/src/ai/summarizeSession.ts
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { db, admin } from "../firebase";
-import { OPENAI_API_KEY } from "../config/secrets";
-import { openaiText } from "./adapters/openai";
+import { db, admin } from "../firebase.js";
+import { OPENAI_API_KEY } from "../config/secrets.js";
+import { openaiText } from "./adapters/openai.js";
 
 export const summarizeAiSession = onCall(
   { region: "us-central1", secrets: [OPENAI_API_KEY] },

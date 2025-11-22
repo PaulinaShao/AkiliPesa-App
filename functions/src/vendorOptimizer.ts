@@ -1,6 +1,6 @@
 
 import { onCall } from "firebase-functions/v2/https";
-import { db } from "./firebase";
+import { db } from "./firebase.js";
 
 export const vendorOptimizer = onCall(
   { region: "us-central1" },
