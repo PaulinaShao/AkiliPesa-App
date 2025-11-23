@@ -29,6 +29,8 @@ export const createCallToken = onCall(
     const expireSeconds = 3600;
     const privilegeExpiredTs =
       Math.floor(Date.now() / 1000) + expireSeconds;
+    
+    const role = 1; // PUBLISHER
 
     // RTC TOKEN (6 args) for agora-access-token
     const rtcToken = RtcTokenBuilder.buildTokenWithUid(
@@ -36,11 +38,11 @@ export const createCallToken = onCall(
       appCert,
       channel,
       uid,
-      RtcTokenBuilder.Role.PUBLISHER, // Correct way to access Role
+      role, 
       privilegeExpiredTs
     );
 
-    // RTM TOKEN (5 args)
+    // RTM TOKEN (4 args)
     const rtmToken = RtmTokenBuilder.buildToken(
       appId,
       appCert,

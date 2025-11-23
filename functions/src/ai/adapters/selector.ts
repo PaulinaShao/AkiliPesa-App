@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // MASTER VENDOR SELECTOR (FIXED WITH .js EXTENSIONS)
 //---------------------------------------------------------
-import { AiRequest, AiVendor } from "./types.js";
+import { AiVendor } from "./types.js";
 import { openAiVendor } from "./openai.js";
 
 export const vendorRegistry: AiVendor[] = [openAiVendor];

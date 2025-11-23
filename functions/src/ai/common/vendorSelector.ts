@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// FIXED VENDOR SELECTOR — returns AiVendor object, not string
+// FIXED VENDOR SELECTOR — returns AiVendor object, not a string
 //---------------------------------------------------------
 
 import { openAiVendor } from "../adapters/openai.js";

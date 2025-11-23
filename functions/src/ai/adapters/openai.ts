@@ -3,7 +3,7 @@
 //-------------------------------------------------------
 
 import { OPENAI_API_KEY } from "../../config/secrets.js";
-import type { AiResponse, AiRequest } from "./types.js";
+import type { AiResponse, AiRequest, AiVendor } from "./types.js";
 import fetch from "node-fetch";
 
 // ---------------- TEXT --------------------
@@ -76,7 +76,7 @@ export async function openaiTTS(text: string): Promise<AiResponse> {
 }
 
 // ----------------- VENDOR --------------------
-export const openAiVendor = {
+export const openAiVendor: AiVendor = {
   name: "openai",
   supports: ["text", "image", "tts", "audio"],
   cost: 1,
