@@ -2,8 +2,6 @@ import { onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as AgoraAccessToken from "agora-access-token";
 
-import { db } from "../firebase.js"; // if you need db later; safe to keep
-
 export const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
 export const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
 
@@ -47,7 +45,6 @@ export const createCallToken = onCall(
       appId,
       appCert,
       String(uid),
-      1, // RTM role = 1
       privilegeExpiredTs
     );
 
