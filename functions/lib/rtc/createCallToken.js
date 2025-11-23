@@ -22,7 +22,7 @@ export const createCallToken = onCall({
     const role = 1; // PUBLISHER
     // RTC TOKEN (6 args) for agora-access-token
     const rtcToken = RtcTokenBuilder.buildTokenWithUid(appId, appCert, channel, uid, role, privilegeExpiredTs);
-    // RTM TOKEN (4 args)
+    // RTM TOKEN (5 args)
     const rtmToken = RtmTokenBuilder.buildToken(appId, appCert, String(uid), privilegeExpiredTs);
     return {
         channel,
