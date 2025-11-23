@@ -3,11 +3,10 @@
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-// Initialize Admin SDK once
-if (!admin.apps.length) {
+// IMPORTANT: admin must be initialized BEFORE using apps.length
+if (admin.apps.length === 0) {
     admin.initializeApp();
 }
-// Shared instances for all backend modules
 export const db = getFirestore();
 export const storage = getStorage();
 export { admin };
