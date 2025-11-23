@@ -1,5 +1,5 @@
 import { onCall } from "firebase-functions/v2/https";
-import { db, admin } from "../firebase/index.js";
+import { db, admin } from "../firebase.js";
 export const schedulePublisher2 = onCall({ region: "us-central1" }, async (request) => {
     const { postId, publishAt } = request.data || {};
     const jobRef = db.collection("scheduledPosts").doc();

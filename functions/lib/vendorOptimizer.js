@@ -1,5 +1,5 @@
 import { onCall } from "firebase-functions/v2/https";
-import { db } from "./firebase/index.js";
+import { db } from "./firebase.js";
 export const vendorOptimizer = onCall({ region: "us-central1" }, async () => {
     const vendors = [
         { name: "openai", cost: 2 },

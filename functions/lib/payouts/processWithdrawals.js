@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { db, admin } from "../firebase/index.js";
+import { db, admin } from "../firebase.js";
 /**
  * Admin marks withdrawal as approved.
  * Deduct from platform wallet and create payout record.

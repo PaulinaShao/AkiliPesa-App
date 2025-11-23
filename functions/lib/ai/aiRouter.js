@@ -2,7 +2,7 @@
 // FIXED AI ROUTER — vendor is AiVendor, not a string
 //---------------------------------------------------------
 import { onCall } from "firebase-functions/v2/https";
-import { db } from "../firebase/index.js";
+import { db } from "../firebase.js";
 import { selectVendor } from "./common/vendorSelector.js";
 import { runTextPipeline } from "./pipelines/textPipeline.js";
 import { runImagePipeline } from "./pipelines/imagePipeline.js";

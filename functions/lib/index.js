@@ -1,9 +1,6 @@
 // functions/src/index.ts
-import * as admin from "firebase-admin";
 import { setGlobalOptions } from "firebase-functions/v2/options";
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
+// Global options for all Gen 2 functions
 setGlobalOptions({
     region: "us-central1",
     maxInstances: 2,
@@ -42,4 +39,3 @@ export { vendorOptimizer } from "./vendorOptimizer.js";
 export { redeemReward } from "./rewards/redeemReward.js";
 // ---------- SEEDING ----------
 export { initializeDemoData } from "./seed/initializeDemoData.js";
-export { bootstrapFirestore } from "./seed/bootstrapFirestore.js";

@@ -1,25 +1,19 @@
 import { onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
+import * as AgoraAccessToken from "agora-access-token";
 
-// Load agora-access-token using CJS require (the ONLY correct way)
-const {
-  RtcTokenBuilder,
-  RtmTokenBuilder,
-  RtcRole,
-  RtmRole,
-} = require("agora-access-token");
+import { db } from "../firebase.js"; // if you need db later; safe to keep
 
 export const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
 export const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
 
+const { RtcTokenBuilder, RtmTokenBuilder, RtcRole } = AgoraAccessToken as any;
+
 export const createCallToken = onCall(
   {
-    region: "us-central1",
     secrets: [AGORA_APP_ID, AGORA_APP_CERT],
+    region: "us-central1",
   },
-
   async (request) => {
     const { channel, uid } = request.data;
 
@@ -34,25 +28,26 @@ export const createCallToken = onCall(
       throw new Error("Agora secrets not loaded");
     }
 
-    const expireSeconds = 3600; // 1 hour
-    const privilegeExpiredTs = Math.floor(Date.now() / 1000) + expireSeconds;
+    const expireSeconds = 3600;
+    const privilegeExpiredTs =
+      Math.floor(Date.now() / 1000) + expireSeconds;
 
-    // --- RTC TOKEN (6 args) ---
+    // RTC TOKEN (6 args) for agora-access-token
     const rtcToken = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCert,
       channel,
       uid,
-      RtcRole.PUBLISHER, // Exists in agora-access-token
+      RtcRole.PUBLISHER,
       privilegeExpiredTs
     );
 
-    // --- RTM TOKEN (5 args) ---
+    // RTM TOKEN (5 args)
     const rtmToken = RtmTokenBuilder.buildToken(
       appId,
       appCert,
       String(uid),
-      RtmRole.PUBLISHER,
+      1, // RTM role = 1
       privilegeExpiredTs
     );
 

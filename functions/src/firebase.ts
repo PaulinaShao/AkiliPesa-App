@@ -1,8 +1,11 @@
-// /functions/src/firebase.ts
+// src/firebase.ts
+// Single source of truth for Firebase Admin in Cloud Functions (Gen 2)
+
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
+// IMPORTANT: admin must be initialized BEFORE using apps.length
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
