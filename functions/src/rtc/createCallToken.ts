@@ -1,11 +1,11 @@
 import { onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import * as AgoraAccessToken from "agora-access-token";
+import AgoraAccessToken from "agora-access-token";
 
 export const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
 export const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
 
-const { RtcTokenBuilder, RtmTokenBuilder, RtcRole } = AgoraAccessToken as any;
+const { RtcTokenBuilder, RtmTokenBuilder } = AgoraAccessToken;
 
 export const createCallToken = onCall(
   {
@@ -36,7 +36,7 @@ export const createCallToken = onCall(
       appCert,
       channel,
       uid,
-      RtcRole.PUBLISHER,
+      RtcTokenBuilder.Role.PUBLISHER, // Correct way to access Role
       privilegeExpiredTs
     );
 
