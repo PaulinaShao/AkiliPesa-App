@@ -12,7 +12,8 @@ import { runVideoPipeline } from "./pipelines/videoPipeline.js";
 import { runVoiceClonePipeline } from "./pipelines/voiceClonePipeline.js";
 import { runMultiFormatPipeline } from "./pipelines/multiFormatPipeline.js";
 import { validateAIInput } from "./common/validateInput.js";
-export const aiRouter = onCall({ region: "us-central1" }, async (req) => {
+import { OPENAI_API_KEY } from "../config/secrets.js";
+export const aiRouter = onCall({ region: "us-central1", secrets: [OPENAI_API_KEY] }, async (req) => {
     const { uid } = req.auth;
     const { mode, payload, metadata } = req.data;
     validateAIInput(mode, payload);

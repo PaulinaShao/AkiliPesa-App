@@ -42,7 +42,7 @@ export const createCallToken = onCall(
       privilegeExpiredTs
     );
 
-    // RTM TOKEN (4 args)
+    // RTM TOKEN (5 args)
     const rtmToken = RtmTokenBuilder.buildToken(
       appId,
       appCert,
