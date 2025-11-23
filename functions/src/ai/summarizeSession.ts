@@ -1,6 +1,6 @@
 // functions/src/ai/summarizeSession.ts
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { db, admin } from "../firebase/index.js";
+import { db, admin } from "../firebase.js";
 import { OPENAI_API_KEY } from "../config/secrets.js";
 import { openaiText } from "./adapters/openai.js";
 

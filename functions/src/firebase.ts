@@ -1,10 +1,9 @@
-// firebase.ts – TypeScript version used by the project
-
+// /functions/src/firebase.ts
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
-if (!admin.apps.length) {
+if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 

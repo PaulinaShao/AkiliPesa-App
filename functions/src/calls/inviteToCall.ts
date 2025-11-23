@@ -1,6 +1,6 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import { db } from "../firebase/index.js";
+import { db } from "../firebase.js";
 
 export const inviteToCall = onCall(
   { region: "us-central1" },

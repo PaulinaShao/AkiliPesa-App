@@ -1,5 +1,5 @@
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
-import { db, admin } from "../firebase/index.js";
+import { db, admin } from "../firebase.js";
 
 export const onFeedbackCreated = onDocumentCreated(
   {
