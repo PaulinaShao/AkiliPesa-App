@@ -29,8 +29,7 @@ export const endAiCall = onCall(
     let durationSec: number | null = null;
     if (startedAt) {
       const startDate = startedAt.toDate();
-      const diffMs = Date.now() - startDate.getTime();
-      durationSec = Math.round(diffMs / 1000);
+      durationSec = Math.round((Date.now() - startDate.getTime()) / 1000);
     }
 
     await ref.set(

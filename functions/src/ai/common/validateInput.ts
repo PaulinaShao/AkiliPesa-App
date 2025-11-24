@@ -1,3 +1,5 @@
+// functions/src/ai/common/validateInput.ts
+
 import { HttpsError } from "firebase-functions/v2/https";
 
 export function validateAIInput(mode: string, payload: any) {

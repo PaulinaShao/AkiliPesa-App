@@ -14,22 +14,15 @@ export const createAiCallSession = onCall(
       persona = "empathetic",
       language = "sw",
       agentId = "akili-ai",
-      callType = "audio", // "audio" | "video"
+      callType = "audio",
       context = {},
     } = request.data || {};
 
     if (!["audio", "video"].includes(callType)) {
-      throw new HttpsError(
-        "invalid-argument",
-        "callType must be 'audio' or 'video'."
-      );
+      throw new HttpsError("invalid-argument", "callType must be 'audio' or 'video'.");
     }
 
-    // Unique channel name for Agora room
-    const channelName = `ai_${Date.now()}_${Math.floor(
-      Math.random() * 99999
-    )}`;
-
+    const channelName = `ai_${Date.now()}_${Math.floor(Math.random() * 99999)}`;
     const docRef = db.collection("aiCallSessions").doc();
 
     await docRef.set({
@@ -42,7 +35,7 @@ export const createAiCallSession = onCall(
       language,
       callType,
       context,
-      status: "active", // active | ended | failed
+      status: "active",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       startedAt: admin.firestore.FieldValue.serverTimestamp(),
     });

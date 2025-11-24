@@ -2,7 +2,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { db, admin } from "../firebase.js";
 import { OPENAI_API_KEY } from "../config/secrets.js";
-import { openaiText } from "./adapters/openai.js";
+import { openAiVendor } from "./adapters/openai.js";
 
 export const summarizeAiSession = onCall(
   { region: "us-central1", secrets: [OPENAI_API_KEY] },
@@ -19,8 +19,7 @@ export const summarizeAiSession = onCall(
       throw new HttpsError("invalid-argument", "callId is required.");
     }
 
-    const parentCollection =
-      type === "calls" ? "calls" : "aiCallSessions";
+    const parentCollection = type === "calls" ? "calls" : "aiCallSessions";
 
     const transcriptSnap = await db
       .collection(parentCollection)
@@ -50,7 +49,17 @@ Andika kwa Kiswahili rahisi, na orodhesha mambo muhimu kwa point:
 ${conversation}
 `;
 
-    const result = await openaiText(prompt);
+    const result = await openAiVendor.handle({
+      mode: "chat",
+      prompt,
+      userId: auth.uid,
+      extra: {
+        source: "summarizeSession",
+        parentCollection,
+        callId,
+      },
+    });
+
     const summary = result.text || "";
 
     const summaryRef = db.collection("callSummaries").doc(callId);

@@ -1,55 +1,55 @@
-// CREATE OR OVERWRITE FILE: src/rtc/createCallToken.ts
-
 import { onCall } from "firebase-functions/v2/https";
-import { RtcTokenBuilder, RtmTokenBuilder } from "agora-access-token";
-
-// Import secrets (AGORA APP ID + AGORA APP CERTIFICATE)
 import { defineSecret } from "firebase-functions/params";
+import { createRequire } from "module";
 
-const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
-const AGORA_CERT = defineSecret("AGORA_APP_CERTIFICATE");
+// Load CJS library inside ESM
+const require = createRequire(import.meta.url);
+const { RtcTokenBuilder, RtmTokenBuilder } = require("agora-access-token");
 
+export const AGORA_APP_ID = defineSecret("AGORA_APP_ID");
+export const AGORA_APP_CERT = defineSecret("AGORA_APP_CERT");
 
 export const createCallToken = onCall(
-  {
-    secrets: [AGORA_APP_ID, AGORA_CERT],
-    region: "us-central1",
-  },
+  { region: "us-central1", secrets: [AGORA_APP_ID, AGORA_APP_CERT] },
   async (request) => {
-    const { channelName, uid } = request.data;
+    const { channel, uid } = request.data;
 
-    if (!channelName || !uid) {
-      throw new Error("channelName and uid are required");
-    }
+    if (!channel || !uid) throw new Error("Missing channel or uid");
 
-    // Agora roles (correct method)
-    const role = RtcTokenBuilder.Role.PUBLISHER;
+    const appId = AGORA_APP_ID.value();
+    const appCert = AGORA_APP_CERT.value();
 
-    const privilegeExpireTs = Math.floor(Date.now() / 1000) + 3600;
+    const expireSeconds = 3600;
+    const privilegeExpiredTs =
+      Math.floor(Date.now() / 1000) + expireSeconds;
 
-    // RTC TOKEN
+    const role = 1; // publisher
+
+    // RTC
     const rtcToken = RtcTokenBuilder.buildTokenWithUid(
-      AGORA_APP_ID.value(),
-      AGORA_CERT.value(),
-      channelName,
+      appId,
+      appCert,
+      channel,
       uid,
       role,
-      privilegeExpireTs
+      privilegeExpiredTs
     );
 
-    // RTM TOKEN
+    // RTM
     const rtmToken = RtmTokenBuilder.buildToken(
-      AGORA_APP_ID.value(),
-      AGORA_CERT.value(),
-      uid,
-      privilegeExpireTs
+      appId,
+      appCert,
+      String(uid),
+      role,
+      privilegeExpiredTs
     );
 
     return {
+      channel,
+      uid,
       rtcToken,
       rtmToken,
-      channel: channelName,
-      uid: uid,
+      expiresAt: privilegeExpiredTs,
     };
   }
 );

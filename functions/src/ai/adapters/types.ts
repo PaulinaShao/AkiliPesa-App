@@ -1,5 +1,6 @@
+// functions/src/ai/adapters/types.ts
 //--------------------------------------------------------
-// UNIFIED AI TYPES — FINAL VERSION
+// UNIFIED AI TYPES — FINAL CLEAN VERSION
 //--------------------------------------------------------
 
 export type AIResultType = "text" | "image" | "audio" | "video" | "multi";
@@ -10,8 +11,8 @@ export interface AIResult {
   text?: string;
   buffer?: Buffer;
   vendor?: string;
-  mode?: string;     // allow adapters/pipelines to tag the mode
-  meta?: any;        // optional extra metadata (e.g. payload info)
+  mode?: string;
+  meta?: any;
 }
 
 export interface AiResponse {
@@ -24,18 +25,32 @@ export interface AiResponse {
   meta?: any;
 }
 
-export interface AiRequest {
-  mode: string;      // e.g. "text", "image", "music", "video"
-  prompt?: string;
-  text?: string;
-  audioUrl?: string;
-}
-
 export interface AiVendor {
   name: string;
   supports: string[];
   cost: number;
 
-  // Every vendor must implement this
   handle(request: AiRequest): Promise<AiResponse>;
+}
+
+// --------------------------------------------------------
+// SINGLE, FINAL AiRequest INTERFACE
+// --------------------------------------------------------
+
+export interface AiRequest {
+  // e.g. "chat", "image", "tts", "music", "video", "voice_clone"
+  mode: string;
+
+  // main prompt text (always present for now)
+  prompt: string;
+
+  // who is paying / owning this generation
+  userId: string;
+
+  // free-form metadata (can contain anything: persona, jobId, etc.)
+  extra: Record<string, any>;
+
+  // optional fields used by specific pipelines
+  text?: string;
+  audioUrl?: string;
 }
